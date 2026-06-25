@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------
+// Identity & Organizations
+// ---------------------------------------------------------
+
+model Company {
+  id        String          @id @default(uuid())
+  name      String
+  locations Location[]
+  users     User[]
+  setting   CompanySetting?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+}
+
+model Location {
+  id             String          @id @default(uuid())
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  name           String
+  code           String // e.g., BP-NJ
+  inventoryItems InventoryItem[]
+  userLocations  UserLocation[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+}
+
+model User {
+  id            String         @id @default(uuid())
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id])
+  email         String         @unique
+  passwordHash  String
+  role          String // e.g., ADMIN, MANAGER, SALES
+  userLocations UserLocation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+}
+
+model UserLocation {
+  userId     String
+  locationId String
+  user       User     @relation(fields: [userId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id])
+
+  @@id([userId, locationId])
+}
+
+// ---------------------------------------------------------
+// CRM: Parties (Unified Entity)
+// ---------------------------------------------------------
+
+model Party {
+  id             String  @id @default(uuid())
+  type           String // CUSTOMER, SUPPLIER, VENDOR, ASSOCIATE
+  systemId       String? @unique // Auto-generated ID (e.g. REP-4041)
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  contactPerson  String?
+  // Supplier-specific
+  originCountry  String?
+  paymentTerms   String? // Net 30, Net 60, Pre-Pay
+  incoterms      String? // FOB Genoa, DDP Boston, CIF Miami
+  creditLimit    Float   @default(0.0)
+  currency       String  @default("USD")
+  // Vendor-specific
+  serviceType    String? // Ocean Freight, Inland Logistics, Customs & Tariffs
+  // Associate-specific
+  role           String? // Senior Sales Rep, Branch Manager, Sales Rep
+  baseLocation   String? // display label e.g. "Maryland Hub"
+  commissionRate String? // e.g. "5%"
+  // Denormalized metrics
+  totalPurchased Float   @default(0.0)
+  totalSold      Float   @default(0.0)
+  balanceDue     Float   @default(0.0)
+
+  purchaseOrders       PurchaseOrder[] // As Supplier
+  salesOrders          SalesOrder[]    @relation("CustomerSalesOrders")
+  associateSalesOrders SalesOrder[]    @relation("AssociateSalesOrders")
+  vendorInvoices       VendorInvoice[]
+
+  customerOpportunities  Opportunity[] @relation("CustomerOpportunities")
+  associateOpportunities Opportunity[] @relation("AssociateOpportunities")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([type])
+}
+
+// ---------------------------------------------------------
+// Product Catalog
+// ---------------------------------------------------------
+
+model Product {
+  id           String @id @default(uuid())
+  sku          String @unique
+  name         String
+  materialType String // Quartzite, Granite, Marble
+  finish       String // Polished, Honed, Leathered
+  baseColor    String // Sea Green, Deep Purple
+  attributes   Json? // { "veining": "Heavy", "bookmatched": true }
+
+  thickness           String? // 2cm, 3cm
+  originCountry       String?
+  retailPricePerSf    Float?
+  minPricePerSf       Float?
+  avgCostPerSf        Float?
+  approvedSupplierIds String[] @default([]) // Party ids of approved suppliers
+
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+// ---------------------------------------------------------
+// Inventory & The Material Passport
+// ---------------------------------------------------------
+
+model InventoryItem {
+  id           String @id @default(uuid())
+  uniqueSlabId String @unique // e.g., BP-NJ-2026-00001
+  barcode      String @unique
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  presentLocationId String
+  location          Location @relation(fields: [presentLocationId], references: [id])
+
+  bin    String?
+  status String // ORDERED, RECEIVED, AVAILABLE, ON_HOLD, COMMITTED, SOLD, WRITTEN_OFF
+
+  // Grouping
+  lotNumber String?
+  bundleId  String?
+
+  // Dimensions
+  lengthInches Float
+  widthInches  Float
+  totalSf      Float
+
+  // Sacred Financials
+  costFob         Float?
+  costApportioned Float?
+  costLanded      Float?
+
+  // Remnants
+  parentItemId String?
+  parentItem   InventoryItem?  @relation("RemnantChain", fields: [parentItemId], references: [id])
+  remnants     InventoryItem[] @relation("RemnantChain")
+
+  // Relationships
+  poLineItemId String?     @unique
+  poLineItem   POLineItem? @relation(fields: [poLineItemId], references: [id])
+
+  soLineItem SOLineItem?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+// ---------------------------------------------------------
+// Procurement Pipeline
+// ---------------------------------------------------------
+
+model PurchaseOrder {
+  id         String @id @default(uuid())
+  poNumber   String @unique
+  supplierId String
+  supplier   Party  @relation(fields: [supplierId], references: [id])
+  status     String @default("ISSUED") // PENDING_APPROVAL, APPROVED, ISSUED, FULFILLED
+
+  // Ordered material (single-material PO for this app)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  orderedSlabs Int      @default(0)
+  unitCost     Float    @default(0.0)
+
+  // Logistics pipeline
+  logisticsStatus String   @default("PRODUCTION") // PRODUCTION, ON_WATER, CUSTOMS, INLAND_TRANSIT, RECEIVED
+  oceanVendorId   String? // Party id of vendor, or "SUPPLIER_COVERED"
+  customsVendorId String?
+  inlandVendorId  String?
+  containerId     String?
+  eta             String?
+  estimatedDelivery DateTime? // ETA captured at PO creation; drives on-track / due-soon / overdue status
+  receiptNumber   String? // Goods-receipt / packing-slip number entered when the PO is closed (offline doc ref)
+  destinationHub  String?
+  documentRefs    String[] @default([])
+  issuedAt        DateTime @default(now())
+  ledgerHash      String?
+
+  poLineItems POLineItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([logisticsStatus])
+}
+
+model POLineItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  expectedSf   Float
+  expectedCost Float
+
+  inventoryItem InventoryItem?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+// ---------------------------------------------------------
+// Sales Pipeline & Opportunities
+// ---------------------------------------------------------
+
+model Opportunity {
+  id   String @id @default(uuid())
+  name String // e.g., "Marriott Downtown Reno"
+
+  // Lead / Customer Info (can be new or existing)
+  customerId String?
+  customer   Party?  @relation("CustomerOpportunities", fields: [customerId], references: [id])
+  leadName   String? // Used if customer doesn't exist yet
+  leadEmail  String?
+  leadPhone  String?
+
+  // Metrics
+  amount      Float  @default(0.0)
+  probability Int    @default(0) // e.g., 50 for 50%
+  status      String // LEAD, QUOTED, NEGOTIATION, CLOSED_WON, CLOSED_LOST
+
+  // Origin & Assignment
+  source      String // MANUAL, WEBSITE
+  associateId String?
+  associate   Party?  @relation("AssociateOpportunities", fields: [associateId], references: [id])
+
+  expectedCloseDate DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model SalesOrder {
+  id           String   @id @default(uuid())
+  soNumber     String   @unique
+  customerId   String?
+  customer     Party?   @relation("CustomerSalesOrders", fields: [customerId], references: [id])
+  customerName String? // project label, e.g. "John Smith - Kitchen Remodel"
+  associateId  String?
+  associate    Party?   @relation("AssociateSalesOrders", fields: [associateId], references: [id])
+  status       String   @default("PLACED") // PLACED, COMPLETED, CANCELLED
+  receiptRef   String?
+  placedAt     DateTime @default(now())
+
+  soLineItems SOLineItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model SOLineItem {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
+
+  inventoryItemId String        @unique
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  soldPricePerSf   Float
+  landedCostAtSale Float // Snapshotted for immutable margin
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+// ---------------------------------------------------------
+// Event Outbox (Handoffs)
+// ---------------------------------------------------------
+
+model EventOutbox {
+  id            String    @id @default(uuid())
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  status        String // PENDING, COMPLETED, FAILED
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------
+// Accounts Payable (Vendor Invoices)
+// ---------------------------------------------------------
+
+model VendorInvoice {
+  id             String    @id @default(uuid())
+  invoiceNum     String    @unique
+  vendorId       String
+  vendor         Party     @relation(fields: [vendorId], references: [id])
+  status         String // Pending Payment, Overdue, In Dispute, Paid
+  amount         Float     @default(0.0)
+  dueDate        DateTime?
+  serviceDetails String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([vendorId])
+}
+
+// ---------------------------------------------------------
+// Company-wide visibility / security settings
+// ---------------------------------------------------------
+
+model CompanySetting {
+  id                         String   @id @default(uuid())
+  companyId                  String   @unique
+  company                    Company  @relation(fields: [companyId], references: [id])
+  salesCanViewLandedCost     Boolean  @default(false)
+  salesCanViewAllPipeline    Boolean  @default(false)
+  vendorCanViewFullInventory Boolean  @default(false)
+  updatedAt                  DateTime @updatedAt
+}

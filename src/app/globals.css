@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #2b2a2c;
+  --color-surface: #333234;
+  --color-surface-hover: #454446;
+  --color-primary: #e3c16c; /* Vein gold */
+  --color-primary-hover: #d2ac55;
+  --color-primary-text: #1a1a1a;
+  --color-accent: #92b0ce;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #b8b6b9;
+  --color-text-muted: #d9d8d9;
+  --color-border: #454446;
+
+  --color-sidebar-bg: #1c1c1c;
+  --color-sidebar-hover: #2b2a2c;
+
+  --font-heading: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display headings carry the premium-stone personality. */
+h1,
+h2 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-body);
+}
+
+/* Accessibility floor: a visible, consistent keyboard focus ring. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Signature: a quarried-stone veining wash used behind hero surfaces. */
+.vein {
+  background-color: #1c1b1d;
+  background-image:
+    radial-gradient(120% 80% at 12% 0%, rgba(227, 193, 108, 0.10), transparent 55%),
+    radial-gradient(90% 60% at 90% 20%, rgba(146, 176, 206, 0.08), transparent 60%),
+    linear-gradient(115deg, transparent 0%, transparent 38%, rgba(227, 193, 108, 0.06) 39%, transparent 40%),
+    linear-gradient(125deg, transparent 0%, transparent 61%, rgba(255, 255, 255, 0.04) 62%, transparent 63%),
+    linear-gradient(100deg, transparent 0%, transparent 73%, rgba(146, 176, 206, 0.05) 74%, transparent 75%);
+}
+
+/* Custom scrollbar to match the dark, professional surface. */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Shared button primitives (used by newer components). */
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn-ghost:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-toast-in {
+  animation: toast-in 0.22s ease;
+}
