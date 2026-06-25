@@ -18,6 +18,9 @@ export type PoRow = {
   materialName: string;
   orderedSlabs: number;
   unitCost: number;
+  oceanCost: number;
+  customsCost: number;
+  inlandCost: number;
   eta: string | null;
   estimatedDelivery: string | null; // ISO date
   etaStatus: EtaStatus;
@@ -91,6 +94,9 @@ export async function getPurchaseOrders(): Promise<PoRow[]> {
       materialName: po.product?.name ?? '—',
       orderedSlabs: po.orderedSlabs,
       unitCost: po.unitCost,
+      oceanCost: po.oceanCost,
+      customsCost: po.customsCost,
+      inlandCost: po.inlandCost,
       eta: po.eta,
       estimatedDelivery: po.estimatedDelivery ? po.estimatedDelivery.toISOString() : null,
       etaStatus,

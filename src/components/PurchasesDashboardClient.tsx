@@ -124,6 +124,9 @@ export default function PurchasesDashboardClient({
   const [selectedOceanId, setSelectedOceanId] = useState('');
   const [selectedInlandId, setSelectedInlandId] = useState('');
   const [selectedCustomsId, setSelectedCustomsId] = useState('');
+  const [oceanCost, setOceanCost] = useState('');
+  const [customsCost, setCustomsCost] = useState('');
+  const [inlandCost, setInlandCost] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [isOceanCovered, setIsOceanCovered] = useState(false);
@@ -138,6 +141,9 @@ export default function PurchasesDashboardClient({
     setSelectedOceanId('');
     setSelectedInlandId('');
     setSelectedCustomsId('');
+    setOceanCost('');
+    setCustomsCost('');
+    setInlandCost('');
     setSelectedDestination('');
     setEstimatedDelivery('');
     setIsOceanCovered(false);
@@ -154,9 +160,11 @@ export default function PurchasesDashboardClient({
     if (terms.includes('DDP')) {
       setIsOceanCovered(true); setIsCustomsCovered(true); setIsInlandCovered(true);
       setSelectedOceanId('SUPPLIER_COVERED'); setSelectedCustomsId('SUPPLIER_COVERED'); setSelectedInlandId('SUPPLIER_COVERED');
+      setOceanCost(''); setCustomsCost(''); setInlandCost('');
     } else if (terms.includes('CIF')) {
       setIsOceanCovered(true); setIsCustomsCovered(false); setIsInlandCovered(false);
       setSelectedOceanId('SUPPLIER_COVERED'); setSelectedCustomsId(''); setSelectedInlandId('');
+      setOceanCost('');
     } else {
       setIsOceanCovered(false); setIsCustomsCovered(false); setIsInlandCovered(false);
       setSelectedOceanId(''); setSelectedCustomsId(''); setSelectedInlandId('');
@@ -182,6 +190,9 @@ export default function PurchasesDashboardClient({
         oceanVendorId: selectedOceanId || undefined,
         customsVendorId: selectedCustomsId || undefined,
         inlandVendorId: selectedInlandId || undefined,
+        oceanCost: oceanCost ? parseFloat(oceanCost) : undefined,
+        customsCost: customsCost ? parseFloat(customsCost) : undefined,
+        inlandCost: inlandCost ? parseFloat(inlandCost) : undefined,
         destinationHub: selectedDestination,
         estimatedDelivery,
       });
@@ -236,21 +247,21 @@ export default function PurchasesDashboardClient({
         return {
           title: 'OCEAN FREIGHT BOOKING', suffix: 'OF', leg: 'Ocean Freight',
           role: 'Ocean Freight Carrier', name: vendorName(po.oceanVendorId), id: po.oceanVendorId ?? '—',
-          rows: [{ item: `Ocean carriage — ${po.materialName}`, qty: `1 container · ${po.orderedSlabs} slabs`, unit: container, value: null as number | null }],
+          rows: [{ item: `Ocean carriage — ${po.materialName}`, qty: `1 container · ${po.orderedSlabs} slabs`, unit: container, value: (po.oceanCost || null) as number | null }],
           note: `Book ocean carriage for container ${container} from supplier origin to ${dest}. Issue the Bill of Lading and confirm ETA (${eta}).`,
         };
       case 'CUSTOMS':
         return {
           title: 'CUSTOMS CLEARANCE INSTRUCTION', suffix: 'CB', leg: 'Customs Broker',
           role: 'Customs Broker', name: vendorName(po.customsVendorId), id: po.customsVendorId ?? '—',
-          rows: [{ item: `Customs entry — ${po.materialName}`, qty: `Container ${container}`, unit: 'Dimensional stone', value: null }],
+          rows: [{ item: `Customs entry — ${po.materialName}`, qty: `Container ${container}`, unit: 'Dimensional stone', value: po.customsCost || null }],
           note: `Clear inbound shipment ${container} at the port of entry, assess duties, and release for inland transit to ${dest}.`,
         };
       case 'INLAND':
         return {
           title: 'INLAND DELIVERY ORDER', suffix: 'IL', leg: 'Inland Trucking',
           role: 'Inland Carrier', name: vendorName(po.inlandVendorId), id: po.inlandVendorId ?? '—',
-          rows: [{ item: `Drayage to ${dest}`, qty: `Container ${container}`, unit: `${po.orderedSlabs} slabs`, value: null }],
+          rows: [{ item: `Drayage to ${dest}`, qty: `Container ${container}`, unit: `${po.orderedSlabs} slabs`, value: po.inlandCost || null }],
           note: `Collect container ${container} from the port and deliver to ${dest}. Confirm receipt with the warehouse team.`,
         };
       default:
@@ -452,6 +463,11 @@ export default function PurchasesDashboardClient({
                     {isOceanCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select shipping line...</option>}
                     {vendors.filter((v) => v.service === 'Ocean Freight').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
+                  {isOceanCovered ? (
+                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                  ) : (
+                    <input type="number" required min="0.01" step="0.01" value={oceanCost} onChange={(e) => setOceanCost(e.target.value)} placeholder="Ocean freight price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                  )}
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-2">
@@ -465,6 +481,11 @@ export default function PurchasesDashboardClient({
                     {isCustomsCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select broker...</option>}
                     {vendors.filter((v) => v.service === 'Customs & Tariffs').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
+                  {isCustomsCovered ? (
+                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                  ) : (
+                    <input type="number" required min="0.01" step="0.01" value={customsCost} onChange={(e) => setCustomsCost(e.target.value)} placeholder="Customs brokerage price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                  )}
                 </div>
               </div>
 
@@ -481,6 +502,11 @@ export default function PurchasesDashboardClient({
                     {isInlandCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select trucking co...</option>}
                     {vendors.filter((v) => v.service === 'Inland Logistics').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
+                  {isInlandCovered ? (
+                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                  ) : (
+                    <input type="number" required min="0.01" step="0.01" value={inlandCost} onChange={(e) => setInlandCost(e.target.value)} placeholder="Inland trucking price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">Destination Hub</label>
@@ -503,6 +529,30 @@ export default function PurchasesDashboardClient({
                   <input type="number" required step="0.01" min="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" placeholder="e.g. 45.00" />
                 </div>
               </div>
+
+              {(() => {
+                const slabs = parseInt(orderedSlabs || '0', 10);
+                const uc = parseFloat(unitCost || '0');
+                if (!(slabs > 0 && uc > 0)) return null;
+                const estSf = slabs * 63.5;
+                const material = estSf * uc;
+                const freight = (parseFloat(oceanCost || '0') || 0) + (parseFloat(customsCost || '0') || 0) + (parseFloat(inlandCost || '0') || 0);
+                const landed = material + freight;
+                const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return (
+                  <div className="bg-[#1c1c1c] border border-[#454446] rounded p-3 text-[12px]">
+                    <p className="text-[11px] text-[#b8b6b9] uppercase tracking-wider font-bold mb-2">Cost roll-up (≈{estSf.toLocaleString()} sf)</p>
+                    <div className="grid grid-cols-2 gap-y-1">
+                      <span className="text-[#b8b6b9]"><Term k="fob">Material (FOB)</Term></span><span className="text-right text-white">{fmt(material)}</span>
+                      <span className="text-[#b8b6b9]">Ocean freight</span><span className="text-right text-white">{fmt(parseFloat(oceanCost || '0') || 0)}</span>
+                      <span className="text-[#b8b6b9]">Customs</span><span className="text-right text-white">{fmt(parseFloat(customsCost || '0') || 0)}</span>
+                      <span className="text-[#b8b6b9]">Inland</span><span className="text-right text-white">{fmt(parseFloat(inlandCost || '0') || 0)}</span>
+                      <span className="text-white font-medium border-t border-[#454446] pt-1 mt-1"><Term k="landedCost">Est. Landed</Term></span>
+                      <span className="text-right text-[#e3c16c] font-medium border-t border-[#454446] pt-1 mt-1">{fmt(landed)} <span className="text-[#b8b6b9] font-normal">({fmt(landed / estSf)}/sf)</span></span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="border-t border-[#454446] pt-4">
                 <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">

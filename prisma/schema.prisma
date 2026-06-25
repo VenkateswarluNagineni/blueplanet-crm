@@ -192,7 +192,12 @@ model PurchaseOrder {
   productId    String?
   product      Product? @relation(fields: [productId], references: [id])
   orderedSlabs Int      @default(0)
-  unitCost     Float    @default(0.0)
+  unitCost     Float    @default(0.0) // supplier material price, FOB $/sf
+
+  // Per-leg logistics charges entered at PO creation; apportioned into landed cost on receipt
+  oceanCost   Float @default(0.0)
+  customsCost Float @default(0.0)
+  inlandCost  Float @default(0.0)
 
   // Logistics pipeline
   logisticsStatus String   @default("PRODUCTION") // PRODUCTION, ON_WATER, CUSTOMS, INLAND_TRANSIT, RECEIVED

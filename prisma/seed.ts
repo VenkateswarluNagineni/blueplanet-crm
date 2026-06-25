@@ -138,6 +138,7 @@ async function main() {
       poNumber: 'PO-2026-042', supplierId: supAntolini.id, productId: productByName['Calacatta Gold'].id,
       status: 'ISSUED', logisticsStatus: 'ON_WATER', orderedSlabs: 8, unitCost: 45,
       oceanVendorId: venZim.id, customsVendorId: venCustoms.id, inlandVendorId: venBalt.id,
+      oceanCost: 9800, customsCost: 2400, inlandCost: 1600,
       containerId: 'ZIMU109248', eta: '2026-07-15', estimatedDelivery: new Date('2026-07-15'),
       destinationHub: 'Maryland Hub',
       documentRefs: ['INV-9921'], ledgerHash: 'sha256:8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
@@ -149,6 +150,7 @@ async function main() {
       poNumber: 'PO-2026-089', supplierId: supCemex.id, productId: productByName['Taj Mahal'].id,
       status: 'ISSUED', logisticsStatus: 'PRODUCTION', orderedSlabs: 14, unitCost: 75,
       oceanVendorId: 'SUPPLIER_COVERED', customsVendorId: venCustoms.id, inlandVendorId: venBalt.id,
+      customsCost: 3100, inlandCost: 2200, // ocean is supplier-covered, so no ocean charge
       // Demo: an overdue PO — estimate has already passed while still in production.
       eta: '2026-06-20', estimatedDelivery: new Date('2026-06-20'), destinationHub: 'New Jersey Hub',
       ledgerHash: 'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
@@ -164,6 +166,7 @@ async function main() {
       poNumber: 'PO-2026-001', supplierId: supAntolini.id, productId: productByName['Statuario'].id,
       status: 'FULFILLED', logisticsStatus: 'RECEIVED', orderedSlabs: 4, unitCost: 65,
       oceanVendorId: venZim.id, customsVendorId: venCustoms.id, inlandVendorId: venBalt.id,
+      oceanCost: 2600, customsCost: 900, inlandCost: 600,
       containerId: 'MSCU7710421', eta: '2026-05-28', estimatedDelivery: new Date('2026-05-28'),
       receiptNumber: 'GRN-2026-0012', destinationHub: 'Maryland Hub',
       issuedAt: new Date('2026-04-10'),
