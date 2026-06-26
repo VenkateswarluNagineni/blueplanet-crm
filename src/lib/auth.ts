@@ -84,6 +84,8 @@ export type SessionContext = {
   /** Locations this login is assigned to (drives catalog/inventory scoping). */
   locationIds: string[];
   locationNames: string[];
+  /** The viewer's saved dashboard widget layout (ordered widget keys), or null for the role default. */
+  dashboardLayout: string[] | null;
 };
 
 /**
@@ -110,6 +112,13 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   const locationIds = record?.userLocations.map((ul) => ul.location.id) ?? [];
   const locationNames = record?.userLocations.map((ul) => ul.location.name) ?? [];
 
+  // dashboardLayout is a Json column; accept only an array of strings, else fall back to the role default.
+  const rawLayout = record?.dashboardLayout;
+  const dashboardLayout =
+    Array.isArray(rawLayout) && rawLayout.every((k) => typeof k === 'string')
+      ? (rawLayout as string[])
+      : null;
+
   return {
     user,
     role,
@@ -119,6 +128,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     vendorPartyId: party?.type === 'VENDOR' ? party.id : null,
     locationIds,
     locationNames,
+    dashboardLayout,
   };
 }
 

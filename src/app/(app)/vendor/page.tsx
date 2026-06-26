@@ -1,17 +1,32 @@
 import { Truck, FileText, DollarSign, Ship } from 'lucide-react';
+import { getSessionContext } from '@/lib/auth';
 import { getVendorPortal } from '@/server/queries/vendor';
+import { VendorDashboard, type VendorKpis } from '@/components/VendorDashboard';
 
 export const metadata = { title: 'Vendor Portal | BluePlanet' };
 
-// Demo: the vendor user represents ZIM Integrated Shipping (V-001).
-const VENDOR_SYSTEM_ID = 'V-001';
+// Fallback for the demo admin who impersonates VENDOR without a linked party.
+const FALLBACK_VENDOR_SYSTEM_ID = 'V-001';
 
 export default async function VendorPortalPage() {
-  const portal = await getVendorPortal(VENDOR_SYSTEM_ID);
+  const ctx = await getSessionContext();
+  // Resolve the vendor from the signed-in identity, not a hardcoded id.
+  const vendorSystemId =
+    ctx?.party?.type === 'VENDOR' ? ctx.party.systemId ?? FALLBACK_VENDOR_SYSTEM_ID : FALLBACK_VENDOR_SYSTEM_ID;
+  const portal = await getVendorPortal(vendorSystemId);
 
   if (!portal) {
     return <div className="p-8 text-[13px] text-[#b8b6b9]">No vendor account is linked to this login.</div>;
   }
+
+  // Live summary metrics derived from the vendor's own orders and invoices.
+  const kpis: VendorKpis = {
+    balanceDue: portal.balanceDue,
+    activeShipments: portal.orders.filter((o) => o.status !== 'Delivered').length,
+    totalPos: portal.orders.length,
+    openInvoices: portal.invoices.filter((i) => i.status !== 'Paid').length,
+    overdueAmount: portal.invoices.filter((i) => i.status === 'Overdue').reduce((s, i) => s + i.amount, 0),
+  };
 
   return (
     <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
@@ -21,6 +36,8 @@ export default async function VendorPortalPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <VendorDashboard kpis={kpis} initialLayout={ctx?.dashboardLayout ?? null} />
+
         <section>
           <h2 className="text-[13px] font-medium text-white mb-3 flex items-center gap-2"><Ship size={15} className="text-[#92b0ce]" /> My Active Orders</h2>
           {portal.orders.length === 0 ? (

@@ -103,8 +103,9 @@ export async function createPOAction(input: {
 
   const poNumber = await nextPoNumber();
   const ledgerHash = 'sha256:' + randomBytes(32).toString('hex');
-  const avgSf = 63.5;
 
+  // Line items are created per-slab at receipt (each slab gets its own POLineItem so
+  // its Material Passport can trace back to this PO), so none are created up-front.
   await db.purchaseOrder.create({
     data: {
       poNumber,
@@ -124,9 +125,6 @@ export async function createPOAction(input: {
       eta: etaDate.toISOString().split('T')[0],
       estimatedDelivery: etaDate,
       ledgerHash,
-      poLineItems: {
-        create: [{ expectedSf: d.orderedSlabs * avgSf, expectedCost: d.orderedSlabs * avgSf * d.unitCost }],
-      },
     },
   });
 
@@ -180,28 +178,6 @@ export async function advancePOAction(poId: string, docRef?: string): Promise<Ac
     const sumSf = specs.reduce((s, x) => s + x.totalSf, 0) || 1;
     const totalFreight = po.oceanCost + po.customsCost + po.inlandCost;
 
-    const slabCreates = specs.map(({ n, lengthInches, widthInches, totalSf }) => {
-      const costFob = round2(totalSf * po.unitCost); // supplier material
-      const costApportioned = round2(totalFreight * (totalSf / sumSf)); // this slab's share of freight
-      const costLanded = round2(costFob + costApportioned);
-      return db.inventoryItem.create({
-        data: {
-          uniqueSlabId: `BP-${locShort}-${yy}-${abbrev}-${n}`,
-          barcode: `${n}`,
-          productId: po.productId!,
-          presentLocationId: location.id,
-          status: 'AVAILABLE',
-          lotNumber: po.containerId ?? po.poNumber,
-          lengthInches,
-          widthInches,
-          totalSf,
-          costFob,
-          costApportioned,
-          costLanded,
-        },
-      });
-    });
-
     const materialTotal = round2(sumSf * po.unitCost);
 
     // Each third-party logistics leg becomes a payable invoice against that vendor,
@@ -211,25 +187,10 @@ export async function advancePOAction(poId: string, docRef?: string): Promise<Ac
       { id: po.oceanVendorId, cost: po.oceanCost, suffix: 'OF', label: 'Ocean freight' },
       { id: po.customsVendorId, cost: po.customsCost, suffix: 'CB', label: 'Customs brokerage' },
       { id: po.inlandVendorId, cost: po.inlandCost, suffix: 'IL', label: 'Inland trucking' },
-    ];
-    const apOps = legs
-      .filter((l) => l.id && l.id !== 'SUPPLIER_COVERED' && l.cost > 0)
-      .flatMap((l) => [
-        db.vendorInvoice.create({
-          data: {
-            invoiceNum: `${po.poNumber}-${l.suffix}`,
-            vendorId: l.id!,
-            status: 'Pending Payment',
-            amount: l.cost,
-            dueDate,
-            serviceDetails: `${l.label} — container ${po.containerId ?? po.poNumber} (PO ${po.poNumber})`,
-          },
-        }),
-        db.party.update({ where: { id: l.id! }, data: { balanceDue: { increment: l.cost } } }),
-      ]);
+    ].filter((l) => l.id && l.id !== 'SUPPLIER_COVERED' && l.cost > 0);
 
-    await db.$transaction([
-      db.purchaseOrder.update({
+    await db.$transaction(async (tx) => {
+      await tx.purchaseOrder.update({
         where: { id: po.id },
         data: {
           logisticsStatus: 'RECEIVED',
@@ -238,12 +199,56 @@ export async function advancePOAction(poId: string, docRef?: string): Promise<Ac
           // The reference captured when closing the PO is the goods-receipt number.
           ...(docRef ? { receiptNumber: docRef } : {}),
         },
-      }),
-      ...slabCreates,
+      });
+
+      // Materialise each ordered slab as real inventory. Every slab gets its OWN
+      // POLineItem linked back to this PO so the Material Passport can trace it to
+      // the supplier, container, costs, and freight legs (Mistake 5: inventory is
+      // the heart — the full lineage of any slab must be visible).
+      for (const { n, lengthInches, widthInches, totalSf } of specs) {
+        const costFob = round2(totalSf * po.unitCost); // supplier material
+        const costApportioned = round2(totalFreight * (totalSf / sumSf)); // this slab's share of freight
+        const costLanded = round2(costFob + costApportioned);
+        const line = await tx.pOLineItem.create({
+          data: { purchaseOrderId: po.id, expectedSf: totalSf, expectedCost: costLanded },
+        });
+        await tx.inventoryItem.create({
+          data: {
+            uniqueSlabId: `BP-${locShort}-${yy}-${abbrev}-${n}`,
+            barcode: `${n}`,
+            productId: po.productId!,
+            presentLocationId: location.id,
+            status: 'AVAILABLE',
+            lotNumber: po.containerId ?? po.poNumber,
+            lengthInches,
+            widthInches,
+            totalSf,
+            costFob,
+            costApportioned,
+            costLanded,
+            poLineItemId: line.id,
+          },
+        });
+      }
+
       // Supplier spend rolls up onto the supplier party (shown in CRM).
-      db.party.update({ where: { id: po.supplierId }, data: { totalPurchased: { increment: materialTotal } } }),
-      ...apOps,
-    ]);
+      await tx.party.update({ where: { id: po.supplierId }, data: { totalPurchased: { increment: materialTotal } } });
+
+      // Each third-party logistics leg becomes a payable invoice + a vendor-balance bump.
+      for (const l of legs) {
+        await tx.vendorInvoice.create({
+          data: {
+            invoiceNum: `${po.poNumber}-${l.suffix}`,
+            vendorId: l.id!,
+            status: 'Pending Payment',
+            amount: l.cost,
+            dueDate,
+            serviceDetails: `${l.label} — container ${po.containerId ?? po.poNumber} (PO ${po.poNumber})`,
+          },
+        });
+        await tx.party.update({ where: { id: l.id! }, data: { balanceDue: { increment: l.cost } } });
+      }
+    });
 
     revalidatePath('/purchases');
     revalidatePath('/catalog');

@@ -408,7 +408,14 @@ export default function CatalogDashboardClient({
                           <ImageIcon size={16} className="text-[#454446]" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[13px] text-white font-mono">{slab.uniqueSlabId}</p>
+                          <a
+                            href={`/inventory?slab=${encodeURIComponent(slab.uniqueSlabId)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[13px] text-white font-mono hover:text-[#e3c16c] hover:underline transition-colors"
+                            title="Open full slab traceability in Inventory"
+                          >
+                            {slab.uniqueSlabId}
+                          </a>
                           <p className="text-[11px] text-[#b8b6b9]">{slab.totalSf} sqft</p>
                         </div>
                         <div className="text-right">
