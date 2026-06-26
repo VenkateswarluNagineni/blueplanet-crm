@@ -1,18 +1,33 @@
+import { redirect } from 'next/navigation';
 import { CrmDashboardClient } from '@/components/CrmDashboardClient';
-import { getEffectiveRole } from '@/lib/auth';
-import { getCrmData } from '@/server/queries/crm';
+import { SalesCrmClient } from '@/components/SalesCrmClient';
+import { getSessionContext } from '@/lib/auth';
+import { getCrmData, getSalesCrmData } from '@/server/queries/crm';
 
 export const metadata = {
   title: 'People & Companies | BluePlanet',
 };
 
 export default async function CrmPage() {
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  const data = await getCrmData();
+  const ctx = await getSessionContext();
+  // Vendors have no CRM — send them to their portal.
+  if (ctx?.role === 'VENDOR') redirect('/vendor');
 
+  // Sales reps get a scoped view: their customers + own scorecard, never the
+  // supply chain. Only admins see the full supplier/vendor/associate directory.
+  if (!ctx?.isAdmin) {
+    const data = await getSalesCrmData(ctx?.party?.id ?? null);
+    return (
+      <main className="h-screen flex flex-col bg-[#2b2a2c] w-full">
+        <SalesCrmClient data={data} canEditTarget={!!data.me} />
+      </main>
+    );
+  }
+
+  const data = await getCrmData();
   return (
     <main className="h-screen flex flex-col bg-[#2b2a2c] w-full">
-      <CrmDashboardClient data={data} canManage={role === 'ADMIN'} />
+      <CrmDashboardClient data={data} canManage />
     </main>
   );
 }

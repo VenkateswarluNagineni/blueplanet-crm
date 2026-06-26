@@ -29,11 +29,11 @@ export function Header() {
           <button
             onClick={() => setCmdOpen(true)}
             aria-label="Open command menu"
-            className="flex items-center w-full bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-1.5 hover:border-[#92b0ce] transition-colors text-left"
+            className="flex items-center w-full bg-[#1c1c1c] border border-[#454446] rounded-lg px-3.5 py-2 hover:border-[#92b0ce] transition-all text-left shadow-sm"
           >
-            <Search size={14} className="text-[#b8b6b9] mr-2" />
+            <Search size={14} className="text-[#b8b6b9] mr-2.5 shrink-0" />
             <span className="text-[13px] text-[#b8b6b9] w-full">Jump to a module…</span>
-            <span className="text-[10px] text-[#b8b6b9] border border-[#454446] px-1 rounded ml-2 whitespace-nowrap shrink-0 flex items-center gap-1"><span className="bg-[#333234] px-1 rounded">Ctrl</span><span className="bg-[#333234] px-1 rounded">K</span></span>
+            <span className="text-[10px] text-[#b8b6b9] border border-[#454446] px-1.5 py-0.5 rounded ml-2 whitespace-nowrap shrink-0 flex items-center gap-1 font-mono"><span className="bg-[#333234] px-1 rounded">Ctrl</span><span className="bg-[#333234] px-1 rounded">K</span></span>
           </button>
         </div>
         

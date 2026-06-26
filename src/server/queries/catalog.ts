@@ -28,12 +28,18 @@ export type CatalogProduct = {
  * live from InventoryItem status (yard/hold) and open PurchaseOrders (transit),
  * so the Catalog always reflects the real state — no hardcoded panels.
  */
-export async function getCatalog(canViewCost: boolean): Promise<CatalogProduct[]> {
+export async function getCatalog(
+  canViewCost: boolean,
+  locationIds?: string[] | null,
+): Promise<CatalogProduct[]> {
+  // Scope yard/hold counts and available slabs to the viewer's locations
+  // (null = unrestricted, e.g. admin). The product list itself stays global.
+  const locScope = locationIds ? { presentLocationId: { in: locationIds } } : {};
   const [products, statusGroups, openPos, availSlabs, suppliers] = await Promise.all([
     db.product.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } }),
     db.inventoryItem.groupBy({
       by: ['productId', 'status'],
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...locScope },
       _count: { _all: true },
     }),
     db.purchaseOrder.findMany({
@@ -41,7 +47,7 @@ export async function getCatalog(canViewCost: boolean): Promise<CatalogProduct[]
       select: { productId: true, poNumber: true, eta: true, containerId: true, orderedSlabs: true },
     }),
     db.inventoryItem.findMany({
-      where: { deletedAt: null, status: 'AVAILABLE' },
+      where: { deletedAt: null, status: 'AVAILABLE', ...locScope },
       select: { id: true, uniqueSlabId: true, totalSf: true, productId: true },
       orderBy: { uniqueSlabId: 'asc' },
     }),

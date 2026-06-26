@@ -30,11 +30,11 @@ export function Sidebar() {
     return (
       <Link href={href} className="block">
         <div 
-          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2 rounded-md cursor-pointer transition-all mb-0.5 text-[13px] ${active ? 'bg-[#333234] text-white font-medium' : 'text-[#b8b6b9] hover:bg-[#333234] hover:text-white'}`}
+          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3.5'} py-2.5 rounded-lg cursor-pointer transition-all mb-1 text-[13px] ${active ? 'bg-[#333234] text-white font-medium shadow-sm border-l-2 border-[#e3c16c]' : 'text-[#b8b6b9] hover:bg-[#333234]/70 hover:text-white'}`}
           title={isCollapsed ? label : `Navigate to the ${label} module.`}
         >
-          <Icon size={16} className={`shrink-0 ${active ? 'opacity-100' : 'opacity-80'}`} />
-          {!isCollapsed && <span className="whitespace-nowrap">{label}</span>}
+          <Icon size={16} className={`shrink-0 ${active ? 'opacity-100 text-[#e3c16c]' : 'opacity-80'}`} />
+          {!isCollapsed && <span className="whitespace-nowrap truncate">{label}</span>}
         </div>
       </Link>
     );

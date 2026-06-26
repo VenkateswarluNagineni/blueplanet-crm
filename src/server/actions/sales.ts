@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole } from '@/lib/auth';
+import { getEffectiveRole, getSessionContext } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -18,12 +18,16 @@ async function nextSoNumber(): Promise<string> {
   return `SO-${(Number.isNaN(current) ? 1000 : current) + 1}`;
 }
 
-/** The associate Party that the signed-in seller acts as (demo mapping). */
+/**
+ * The associate Party the signed-in seller acts as, resolved from their identity.
+ * An ADMIN creating a quote without a linked associate falls back to the first
+ * associate so the order is still attributable.
+ */
 async function currentAssociateId(): Promise<string | null> {
-  const assoc =
-    (await db.party.findFirst({ where: { type: 'ASSOCIATE', systemId: 'REP-1042' } })) ??
-    (await db.party.findFirst({ where: { type: 'ASSOCIATE', deletedAt: null } }));
-  return assoc?.id ?? null;
+  const ctx = await getSessionContext();
+  if (ctx?.party?.type === 'ASSOCIATE') return ctx.party.id;
+  const fallback = await db.party.findFirst({ where: { type: 'ASSOCIATE', deletedAt: null } });
+  return fallback?.id ?? null;
 }
 
 const QuoteSchema = z.object({
@@ -116,6 +120,54 @@ export async function completeOrderAction(orderId: string, receiptRef: string): 
           db.party.update({
             where: { id: order.associateId },
             data: { totalSold: { increment: orderValue } },
+          }),
+        ]
+      : []),
+  ]);
+
+  revalidatePath('/orders');
+  revalidatePath('/catalog');
+  revalidatePath('/crm');
+  return { ok: true };
+}
+
+/**
+ * Revert a completed or cancelled order back to PLACED (pending). Completed orders
+ * unwind the sale: slabs return to ON_HOLD and the rep's YTD sold is decremented by
+ * the original order value. Cancelled orders re-hold their (still-available) slabs.
+ */
+export async function reopenOrderAction(orderId: string): Promise<ActionResult> {
+  const role = await getEffectiveRole();
+  requireRole(role, ['ADMIN', 'SALES']);
+
+  const order = await db.salesOrder.findFirst({
+    where: { id: orderId, deletedAt: null },
+    include: { soLineItems: { include: { inventoryItem: true } } },
+  });
+  if (!order) return { ok: false, error: 'Order not found.' };
+  if (order.status === 'PLACED') return { ok: false, error: 'This order is already open.' };
+
+  const wasCompleted = order.status === 'COMPLETED';
+  const orderValue = order.soLineItems.reduce(
+    (sum, li) => sum + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0),
+    0,
+  );
+
+  await db.$transaction([
+    db.salesOrder.update({
+      where: { id: order.id },
+      data: { status: 'PLACED', ...(wasCompleted ? { receiptRef: null } : {}) },
+    }),
+    // Re-hold the slabs: SOLD (completed) or AVAILABLE (cancelled) → ON_HOLD.
+    ...order.soLineItems.map((li) =>
+      db.inventoryItem.update({ where: { id: li.inventoryItemId }, data: { status: 'ON_HOLD' } }),
+    ),
+    // Unwind the recognized revenue only if it had been completed.
+    ...(wasCompleted && order.associateId
+      ? [
+          db.party.update({
+            where: { id: order.associateId },
+            data: { totalSold: { decrement: orderValue } },
           }),
         ]
       : []),

@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole } from '@/lib/auth';
+import { getEffectiveRole, getSessionContext } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -83,6 +83,7 @@ const UpdateSchema = z.object({
   role: z.string().optional(),
   baseLocation: z.string().optional(),
   commissionRate: z.string().optional(),
+  salesTargetAnnual: z.number().optional(),
 });
 
 export async function updatePartyAction(
@@ -110,11 +111,36 @@ export async function updatePartyAction(
         ? { originCountry: u.originCountry, paymentTerms: u.paymentTerms, incoterms: u.incoterms, creditLimit: u.creditLimit }
         : {}),
       ...(type === 'VENDOR' ? { serviceType: u.serviceType } : {}),
-      ...(type === 'ASSOCIATE' ? { role: u.role, baseLocation: u.baseLocation, commissionRate: u.commissionRate } : {}),
+      ...(type === 'ASSOCIATE'
+        ? { role: u.role, baseLocation: u.baseLocation, commissionRate: u.commissionRate, salesTargetAnnual: u.salesTargetAnnual }
+        : {}),
     },
   });
 
   revalidatePath('/crm');
+  return { ok: true };
+}
+
+/**
+ * Set an associate's annual sales target. An admin may set any associate's target;
+ * a sales rep may only set their own (the Party their login is linked to).
+ */
+export async function setSalesTargetAction(partyId: string, target: number): Promise<ActionResult> {
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  if (!Number.isFinite(target) || target < 0) return { ok: false, error: 'Enter a valid target amount.' };
+
+  const isOwnTarget = ctx.party?.id === partyId && ctx.party?.type === 'ASSOCIATE';
+  if (!ctx.isAdmin && !isOwnTarget) {
+    return { ok: false, error: 'You can only edit your own target.' };
+  }
+
+  const existing = await db.party.findFirst({ where: { id: partyId, type: 'ASSOCIATE', deletedAt: null } });
+  if (!existing) return { ok: false, error: 'Associate not found.' };
+
+  await db.party.update({ where: { id: partyId }, data: { salesTargetAnnual: target } });
+  revalidatePath('/crm');
+  revalidatePath('/pipeline');
   return { ok: true };
 }
 

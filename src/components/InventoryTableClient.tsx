@@ -31,6 +31,7 @@ import {
   Receipt,
   Package,
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/components/ui/Toast';
 import { submitMeasurementOverrideAction } from '@/server/actions/inventory';
@@ -137,6 +138,16 @@ export function InventoryTableClient({
   // Material Passport State
   const [selectedPassportSlab, setSelectedPassportSlab] = useState<InventoryItemProps | null>(null);
   const [passportSearch, setPassportSearch] = useState('');
+
+  // Deep-link: open the Material Passport directly when arriving with ?slab=<uniqueSlabId>
+  // (e.g. from an order or PO), so inventory is the one place to trace any slab end-to-end.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const wanted = searchParams.get('slab');
+    if (!wanted) return;
+    const match = initialData.find((i) => i.uniqueSlabId === wanted || i.id === wanted);
+    if (match) setSelectedPassportSlab(match);
+  }, [searchParams, initialData]);
 
   // Resizable Sidebar State (Fixed jumping logic)
   const [sidebarWidth, setSidebarWidth] = useState(280);

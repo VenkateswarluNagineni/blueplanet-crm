@@ -42,6 +42,15 @@ model User {
   passwordHash  String
   role          String // e.g., ADMIN, MANAGER, SALES
   userLocations UserLocation[]
+
+  // The business entity this login acts AS: a SALES user → their Associate Party,
+  // a VENDOR user → their Vendor Party. ADMIN logins leave this null.
+  partyId String? @unique
+  party   Party?  @relation("UserParty", fields: [partyId], references: [id])
+
+  // Per-user dashboard layout: ordered list of widget keys the user has pinned.
+  dashboardLayout Json?
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
@@ -78,9 +87,10 @@ model Party {
   // Vendor-specific
   serviceType    String? // Ocean Freight, Inland Logistics, Customs & Tariffs
   // Associate-specific
-  role           String? // Senior Sales Rep, Branch Manager, Sales Rep
-  baseLocation   String? // display label e.g. "Maryland Hub"
-  commissionRate String? // e.g. "5%"
+  role              String? // Senior Sales Rep, Branch Manager, Sales Rep
+  baseLocation      String? // display label e.g. "Maryland Hub"
+  commissionRate    String? // e.g. "5%"
+  salesTargetAnnual Float?  // personal annual sales quota; editable by the rep or an admin
   // Denormalized metrics
   totalPurchased Float   @default(0.0)
   totalSold      Float   @default(0.0)
@@ -93,6 +103,9 @@ model Party {
 
   customerOpportunities  Opportunity[] @relation("CustomerOpportunities")
   associateOpportunities Opportunity[] @relation("AssociateOpportunities")
+
+  // The login account that acts as this party (if any).
+  userAccount User? @relation("UserParty")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

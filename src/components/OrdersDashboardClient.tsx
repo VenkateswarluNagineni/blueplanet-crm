@@ -9,9 +9,14 @@ import {
   CheckCircle2,
   Clock,
   Upload,
+  ArrowUpDown,
+  RotateCcw,
 } from 'lucide-react';
 import type { OrderRow } from '@/server/queries/orders';
-import { completeOrderAction, cancelOrderAction } from '@/server/actions/sales';
+import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/actions/sales';
+
+type SortField = 'date' | 'material' | 'customer' | 'value';
+type SortDir = 'asc' | 'desc';
 
 export default function OrdersDashboardClient({
   orders,
@@ -24,6 +29,8 @@ export default function OrdersDashboardClient({
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [actionError, setActionError] = useState('');
 
   const [receiptModalOrder, setReceiptModalOrder] = useState<string | null>(null);
@@ -58,13 +65,64 @@ export default function OrdersDashboardClient({
     });
   };
 
-  const displayedOrders = orders.filter((order) => {
-    const matchSearch =
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.soNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const handleReopenOrder = (orderId: string) => {
+    if (!confirm('Reopen this order? It returns to Pending and its slabs are re-held.')) return;
+    setActionError('');
+    startTransition(async () => {
+      const res = await reopenOrderAction(orderId);
+      if (!res.ok) {
+        setActionError(res.error);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir(field === 'date' || field === 'value' ? 'desc' : 'asc');
+    }
+  };
+
+  const displayedOrders = orders
+    .filter((order) => {
+      const matchSearch =
+        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.soNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.materialName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      switch (sortField) {
+        case 'value':
+          return (a.totalValue - b.totalValue) * dir;
+        case 'material':
+          return a.materialName.localeCompare(b.materialName) * dir;
+        case 'customer':
+          return a.customerName.localeCompare(b.customerName) * dir;
+        case 'date':
+        default:
+          return a.placedAt.localeCompare(b.placedAt) * dir;
+      }
+    });
+
+  const SortHeader = ({ field, label, align = 'left' }: { field: SortField; label: string; align?: 'left' | 'right' }) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(field)}
+      className={`flex items-center gap-1 hover:text-white transition-colors ${align === 'right' ? 'ml-auto' : ''} ${sortField === field ? 'text-white' : ''}`}
+      title={`Sort by ${label.toLowerCase()}`}
+    >
+      {label}
+      <ArrowUpDown size={11} className={sortField === field ? 'opacity-100' : 'opacity-40'} />
+      {sortField === field && <span className="text-[9px]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+    </button>
+  );
 
   return (
     <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
@@ -127,10 +185,10 @@ export default function OrdersDashboardClient({
             <thead>
               <tr className="bg-[#333234] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
                 <th className="p-3 font-medium border-b border-[#454446]">Order ID</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Date</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Customer / Project</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Material (Slab)</th>
-                <th className="p-3 font-medium border-b border-[#454446] text-right">Total Value</th>
+                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" /></th>
+                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" /></th>
+                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" /></th>
+                <th className="p-3 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" /></th>
                 <th className="p-3 font-medium border-b border-[#454446]">Rep ID</th>
                 <th className="p-3 font-medium border-b border-[#454446]">Status</th>
                 <th className="p-3 font-medium border-b border-[#454446] text-center">Actions</th>
@@ -150,7 +208,17 @@ export default function OrdersDashboardClient({
                     <td className="p-3">
                       <span className="text-white">{order.materialName}</span>
                       <br />
-                      <span className="text-[11px] text-[#92b0ce]">{order.slabId} ({order.sqft} sqft)</span>
+                      {order.slabId !== '—' ? (
+                        <a
+                          href={`/inventory?slab=${encodeURIComponent(order.slabId)}`}
+                          className="text-[11px] text-[#92b0ce] hover:text-white hover:underline"
+                          title="Open this slab's full Material Passport in Inventory"
+                        >
+                          {order.slabId} ({order.sqft} sqft) ↗
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-[#92b0ce]">{order.slabId} ({order.sqft} sqft)</span>
+                      )}
                     </td>
                     <td className="p-3 text-right font-medium text-[#10b981]">
                       ${order.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -202,7 +270,14 @@ export default function OrdersDashboardClient({
                           </>
                         )}
                         {(order.status === 'COMPLETED' || order.status === 'CANCELLED') && (
-                          <span className="text-[#b8b6b9] text-[11px] italic">Archived</span>
+                          <button
+                            onClick={() => handleReopenOrder(order.id)}
+                            disabled={isPending}
+                            className="text-[11px] text-[#b8b6b9] hover:text-[#e3c16c] hover:bg-[#e3c16c]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                            title={order.status === 'COMPLETED' ? 'Reverse this sale back to Pending' : 'Reactivate this cancelled order'}
+                          >
+                            <RotateCcw size={10} /> Reopen
+                          </button>
                         )}
                       </div>
                     </td>

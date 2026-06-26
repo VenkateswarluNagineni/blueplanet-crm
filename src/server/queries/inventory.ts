@@ -51,9 +51,16 @@ export type InventoryRow = {
 
 const VENDOR_COVERED = 'SUPPLIER_COVERED';
 
-export async function getInventoryItems(canViewCost: boolean): Promise<InventoryRow[]> {
+export async function getInventoryItems(
+  canViewCost: boolean,
+  locationIds?: string[] | null,
+): Promise<InventoryRow[]> {
   const items = await db.inventoryItem.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      // Scope to the viewer's assigned locations (null = unrestricted, e.g. admin).
+      ...(locationIds ? { presentLocationId: { in: locationIds } } : {}),
+    },
     include: {
       product: { select: { name: true, materialType: true, originCountry: true } },
       location: { select: { name: true } },

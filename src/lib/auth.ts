@@ -71,6 +71,57 @@ export async function getEffectiveRole(): Promise<string | null> {
   return user.role;
 }
 
+export type SessionContext = {
+  user: SessionUser;
+  role: string; // effective role (honors ADMIN impersonation)
+  isAdmin: boolean;
+  /** The Party this login acts as, if linked (Associate for SALES, Vendor for VENDOR). */
+  party: { id: string; type: string; systemId: string | null; name: string } | null;
+  /** Convenience: the rep's systemId when the session is (or impersonates) a sales associate. */
+  associateSystemId: string | null;
+  /** Convenience: the vendor Party id when the session is a vendor. */
+  vendorPartyId: string | null;
+  /** Locations this login is assigned to (drives catalog/inventory scoping). */
+  locationIds: string[];
+  locationNames: string[];
+};
+
+/**
+ * The single source of truth for "who is acting and what may they see" — resolves
+ * the logged-in user to their effective role, the Party they act as, and their
+ * assigned locations. Returns null when unauthenticated. Use this instead of any
+ * hardcoded rep id. ADMINs impersonating SALES borrow the linked associate (if the
+ * admin login itself has a party) so demos behave like a real seller.
+ */
+export async function getSessionContext(): Promise<SessionContext | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const role = (await getEffectiveRole()) ?? user.role;
+
+  const record = await db.user.findFirst({
+    where: { id: user.id, deletedAt: null },
+    include: {
+      party: { select: { id: true, type: true, systemId: true, name: true } },
+      userLocations: { include: { location: { select: { id: true, name: true } } } },
+    },
+  });
+
+  const party = record?.party ?? null;
+  const locationIds = record?.userLocations.map((ul) => ul.location.id) ?? [];
+  const locationNames = record?.userLocations.map((ul) => ul.location.name) ?? [];
+
+  return {
+    user,
+    role,
+    isAdmin: role === 'ADMIN',
+    party,
+    associateSystemId: party?.type === 'ASSOCIATE' ? party.systemId : null,
+    vendorPartyId: party?.type === 'VENDOR' ? party.id : null,
+    locationIds,
+    locationNames,
+  };
+}
+
 export async function setImpersonation(role: string | null): Promise<void> {
   const user = await getCurrentUser();
   if (!user || user.role !== 'ADMIN') return;

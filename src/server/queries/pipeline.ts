@@ -46,3 +46,29 @@ export async function getAssociateOptions(): Promise<{ id: string; name: string 
     orderBy: { name: 'asc' },
   });
 }
+
+export type QuotableSlab = {
+  id: string;
+  uniqueSlabId: string;
+  productName: string;
+  sqft: number;
+  minPricePerSf: number;
+  retailPricePerSf: number;
+};
+
+/** Available slabs a won deal can be converted into a sales order against. */
+export async function getQuotableSlabs(): Promise<QuotableSlab[]> {
+  const slabs = await db.inventoryItem.findMany({
+    where: { status: 'AVAILABLE', deletedAt: null },
+    include: { product: { select: { name: true, minPricePerSf: true, retailPricePerSf: true } } },
+    orderBy: { uniqueSlabId: 'asc' },
+  });
+  return slabs.map((s) => ({
+    id: s.id,
+    uniqueSlabId: s.uniqueSlabId,
+    productName: s.product.name,
+    sqft: s.totalSf,
+    minPricePerSf: s.product.minPricePerSf ?? 0,
+    retailPricePerSf: s.product.retailPricePerSf ?? 0,
+  }));
+}

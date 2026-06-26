@@ -50,18 +50,23 @@ async function main() {
   const locMD = await prisma.location.create({ data: { companyId: company.id, name: 'Maryland Hub', code: 'BP-MD' } })
   const locMA = await prisma.location.create({ data: { companyId: company.id, name: 'Boston HQ', code: 'BP-MA' } })
 
-  // 3. Users (auth)
+  // 3. Users (auth). Each login is linked to the Party it acts as further below.
   const users = [
     { email: 'admin@blueplanet.com', password: 'admin123', role: 'ADMIN' },
     { email: 'sales@blueplanet.com', password: 'sales123', role: 'SALES' },
     { email: 'vendor@blueplanet.com', password: 'vendor123', role: 'VENDOR' },
   ]
+  const userByRole: Record<string, { id: string }> = {}
   for (const u of users) {
     const user = await prisma.user.create({
       data: { companyId: company.id, email: u.email, passwordHash: await bcrypt.hash(u.password, 10), role: u.role },
     })
+    userByRole[u.role] = user
     await prisma.userLocation.create({ data: { userId: user.id, locationId: locNJ.id } })
   }
+  // The sales login also covers the Maryland hub — so it sees catalog/inventory
+  // across its home location (MD) plus New Jersey ("his location and another").
+  await prisma.userLocation.create({ data: { userId: userByRole.SALES.id, locationId: locMD.id } })
 
   // 4. Parties — Suppliers
   const supAntolini = await prisma.party.create({
@@ -87,14 +92,19 @@ async function main() {
 
   // Parties — Associates (sales roster)
   const repJohn = await prisma.party.create({
-    data: { type: 'ASSOCIATE', systemId: 'REP-1042', name: 'John Doe', role: 'Senior Sales Rep', baseLocation: 'Maryland Hub', commissionRate: '5%', totalSold: 1200000 },
+    data: { type: 'ASSOCIATE', systemId: 'REP-1042', name: 'John Doe', role: 'Senior Sales Rep', baseLocation: 'Maryland Hub', commissionRate: '5%', salesTargetAnnual: 2000000, totalSold: 1200000 },
   })
   const repJane = await prisma.party.create({
-    data: { type: 'ASSOCIATE', systemId: 'REP-1088', name: 'Jane Smith', role: 'Branch Manager', baseLocation: 'Boston HQ', commissionRate: '2% Override', totalSold: 3100000 },
+    data: { type: 'ASSOCIATE', systemId: 'REP-1088', name: 'Jane Smith', role: 'Branch Manager', baseLocation: 'Boston HQ', commissionRate: '2% Override', salesTargetAnnual: 4000000, totalSold: 3100000 },
   })
   const repRobert = await prisma.party.create({
-    data: { type: 'ASSOCIATE', systemId: 'REP-1102', name: 'Robert Chen', role: 'Sales Rep', baseLocation: 'New Jersey Hub', commissionRate: '5%', totalSold: 450000 },
+    data: { type: 'ASSOCIATE', systemId: 'REP-1102', name: 'Robert Chen', role: 'Sales Rep', baseLocation: 'New Jersey Hub', commissionRate: '5%', salesTargetAnnual: 800000, totalSold: 450000 },
   })
+
+  // 3b. Link the demo logins to the Party they act AS, so attribution + scoping
+  // are driven by identity (not a hardcoded rep id) everywhere downstream.
+  await prisma.user.update({ where: { id: userByRole.SALES.id }, data: { partyId: repJohn.id } })
+  await prisma.user.update({ where: { id: userByRole.VENDOR.id }, data: { partyId: venZim.id } })
 
   // Parties — Customers
   const custElite = await prisma.party.create({ data: { type: 'CUSTOMER', name: 'Elite Kitchens LLC', email: 'info@elitekitchens.com', totalSold: 85000 } })

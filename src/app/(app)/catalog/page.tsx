@@ -1,5 +1,5 @@
 import CatalogDashboardClient from '@/components/CatalogDashboardClient';
-import { getCurrentUser, getEffectiveRole } from '@/lib/auth';
+import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/rbac';
 import { getCatalog } from '@/server/queries/catalog';
 
@@ -9,12 +9,13 @@ export const metadata = {
 };
 
 export default async function CatalogPage() {
-  const user = await getCurrentUser();
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  const settings = user ? await getCompanySettings(user.companyId) : null;
-  const canViewCost = settings ? canViewLandedCost(role, settings) : false;
+  const ctx = await getSessionContext();
+  const settings = ctx ? await getCompanySettings(ctx.user.companyId) : null;
+  const canViewCost = settings && ctx ? canViewLandedCost(ctx.role, settings) : false;
 
-  const products = await getCatalog(canViewCost);
+  // Admins see every location; other roles see only their assigned locations.
+  const locationScope = ctx?.isAdmin ? null : ctx?.locationIds ?? null;
+  const products = await getCatalog(canViewCost, locationScope);
 
   return <CatalogDashboardClient products={products} canViewCost={canViewCost} />;
 }

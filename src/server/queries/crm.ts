@@ -11,7 +11,7 @@ export type CrmVendor = {
 };
 export type CrmAssociate = {
   id: string; name: string; salesNumber: string; role: string; location: string; commissionRate: string;
-  activeOppValue: number; ytdSales: number;
+  activeOppValue: number; ytdSales: number; salesTargetAnnual: number;
 };
 
 export type PoCard = { poNumber: string; status: string; amount: number; eta: string; container: string; slabs: number };
@@ -32,6 +32,91 @@ export type CrmData = {
   associateSales: Record<string, SaleCard[]>;
   associateMetrics: Record<string, AssociateMetrics>;
 };
+
+// --- Sales-scoped CRM: a rep sees only customers + their own scorecard ---
+
+export type SalesCustomer = {
+  id: string; name: string; email: string; phone: string;
+  openDeals: number; openValue: number; ordersCount: number; lifetimeValue: number;
+};
+
+export type MyScorecard = {
+  partyId: string;
+  name: string;
+  systemId: string;
+  role: string;
+  location: string;
+  commissionRate: string;
+  ytdSales: number;
+  activePipelineValue: number;
+  salesTargetAnnual: number;
+  quotaAttainmentPct: number;
+};
+
+export type SalesCrmData = {
+  me: MyScorecard | null;
+  customers: SalesCustomer[];
+};
+
+/**
+ * CRM data for a sales rep: their own performance scorecard plus the customer
+ * directory with each customer's deal/order activity. Deliberately excludes any
+ * supplier or vendor data — reps must not see the supply chain.
+ */
+export async function getSalesCrmData(associatePartyId: string | null): Promise<SalesCrmData> {
+  const [customers, opps, orders, me] = await Promise.all([
+    db.party.findMany({ where: { type: 'CUSTOMER', deletedAt: null }, orderBy: { name: 'asc' } }),
+    db.opportunity.findMany({
+      where: { deletedAt: null, status: { notIn: ['CLOSED_WON', 'CLOSED_LOST'] } },
+      select: { customerId: true, amount: true },
+    }),
+    db.salesOrder.findMany({
+      where: { deletedAt: null },
+      include: { soLineItems: { include: { inventoryItem: { select: { totalSf: true } } } } },
+    }),
+    associatePartyId
+      ? db.party.findFirst({ where: { id: associatePartyId, type: 'ASSOCIATE', deletedAt: null } })
+      : Promise.resolve(null),
+  ]);
+
+  const orderValue = (o: (typeof orders)[number]) =>
+    o.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0);
+
+  const customerCards: SalesCustomer[] = customers.map((c) => {
+    const cOpps = opps.filter((o) => o.customerId === c.id);
+    const cOrders = orders.filter((o) => o.customerId === c.id);
+    return {
+      id: c.id, name: c.name, email: c.email ?? '—', phone: c.phone ?? '—',
+      openDeals: cOpps.length,
+      openValue: cOpps.reduce((s, o) => s + o.amount, 0),
+      ordersCount: cOrders.length,
+      lifetimeValue: c.totalSold,
+    };
+  });
+
+  let scorecard: MyScorecard | null = null;
+  if (me) {
+    const myOpenOpps = await db.opportunity.findMany({
+      where: { deletedAt: null, associateId: me.id, status: { notIn: ['CLOSED_WON', 'CLOSED_LOST'] } },
+      select: { amount: true },
+    });
+    const target = me.salesTargetAnnual ?? 0;
+    scorecard = {
+      partyId: me.id,
+      name: me.name,
+      systemId: me.systemId ?? '—',
+      role: me.role ?? '—',
+      location: me.baseLocation ?? '—',
+      commissionRate: me.commissionRate ?? '—',
+      ytdSales: me.totalSold,
+      activePipelineValue: myOpenOpps.reduce((s, o) => s + o.amount, 0),
+      salesTargetAnnual: target,
+      quotaAttainmentPct: target > 0 ? Math.round((me.totalSold / target) * 100) : 0,
+    };
+  }
+
+  return { me: scorecard, customers: customerCards };
+}
 
 const PO_STATUS_LABEL: Record<string, string> = {
   PRODUCTION: 'In Production',
@@ -117,15 +202,16 @@ export async function getCrmData(): Promise<CrmData> {
       const closedCount = myOpps.filter((o) => o.status === 'CLOSED_WON' || o.status === 'CLOSED_LOST').length;
       const avgDealSize = saleCards.length ? Math.round(saleCards.reduce((s, x) => s + x.amount, 0) / saleCards.length) : 0;
       const ratePct = parseFloat((p.commissionRate ?? '0').replace(/[^0-9.]/g, '')) || 0;
+      const target = p.salesTargetAnnual ?? 0;
       associateMetrics[p.id] = {
         avgDealSize,
         conversionRate: closedCount ? `${Math.round((wonCount / closedCount) * 100)}%` : 'N/A',
         commissionEarnedYTD: Math.round(p.totalSold * (ratePct / 100)),
-        quotaAttainment: '—',
+        quotaAttainment: target > 0 ? `${Math.round((p.totalSold / target) * 100)}%` : 'N/A',
       };
       associates.push({
         id: p.id, name: p.name, salesNumber: p.systemId ?? '—', role: p.role ?? '—', location: p.baseLocation ?? '—',
-        commissionRate: p.commissionRate ?? '—', activeOppValue, ytdSales: p.totalSold,
+        commissionRate: p.commissionRate ?? '—', activeOppValue, ytdSales: p.totalSold, salesTargetAnnual: target,
       });
     }
   }

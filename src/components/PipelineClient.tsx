@@ -2,9 +2,13 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X, Target, Trophy, Ban } from 'lucide-react';
-import type { OppItem } from '@/server/queries/pipeline';
-import { createOpportunityAction, setOpportunityStatusAction } from '@/server/actions/pipeline';
+import { Plus, X, Target, Trophy, Ban, RotateCcw, FileOutput } from 'lucide-react';
+import type { OppItem, QuotableSlab } from '@/server/queries/pipeline';
+import {
+  createOpportunityAction,
+  setOpportunityStatusAction,
+  convertOpportunityToOrderAction,
+} from '@/server/actions/pipeline';
 
 const STAGES: { key: string; label: string; color: string }[] = [
   { key: 'LEAD', label: 'Lead', color: '#b8b6b9' },
@@ -17,14 +21,19 @@ const STAGES: { key: string; label: string; color: string }[] = [
 export function PipelineClient({
   opportunities,
   associates,
+  quotableSlabs,
 }: {
   opportunities: OppItem[];
   associates: { id: string; name: string }[];
+  quotableSlabs: QuotableSlab[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
   const [error, setError] = useState('');
+  const [convertOpp, setConvertOpp] = useState<OppItem | null>(null);
+  const [convertSlabId, setConvertSlabId] = useState('');
+  const [convertPrice, setConvertPrice] = useState('');
 
   const move = (id: string, status: string) => {
     setError('');
@@ -34,6 +43,31 @@ export function PipelineClient({
       else router.refresh();
     });
   };
+
+  const openConvert = (o: OppItem) => {
+    setConvertOpp(o);
+    setConvertSlabId('');
+    setConvertPrice('');
+    setError('');
+  };
+
+  const handleConvert = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!convertOpp) return;
+    setError('');
+    startTransition(async () => {
+      const res = await convertOpportunityToOrderAction({
+        opportunityId: convertOpp.id,
+        slabId: convertSlabId,
+        pricePerSf: Number(convertPrice),
+      });
+      if (!res.ok) { setError(res.error); return; }
+      setConvertOpp(null);
+      router.refresh();
+    });
+  };
+
+  const selectedSlab = quotableSlabs.find((s) => s.id === convertSlabId);
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -153,6 +187,28 @@ export function PipelineClient({
                             <button title="Mark Lost" disabled={isPending} onClick={() => move(o.id, 'CLOSED_LOST')} className="p-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"><Ban size={12} /></button>
                           </div>
                         )}
+                        {(o.status === 'CLOSED_WON' || o.status === 'CLOSED_LOST') && (
+                          <div className="flex items-center gap-1.5 pt-2 border-t border-[#454446]">
+                            <button
+                              title="Reopen this deal back to Negotiation"
+                              disabled={isPending}
+                              onClick={() => move(o.id, 'NEGOTIATION')}
+                              className="flex-1 flex items-center justify-center gap-1 bg-[#1c1c1c] border border-[#454446] rounded text-[11px] text-[#b8b6b9] hover:text-white hover:border-[#92b0ce] px-1.5 py-1 transition-colors"
+                            >
+                              <RotateCcw size={11} /> Reopen
+                            </button>
+                            {o.status === 'CLOSED_WON' && (
+                              <button
+                                title="Convert this won deal into a sales order"
+                                disabled={isPending}
+                                onClick={() => openConvert(o)}
+                                className="flex-1 flex items-center justify-center gap-1 bg-[#10b981]/10 border border-[#10b981]/30 rounded text-[11px] text-[#10b981] hover:bg-[#10b981]/20 px-1.5 py-1 transition-colors"
+                              >
+                                <FileOutput size={11} /> To Order
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -163,6 +219,59 @@ export function PipelineClient({
           })}
         </div>
       </div>
+
+      {convertOpp && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+          <form onSubmit={handleConvert} className="bg-[#2b2a2c] border border-[#454446] rounded-lg w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-center">
+              <h3 className="text-white font-medium">Convert to Sales Order</h3>
+              <button type="button" onClick={() => setConvertOpp(null)} className="text-[#b8b6b9] hover:text-white transition-colors"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-[12px] text-[#b8b6b9]">
+                Won deal <span className="text-white font-medium">{convertOpp.name}</span> · {convertOpp.customerLabel} · forecast ${convertOpp.amount.toLocaleString()}
+              </p>
+              <div>
+                <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Allocate Slab</label>
+                <select
+                  required
+                  value={convertSlabId}
+                  onChange={(e) => {
+                    const s = quotableSlabs.find((q) => q.id === e.target.value);
+                    setConvertSlabId(e.target.value);
+                    if (s && !convertPrice) setConvertPrice(String(s.retailPricePerSf || s.minPricePerSf || ''));
+                  }}
+                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]"
+                >
+                  <option value="">{quotableSlabs.length ? 'Select an available slab…' : 'No available slabs'}</option>
+                  {quotableSlabs.map((s) => (
+                    <option key={s.id} value={s.id}>{s.uniqueSlabId} — {s.productName} ({s.sqft} sqft)</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[12px] text-[#b8b6b9] mb-1.5">
+                  Price / sqft {selectedSlab && <span className="text-[#b8b6b9]">(min ${selectedSlab.minPricePerSf})</span>}
+                </label>
+                <input
+                  type="number" min="0" step="0.01" required
+                  value={convertPrice}
+                  onChange={(e) => setConvertPrice(e.target.value)}
+                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]"
+                />
+              </div>
+              {selectedSlab && convertPrice && (
+                <p className="text-[12px] text-[#10b981]">Order value: ${(selectedSlab.sqft * Number(convertPrice)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              )}
+              {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{error}</div>}
+            </div>
+            <div className="px-6 py-4 border-t border-[#454446] flex justify-end gap-3">
+              <button type="button" onClick={() => setConvertOpp(null)} className="px-4 py-2 text-[13px] text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
+              <button type="submit" disabled={isPending || !convertSlabId} className="px-4 py-2 text-[13px] bg-[#10b981] text-black font-medium rounded hover:bg-[#059669] transition-colors disabled:opacity-60">{isPending ? 'Creating…' : 'Create Order'}</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {addOpen && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">

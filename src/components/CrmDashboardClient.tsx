@@ -110,6 +110,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         role: u.role,
         baseLocation: u.location,
         commissionRate: u.commissionRate,
+        salesTargetAnnual: u.salesTargetAnnual !== undefined && u.salesTargetAnnual !== '' ? Number(u.salesTargetAnnual) : undefined,
       });
       if (!res.ok) { setActionError(res.error); return; }
       setIsEditingProfile(false);
@@ -374,8 +375,20 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     <Field label="Location">
                       {isEditingProfile ? <input name="location" defaultValue={viewingAssociate.location} className={inputCls} /> : <p className="text-[13px] text-white flex items-center gap-1"><MapPin size={12} className="text-[#b8b6b9]" /> {viewingAssociate.location}</p>}
                     </Field>
-                    <Field label="Commission Target">
-                      {isEditingProfile ? <input name="commissionRate" defaultValue={viewingAssociate.commissionRate} className={inputCls} /> : <p className="text-[13px] text-white font-medium">{viewingAssociate.commissionRate}</p>}
+                    <Field label="Commission &amp; Annual Target">
+                      {isEditingProfile ? (
+                        <div className="space-y-2">
+                          <input name="commissionRate" defaultValue={viewingAssociate.commissionRate} className={inputCls} placeholder="Commission rate" />
+                          <input name="salesTargetAnnual" type="number" defaultValue={viewingAssociate.salesTargetAnnual || ''} className={inputCls} placeholder="Annual target ($)" />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[13px] text-white font-medium">{viewingAssociate.commissionRate}</p>
+                          <p className="text-[12px] text-[#e3c16c] mt-1">
+                            Target: {viewingAssociate.salesTargetAnnual > 0 ? `$${viewingAssociate.salesTargetAnnual.toLocaleString()}` : 'Not set'}
+                          </p>
+                        </>
+                      )}
                     </Field>
                   </div>
                 )}

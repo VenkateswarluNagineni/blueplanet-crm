@@ -1,5 +1,5 @@
 import { InventoryTableClient } from '@/components/InventoryTableClient';
-import { getCurrentUser, getEffectiveRole } from '@/lib/auth';
+import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/rbac';
 import { getInventoryItems, getInventoryLocations } from '@/server/queries/inventory';
 
@@ -9,13 +9,15 @@ export const metadata = {
 };
 
 export default async function InventoryPage() {
-  const user = await getCurrentUser();
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  const settings = user ? await getCompanySettings(user.companyId) : null;
-  const canViewCost = settings ? canViewLandedCost(role, settings) : false;
+  const ctx = await getSessionContext();
+  const settings = ctx ? await getCompanySettings(ctx.user.companyId) : null;
+  const canViewCost = settings && ctx ? canViewLandedCost(ctx.role, settings) : false;
+
+  // Admins see every location; other roles see only their assigned locations.
+  const locationScope = ctx?.isAdmin ? null : ctx?.locationIds ?? null;
 
   const [items, locations] = await Promise.all([
-    getInventoryItems(canViewCost),
+    getInventoryItems(canViewCost, locationScope),
     getInventoryLocations(),
   ]);
 
