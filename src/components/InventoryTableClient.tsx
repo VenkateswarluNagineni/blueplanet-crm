@@ -659,7 +659,7 @@ export function InventoryTableClient({
                   <div className="relative inline-block text-left">
                     <button 
                       onClick={() => setShowColumnMenu(!showColumnMenu)}
-                      className="text-[#92b0ce] hover:text-white flex items-center gap-1 bg-[#1c1c1c] border border-[#454446] px-2 py-1 rounded transition-colors"
+                      className="text-[#92b0ce] hover:text-white flex items-center gap-1.5 bg-[#1c1c1c] border border-[#454446] px-3 py-1.5 rounded-lg transition-all shadow-sm hover:shadow"
                     >
                       <Plus size={14} /> Add column
                     </button>
@@ -667,7 +667,7 @@ export function InventoryTableClient({
                     {showColumnMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowColumnMenu(false)}></div>
-                        <div className="absolute right-0 top-full mt-1 w-52 bg-[#1c1c1c] border border-[#454446] rounded-md shadow-[0_8px_30px_rgb(0,0,0,0.5)] z-50 p-2 text-left">
+                        <div className="absolute right-0 top-full mt-1.5 w-52 bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-[0_12px_36px_rgb(0,0,0,0.6)] z-50 p-2.5 text-left">
                           <div className="text-[11px] text-[#b8b6b9] font-medium uppercase tracking-wider px-2 pb-1 mb-1 border-b border-[#454446]">Toggle Columns</div>
                           {DEFAULT_COLUMN_ORDER.map((colKey) => (
                             <label key={colKey} className="flex items-center gap-3 px-2 py-1.5 hover:bg-[#333234] rounded cursor-pointer transition-colors">

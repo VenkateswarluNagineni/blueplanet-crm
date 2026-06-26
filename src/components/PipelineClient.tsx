@@ -112,10 +112,10 @@ export function PipelineClient({
         const weightedYield = openDeals.reduce((sum, o) => sum + (o.amount * (o.probability / 100)), 0);
         const estCommission = weightedYield * 0.045;
         return (
-          <div className="mx-6 mt-4 bg-[#333234] border border-[#454446] p-3.5 rounded-lg flex items-center justify-between text-[#d9d8d9]">
+          <div className="mx-6 mt-4 bg-[#333234] border border-[#454446] p-4 rounded-xl flex items-center justify-between text-[#d9d8d9] shadow-md">
             <div className="flex items-center gap-6 text-[12px]">
-              <div className="flex items-center gap-2">
-                <span className="p-1 bg-[#b58cd6]/20 text-[#b58cd6] border border-[#b58cd6]/30 font-bold text-[10px] rounded uppercase tracking-wider">AI Propensity Engine</span>
+              <div className="flex items-center gap-2.5">
+                <span className="px-2 py-0.5 bg-[#b58cd6]/20 text-[#b58cd6] border border-[#b58cd6]/30 font-bold text-[10px] rounded-full uppercase tracking-wider">AI Propensity Engine</span>
                 <span>Weighted Yield Forecast: <strong className="text-white font-mono">${Math.round(weightedYield).toLocaleString()}</strong></span>
               </div>
               <div className="w-px h-4 bg-[#454446]" />
@@ -127,42 +127,42 @@ export function PipelineClient({
       })()}
 
       <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-5 gap-4 min-w-[1100px]">
+        <div className="grid grid-cols-5 gap-5 min-w-[1100px]">
           {STAGES.map((stage) => {
             const items = opportunities.filter((o) => o.status === stage.key);
             const colTotal = items.reduce((s, o) => s + o.amount, 0);
             return (
-              <div key={stage.key} className="bg-[#1c1c1c] border border-[#454446] rounded-lg flex flex-col">
-                <div className="px-3 py-2.5 border-b border-[#454446] flex items-center justify-between">
+              <div key={stage.key} className="bg-[#1c1c1c] border border-[#454446] rounded-xl flex flex-col shadow-md">
+                <div className="px-4 py-3 border-b border-[#454446] flex items-center justify-between bg-[#333234]/40 rounded-t-xl">
                   <span className="text-[12px] font-medium flex items-center gap-2" style={{ color: stage.color }}>
-                    <span className="w-2 h-2 rounded-full" style={{ background: stage.color }} /> {stage.label}
+                    <span className="w-2 h-2 rounded-full shadow-sm" style={{ background: stage.color }} /> {stage.label}
                   </span>
-                  <span className="text-[11px] text-[#b8b6b9]">{items.length}</span>
+                  <span className="text-[11px] text-[#b8b6b9] font-mono bg-[#2b2a2c] px-2 py-0.5 rounded-full border border-[#454446]">{items.length}</span>
                 </div>
-                <div className="p-2 space-y-2 flex-1 min-h-[120px]">
+                <div className="p-3 space-y-3 flex-1 min-h-[120px]">
                   {items.length === 0 ? (
-                    <p className="text-[11px] text-[#b8b6b9] text-center py-6 italic">Empty</p>
+                    <p className="text-[11px] text-[#b8b6b9] text-center py-8 italic">Empty</p>
                   ) : (
                     items.map((o) => (
-                      <div key={o.id} className="bg-[#2b2a2c] border border-[#454446] rounded-md p-3 hover:border-[#92b0ce]/50 transition-colors">
-                        <div className="flex items-start gap-2 mb-2">
-                          <Target size={13} className="text-[#b8b6b9] mt-0.5 shrink-0" />
-                          <p className="text-[13px] text-white font-medium leading-tight">{o.name}</p>
+                      <div key={o.id} className="bg-[#2b2a2c] border border-[#454446] rounded-xl p-4 hover:border-[#92b0ce] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5">
+                        <div className="flex items-start gap-2.5 mb-2.5">
+                          <Target size={14} className="text-[#b8b6b9] mt-0.5 shrink-0" />
+                          <p className="text-[13px] text-white font-medium leading-snug">{o.name}</p>
                         </div>
-                        <p className="text-[11px] text-[#b8b6b9] mb-1">{o.customerLabel}</p>
-                        <p className="text-[14px] text-[#10b981] font-medium mb-2">${o.amount.toLocaleString()}</p>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-1 flex-1 bg-[#454446] rounded-full overflow-hidden"><div className="h-full bg-[#10b981]" style={{ width: `${o.probability}%` }} /></div>
-                          <span className="text-[10px] text-[#b8b6b9]">{o.probability}%</span>
+                        <p className="text-[11px] text-[#b8b6b9] mb-1.5 truncate">{o.customerLabel}</p>
+                        <p className="text-[15px] text-[#10b981] font-medium font-mono mb-3">${o.amount.toLocaleString()}</p>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="h-1.5 flex-1 bg-[#454446] rounded-full overflow-hidden"><div className="h-full bg-[#10b981]" style={{ width: `${o.probability}%` }} /></div>
+                          <span className="text-[10px] text-[#b8b6b9] font-mono tabular-nums">{o.probability}%</span>
                         </div>
-                        <div className="mb-2">
+                        <div className="mb-3">
                           {o.probability >= 70 && (
-                            <span className="inline-block bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                            <span className="inline-block bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
                               🚀 High Win Propensity
                             </span>
                           )}
                           {o.probability < 30 && o.status !== 'CLOSED_LOST' && (
-                            <span className="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                            <span className="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
                               ⚠ Stalemate Risk
                             </span>
                           )}

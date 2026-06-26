@@ -75,45 +75,45 @@ export default function AnalyticsDashboardClient({
 
       {/* KPI Cards */}
       <div className="p-8 grid grid-cols-4 gap-6 shrink-0">
-        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-lg relative overflow-hidden">
+        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-xl relative overflow-hidden shadow-md hover:shadow-lg transition-all">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[12px] font-medium text-[#b8b6b9] uppercase tracking-wider">Booked Revenue (O2C)</span>
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded"><DollarSign size={18} /></div>
+            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><DollarSign size={18} /></div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">${totalBookedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div className="text-2xl font-bold text-white mb-1 tracking-tight">${totalBookedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           <div className="flex items-center gap-1 text-[11px] text-[#10b981]">
             <ArrowUpRight size={14} /> +14.2% yield velocity vs prior period
           </div>
         </div>
 
-        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-lg relative overflow-hidden">
+        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-xl relative overflow-hidden shadow-md hover:shadow-lg transition-all">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[12px] font-medium text-[#b8b6b9] uppercase tracking-wider">Capital Deployed (P2P)</span>
-            <div className="p-2 bg-amber-500/10 text-amber-400 rounded"><Package size={18} /></div>
+            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><Package size={18} /></div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">${totalLandedCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div className="text-2xl font-bold text-white mb-1 tracking-tight">${totalLandedCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           <div className="flex items-center gap-1 text-[11px] text-[#b8b6b9]">
             Across {purchaseOrders.length} inbound purchase containers
           </div>
         </div>
 
-        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-lg relative overflow-hidden">
+        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-xl relative overflow-hidden shadow-md hover:shadow-lg transition-all">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[12px] font-medium text-[#b8b6b9] uppercase tracking-wider">Estimated Net Margin</span>
-            <div className="p-2 bg-[#10b981]/10 text-[#10b981] rounded"><TrendingUp size={18} /></div>
+            <div className="p-2 bg-[#10b981]/10 text-[#10b981] rounded-lg"><TrendingUp size={18} /></div>
           </div>
-          <div className="text-2xl font-bold text-[#10b981] mb-1">{netMarginPercent.toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-[#10b981] mb-1 tracking-tight">{netMarginPercent.toFixed(1)}%</div>
           <div className="text-[11px] text-[#b8b6b9]">
             Est. Net Yield: ${netMarginValue > 0 ? netMarginValue.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '142,850'}
           </div>
         </div>
 
-        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-lg relative overflow-hidden">
+        <div className="bg-[#2b2a2c] border border-[#454446] p-5 rounded-xl relative overflow-hidden shadow-md hover:shadow-lg transition-all">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[12px] font-medium text-[#b8b6b9] uppercase tracking-wider">Physical Yard Valuation</span>
-            <div className="p-2 bg-purple-500/10 text-purple-400 rounded"><BarChart3 size={18} /></div>
+            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg"><BarChart3 size={18} /></div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">${physicalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          <div className="text-2xl font-bold text-white mb-1 tracking-tight">${physicalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           <div className="text-[11px] text-[#92b0ce]">
             Active warehouse inventory reserve asset value
           </div>
@@ -122,11 +122,11 @@ export default function AnalyticsDashboardClient({
 
       {/* Main Ledger Table Section */}
       <div className="px-8 pb-8 flex-1">
-        <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg overflow-hidden flex flex-col">
+        <div className="bg-[#2b2a2c] border border-[#454446] rounded-xl overflow-hidden flex flex-col shadow-md">
           <div className="px-6 py-4 border-b border-[#454446] bg-[#333234] flex justify-between items-center">
             <div className="flex items-center gap-2">
               <h3 className="text-white font-medium text-[14px]">SKU Landed Cost & Apportionment Ledger</h3>
-              <span className="text-[11px] bg-[#1c1c1c] text-[#b8b6b9] px-2 py-0.5 rounded border border-[#454446]">{filteredCatalog.length} SKUs</span>
+              <span className="text-[11px] bg-[#1c1c1c] text-[#b8b6b9] px-2.5 py-0.5 rounded-full border border-[#454446] font-mono">{filteredCatalog.length} SKUs</span>
             </div>
             
             <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export default function AnalyticsDashboardClient({
               <select 
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="bg-[#1c1c1c] text-white border border-[#454446] rounded px-2.5 py-1 text-[12px] focus:outline-none focus:border-[#92b0ce]"
+                className="bg-[#1c1c1c] text-white border border-[#454446] rounded-lg px-3 py-1.5 text-[12px] focus:outline-none focus:border-[#92b0ce] shadow-sm cursor-pointer"
               >
                 <option value="ALL">All Active Materials</option>
                 <option value="HIGH_VELOCITY">High Demand (Hold &gt; Yard)</option>
@@ -146,13 +146,13 @@ export default function AnalyticsDashboardClient({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#232224] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
-                <th className="p-3.5 pl-6 font-medium border-b border-[#454446]">Material Name / SKU</th>
-                <th className="p-3.5 font-medium border-b border-[#454446]">Origin / Type</th>
-                <th className="p-3.5 font-medium border-b border-[#454446] text-right">Landed Cost ($/sf)</th>
-                <th className="p-3.5 font-medium border-b border-[#454446] text-right">Retail Yield ($/sf)</th>
-                <th className="p-3.5 font-medium border-b border-[#454446] text-right">Spread Margin</th>
-                <th className="p-3.5 font-medium border-b border-[#454446] text-center">Yard Reserve</th>
-                <th className="p-3.5 pr-6 font-medium border-b border-[#454446] text-center">Velocity State</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446]">Material Name / SKU</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446]">Origin / Type</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446] text-right">Landed Cost ($/sf)</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446] text-right">Retail Yield ($/sf)</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446] text-right">Spread Margin</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446] text-center">Yard Reserve</th>
+                <th className="py-3.5 px-5 font-medium border-b border-[#454446] text-center">Velocity State</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#454446] text-[13px]">
@@ -164,33 +164,33 @@ export default function AnalyticsDashboardClient({
                 const isLowStock = sku.slabsInYard <= 5;
 
                 return (
-                  <tr key={sku.id} className="hover:bg-[#333234]/50 transition-colors">
-                    <td className="p-3.5 pl-6 font-medium text-white flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#92b0ce]" />
+                  <tr key={sku.id} className="hover:bg-[#333234]/60 transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-white flex items-center gap-2.5">
+                      <div className="w-2 h-2 rounded-full bg-[#92b0ce] shrink-0" />
                       {sku.name}
                     </td>
-                    <td className="p-3.5 text-[#b8b6b9]">{sku.originCountry || 'Italy'} · {sku.materialType}</td>
-                    <td className="p-3.5 text-right font-mono text-amber-400">${cost.toFixed(2)}</td>
-                    <td className="p-3.5 text-right font-mono text-blue-400 font-bold">${retail.toFixed(2)}</td>
-                    <td className="p-3.5 text-right font-mono">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${margin >= 40 ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-amber-500/10 text-amber-400'}`}>
+                    <td className="py-3.5 px-5 text-[#b8b6b9]">{sku.originCountry || 'Italy'} · {sku.materialType}</td>
+                    <td className="py-3.5 px-5 text-right font-mono text-amber-400 tabular-nums">${cost.toFixed(2)}</td>
+                    <td className="py-3.5 px-5 text-right font-mono text-blue-400 font-bold tabular-nums">${retail.toFixed(2)}</td>
+                    <td className="py-3.5 px-5 text-right font-mono tabular-nums">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${margin >= 40 ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-amber-500/10 text-amber-400'}`}>
                         {margin.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="p-3.5 text-center text-white font-medium">{sku.slabsInYard} slabs</td>
-                    <td className="p-3.5 pr-6 text-center">
+                    <td className="py-3.5 px-5 text-center text-white font-medium tabular-nums">{sku.slabsInYard} slabs</td>
+                    <td className="py-3.5 px-5 text-center">
                       {isLowStock && (
-                        <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                        <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
                           Reorder ROP Trigger
                         </span>
                       )}
                       {!isLowStock && isHighDemand && (
-                        <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                        <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
                           High Velocity
                         </span>
                       )}
                       {!isLowStock && !isHighDemand && (
-                        <span className="bg-gray-500/10 text-gray-400 px-2 py-0.5 rounded text-[10px] uppercase">
+                        <span className="bg-gray-500/10 text-gray-400 px-2.5 py-1 rounded-full text-[10px] uppercase">
                           Stable Yard Stock
                         </span>
                       )}

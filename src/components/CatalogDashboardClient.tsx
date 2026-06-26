@@ -233,14 +233,14 @@ export default function CatalogDashboardClient({
         const criticalLow = filteredMaterials.filter(m => m.slabsInYard <= 5);
         if (criticalLow.length === 0) return null;
         return (
-          <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-lg flex items-center justify-between text-amber-300">
-            <div className="flex items-center gap-2.5 text-[13px]">
-              <span className="p-1 bg-amber-500 text-black font-bold text-[10px] rounded uppercase tracking-wider">ROP Alert</span>
+          <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex items-center justify-between text-amber-300 shadow-md">
+            <div className="flex items-center gap-3 text-[13px]">
+              <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] rounded-full uppercase tracking-wider shadow-sm">ROP Alert</span>
               <span><strong>Velocity Exception Detected:</strong> {criticalLow.length} active stone line{criticalLow.length === 1 ? '' : 's'} ({criticalLow.map(c => c.name).slice(0, 2).join(', ')}{criticalLow.length > 2 ? '...' : ''}) below safety yard reserve (≤ 5 slabs).</span>
             </div>
             <button 
               onClick={() => router.push('/purchases')}
-              className="text-[12px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1.5 rounded transition-colors cursor-pointer shrink-0"
+              className="text-[12px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-3.5 py-2 rounded-lg transition-all cursor-pointer shrink-0 shadow hover:shadow-md"
             >
               Issue Emergency PO →
             </button>
@@ -255,7 +255,7 @@ export default function CatalogDashboardClient({
             No materials match your search.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredMaterials.map((item) => {
               const margin =
                 viewMode === 'ADMIN' && item.avgCostPerSf != null && item.retailPricePerSf
@@ -264,16 +264,16 @@ export default function CatalogDashboardClient({
               return (
                 <div
                   key={item.id}
-                  className="bg-[#1c1c1c] border border-[#454446] rounded-lg overflow-hidden hover:border-[#92b0ce] transition-all cursor-pointer group"
+                  className="bg-[#1c1c1c] border border-[#454446] rounded-xl overflow-hidden hover:border-[#92b0ce] transition-all duration-200 cursor-pointer group shadow-sm hover:shadow-xl hover:-translate-y-0.5"
                   onClick={() => setSelectedMaterial(item)}
                 >
                   <div className="h-40 bg-[#333234] flex items-center justify-center relative overflow-hidden group-hover:bg-[#2b2a2c] transition-colors">
                     <ImageIcon size={32} className="text-[#454446]" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] to-transparent opacity-60"></div>
-                    <div className="absolute bottom-2 left-3 flex gap-2">
-                      <span className="bg-[#1c1c1c]/80 backdrop-blur text-white px-2 py-0.5 rounded text-[10px] font-medium border border-[#454446]">{item.materialType}</span>
+                    <div className="absolute bottom-2.5 left-3.5 flex gap-2">
+                      <span className="bg-[#1c1c1c]/80 backdrop-blur text-white px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-[#454446]">{item.materialType}</span>
                       {item.thickness && (
-                        <span className="bg-[#1c1c1c]/80 backdrop-blur text-[#b8b6b9] px-2 py-0.5 rounded text-[10px] font-medium border border-[#454446]">{item.thickness}</span>
+                        <span className="bg-[#1c1c1c]/80 backdrop-blur text-[#b8b6b9] px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-[#454446]">{item.thickness}</span>
                       )}
                     </div>
                   </div>

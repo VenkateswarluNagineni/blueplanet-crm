@@ -19,14 +19,14 @@ function KpiCard({
   accent: string;
 }) {
   return (
-    <div className="bg-[#1c1c1c] border border-[#454446] rounded-lg p-4 hover:border-[#5a595c] transition-colors">
-      <div className="flex items-center gap-2 mb-2.5">
-        <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: `${accent}1a`, color: accent }}>
-          <Icon size={15} />
+    <div className="bg-[#1c1c1c] border border-[#454446] rounded-xl p-5 hover:border-[#5a595c] transition-all shadow-md hover:shadow-lg">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-inner" style={{ background: `${accent}1a`, color: accent }}>
+          <Icon size={16} />
         </div>
-        <p className="text-[10px] uppercase tracking-wider text-[#b8b6b9] leading-tight">{label}</p>
+        <p className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium leading-tight">{label}</p>
       </div>
-      <p className="text-[20px] font-medium text-white tabular-nums" style={{ fontFamily: 'var(--font-fraunces), serif' }}>{value}</p>
+      <p className="text-[22px] font-medium text-white tabular-nums tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif' }}>{value}</p>
     </div>
   );
 }

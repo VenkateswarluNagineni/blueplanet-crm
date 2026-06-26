@@ -180,31 +180,31 @@ export default function OrdersDashboardClient({
 
       {/* Table View */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="bg-[#1c1c1c] border border-[#454446] rounded-lg overflow-hidden">
+        <div className="bg-[#1c1c1c] border border-[#454446] rounded-xl overflow-hidden shadow-md">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#333234] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
-                <th className="p-3 font-medium border-b border-[#454446]">Order ID</th>
-                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" /></th>
-                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" /></th>
-                <th className="p-3 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" /></th>
-                <th className="p-3 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" /></th>
-                <th className="p-3 font-medium border-b border-[#454446]">Rep ID</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Status</th>
-                <th className="p-3 font-medium border-b border-[#454446] text-center">Actions</th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Order ID</th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Rep ID</th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Status</th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#454446] text-[13px]">
               {displayedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-[#b8b6b9]">No orders found matching your criteria.</td>
+                  <td colSpan={8} className="p-12 text-center text-[#b8b6b9]">No orders found matching your criteria.</td>
                 </tr>
               ) : (
                 displayedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-[#2b2a2c] transition-colors">
-                    <td className="p-3 font-mono text-white">{order.soNumber}</td>
-                    <td className="p-3 text-[#b8b6b9]">{order.placedAt}</td>
-                    <td className="p-3 font-medium text-white">{order.customerName}</td>
+                    <td className="py-4 px-4 font-mono text-white font-medium">{order.soNumber}</td>
+                    <td className="py-4 px-4 text-[#b8b6b9]">{order.placedAt}</td>
+                    <td className="py-4 px-4 font-medium text-white">{order.customerName}</td>
                     <td className="p-3">
                       <span className="text-white">{order.materialName}</span>
                       <br />
