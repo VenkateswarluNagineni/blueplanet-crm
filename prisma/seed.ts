@@ -70,7 +70,17 @@ async function main() {
 
   // 4. Parties — Suppliers
   const supAntolini = await prisma.party.create({
-    data: { type: 'SUPPLIER', systemId: 'S-001', name: 'Antolini Italy', contactPerson: 'Marco Rossi', email: 'marco@antolini.it', phone: '+39 045 683 6611', originCountry: 'Italy', paymentTerms: 'Net 60', incoterms: 'FOB Genoa', creditLimit: 2000000, currency: 'EUR', totalPurchased: 1250000 },
+    data: {
+      type: 'SUPPLIER', systemId: 'S-001', name: 'Antolini Italy', legalName: 'Antolini Luigi & C. S.p.A.',
+      subType: 'Quarry', website: 'https://antolini.com', status: 'PREFERRED',
+      contactPerson: 'Marco Rossi', email: 'marco@antolini.it', phone: '+390456836611',
+      originCountry: 'Italy', materialCategories: ['Marble', 'Quartzite'], paymentTerms: 'Net 60', incoterms: 'FOB',
+      creditLimit: 2000000, currency: 'EUR', taxId: 'IT02356780231', leadTimeDays: 45, minOrderValue: 50000,
+      remittanceInfo: 'UniCredit · IBAN IT60X0542811101000000123456 · SWIFT UNCRITMM', certifications: 'ISO 9001, CE',
+      totalPurchased: 1250000,
+      addresses: { create: [{ kind: 'PRIMARY', line1: 'Via Marconi 101', city: 'Verona', region: 'VR', postalCode: '37010', country: 'Italy', isPrimary: true }] },
+      contacts: { create: [{ kind: 'LOGISTICS', name: 'Giulia Bianchi', title: 'Export Coordinator', email: 'export@antolini.it', phone: '+390456836620' }] },
+    },
   })
   const supCosentino = await prisma.party.create({
     data: { type: 'SUPPLIER', systemId: 'S-002', name: 'Cosentino Group', contactPerson: 'Lucia Gomez', email: 'lgomez@cosentino.com', phone: '+34 950 444 173', originCountry: 'Spain', paymentTerms: 'Net 30', incoterms: 'DDP Boston', creditLimit: 1500000, currency: 'USD', totalPurchased: 850000 },
@@ -81,7 +91,14 @@ async function main() {
 
   // Parties — Vendors (logistics)
   const venZim = await prisma.party.create({
-    data: { type: 'VENDOR', systemId: 'V-001', name: 'ZIM Integrated Shipping', serviceType: 'Ocean Freight', contactPerson: 'Sarah Jenkins', email: 's.jenkins@zim.com', phone: '+1 800-555-0199', balanceDue: 20500 },
+    data: {
+      type: 'VENDOR', systemId: 'V-001', name: 'ZIM Integrated Shipping', legalName: 'ZIM Integrated Shipping Services Ltd.',
+      serviceType: 'Ocean Freight', serviceArea: 'Mediterranean → US East Coast', rateBasis: 'Per Container',
+      contactPerson: 'Sarah Jenkins', email: 's.jenkins@zim.com', phone: '+18005550199',
+      currency: 'USD', paymentTerms: 'Net 30', taxId: 'US-EIN-13-5588221',
+      insurancePolicy: 'MARINE-ZIM-2026-44 (exp 2026-12-31)', licenseNumber: 'FMC-018245', balanceDue: 20500,
+      contacts: { create: [{ kind: 'DISPATCH', name: 'Ops Desk (24/7)', email: 'dispatch@zim.com', phone: '+18005550111' }] },
+    },
   })
   const venBalt = await prisma.party.create({
     data: { type: 'VENDOR', systemId: 'V-002', name: 'Baltimore Heavy Trucking', serviceType: 'Inland Logistics', contactPerson: 'Mike Peterson', email: 'dispatch@baltimoretruck.com', phone: '+1 410-555-0122', balanceDue: 6500 },
@@ -92,7 +109,12 @@ async function main() {
 
   // Parties — Associates (sales roster)
   const repJohn = await prisma.party.create({
-    data: { type: 'ASSOCIATE', systemId: 'REP-1042', name: 'John Doe', role: 'Senior Sales Rep', baseLocation: 'Maryland Hub', commissionRate: '5%', salesTargetAnnual: 2000000, totalSold: 1200000 },
+    data: {
+      type: 'ASSOCIATE', systemId: 'REP-1042', name: 'John Doe', role: 'Senior Sales Rep',
+      email: 'sales@blueplanet.com', phone: '+14105550777', baseLocation: 'Maryland Hub', territory: 'Mid-Atlantic',
+      employeeId: 'EMP-1042', startDate: new Date('2021-03-15'), commissionRate: '5%',
+      salesTargetAnnual: 2000000, totalSold: 1200000,
+    },
   })
   const repJane = await prisma.party.create({
     data: { type: 'ASSOCIATE', systemId: 'REP-1088', name: 'Jane Smith', role: 'Branch Manager', baseLocation: 'Boston HQ', commissionRate: '2% Override', salesTargetAnnual: 4000000, totalSold: 3100000 },
@@ -106,10 +128,38 @@ async function main() {
   await prisma.user.update({ where: { id: userByRole.SALES.id }, data: { partyId: repJohn.id } })
   await prisma.user.update({ where: { id: userByRole.VENDOR.id }, data: { partyId: venZim.id } })
 
-  // Parties — Customers
-  const custElite = await prisma.party.create({ data: { type: 'CUSTOMER', name: 'Elite Kitchens LLC', email: 'info@elitekitchens.com', totalSold: 85000 } })
-  const custModern = await prisma.party.create({ data: { type: 'CUSTOMER', name: 'Modern Build LLC', email: 'ops@modernbuild.com', totalSold: 96250 } })
-  const custLuxury = await prisma.party.create({ data: { type: 'CUSTOMER', name: 'Luxury Kitchens Inc.', email: 'buyers@luxurykitchens.com', totalSold: 45000 } })
+  // Parties — Customers (first-class records with full commercial profiles)
+  const custElite = await prisma.party.create({
+    data: {
+      type: 'CUSTOMER', systemId: 'C-001', name: 'Elite Kitchens LLC', subType: 'Fabricator',
+      contactPerson: 'Dana Prescott', email: 'info@elitekitchens.com', phone: '+14105550101',
+      website: 'https://elitekitchens.com', paymentTerms: 'Net 30', currency: 'USD', creditLimit: 150000,
+      priceTier: 'Preferred', source: 'Referral', assignedAssociateId: repJohn.id, status: 'PREFERRED', totalSold: 85000,
+      addresses: { create: [
+        { kind: 'BILLING', line1: '1200 Industrial Pkwy', city: 'Baltimore', region: 'MD', postalCode: '21224', country: 'United States', isPrimary: true },
+        { kind: 'SHIPPING', line1: '88 Fabrication Way', city: 'Baltimore', region: 'MD', postalCode: '21230', country: 'United States' },
+      ] },
+      contacts: { create: [{ kind: 'AP', name: 'Renee Vasquez', title: 'AP Manager', email: 'ap@elitekitchens.com', phone: '+14105550144' }] },
+    },
+  })
+  const custModern = await prisma.party.create({
+    data: {
+      type: 'CUSTOMER', systemId: 'C-002', name: 'Modern Build LLC', subType: 'Contractor',
+      contactPerson: 'Greg Tao', email: 'ops@modernbuild.com', phone: '+12015550173',
+      paymentTerms: 'Net 45', currency: 'USD', creditLimit: 250000, priceTier: 'Wholesale',
+      source: 'Trade show', assignedAssociateId: repRobert.id, totalSold: 96250,
+      addresses: { create: [{ kind: 'BILLING', line1: '450 Commerce Blvd', city: 'Newark', region: 'NJ', postalCode: '07102', country: 'United States', isPrimary: true }] },
+    },
+  })
+  const custLuxury = await prisma.party.create({
+    data: {
+      type: 'CUSTOMER', systemId: 'C-003', name: 'Luxury Kitchens Inc.', subType: 'Designer',
+      contactPerson: 'Priya Anand', email: 'buyers@luxurykitchens.com', phone: '+16175550190',
+      paymentTerms: 'Net 30', currency: 'USD', creditLimit: 100000, priceTier: 'Standard',
+      taxExempt: true, resaleCertNumber: 'MA-RESALE-88213', assignedAssociateId: repJane.id, totalSold: 45000,
+      addresses: { create: [{ kind: 'BILLING', line1: '7 Beacon St', city: 'Boston', region: 'MA', postalCode: '02108', country: 'United States', isPrimary: true }] },
+    },
+  })
 
   // 5. Products (catalog) with pricing + approved suppliers
   const products = [

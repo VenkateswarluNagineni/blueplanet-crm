@@ -3,14 +3,27 @@
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Building2, Truck, Users, Search, Plus, Mail, Phone, MoreHorizontal, DollarSign,
-  TrendingUp, Globe, X, MapPin, FileText, Target, ListFilter, Edit2,
+  Building2, Truck, Users, UserSquare2, Search, Plus, Mail, Phone, MoreHorizontal, DollarSign,
+  TrendingUp, Globe, X, MapPin, FileText, Target, ListFilter, Edit2, KeyRound, Copy,
 } from 'lucide-react';
 import type { CrmData } from '@/server/queries/crm';
+import type { CreatePartyInput } from '@/lib/validation/party';
 import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/actions/crm';
+import {
+  COUNTRIES, CURRENCIES, PAYMENT_TERMS, INCOTERMS, PARTY_STATUS, SUPPLIER_SUBTYPES,
+  CUSTOMER_SUBTYPES, MATERIAL_CATEGORIES, VENDOR_SERVICE_TYPES, VENDOR_RATE_BASIS,
+  CUSTOMER_PRICE_TIERS, ASSOCIATE_ROLES, LOGIN_ROLES,
+} from '@/lib/reference';
 
-type TabType = 'SUPPLIERS' | 'VENDORS' | 'ASSOCIATES';
-type EntityType = 'SUPPLIER' | 'VENDOR' | 'ASSOCIATE';
+type TabType = 'SUPPLIERS' | 'VENDORS' | 'CUSTOMERS' | 'ASSOCIATES';
+type EntityType = 'SUPPLIER' | 'VENDOR' | 'CUSTOMER' | 'ASSOCIATE';
+
+const TAB_TO_TYPE: Record<TabType, EntityType> = {
+  SUPPLIERS: 'SUPPLIER', VENDORS: 'VENDOR', CUSTOMERS: 'CUSTOMER', ASSOCIATES: 'ASSOCIATE',
+};
+const TYPE_LABEL: Record<EntityType, string> = {
+  SUPPLIER: 'Supplier', VENDOR: 'Vendor', CUSTOMER: 'Customer', ASSOCIATE: 'Associate',
+};
 
 const EMPTY = 'text-center py-12 text-[#b8b6b9] bg-[#1c1c1c] border border-[#454446] border-dashed rounded-md';
 
@@ -18,7 +31,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const {
-    suppliers, vendors, associates,
+    suppliers, vendors, associates, customers,
     activePos, historyPos, vendorInvoices, historyInvoices,
     associatePipeline, associateSales, associateMetrics,
   } = data;
@@ -27,6 +40,10 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const [searchTerm, setSearchTerm] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  // One-time temp password surfaced after provisioning a member's login.
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  // Controlled "provision login" toggle so the form can reveal the login fields.
+  const [provisionLogin, setProvisionLogin] = useState(false);
 
   // Drill-down drawer
   const [viewing, setViewing] = useState<{ id: string; type: EntityType } | null>(null);
@@ -76,9 +93,14 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
     matchSearch(`${i.name} ${i.salesNumber} ${i.role} ${i.location}`) &&
     (selectedRoles.length === 0 || selectedRoles.includes(i.role)) &&
     (selectedLocations.length === 0 || selectedLocations.includes(i.location)));
+  const filteredCustomers = customers.filter((i) =>
+    matchSearch(`${i.name} ${i.systemId} ${i.contact} ${i.email} ${i.subType} ${i.rep}`));
 
   const totalRecords =
-    activeTab === 'SUPPLIERS' ? suppliers.length : activeTab === 'VENDORS' ? vendors.length : associates.length;
+    activeTab === 'SUPPLIERS' ? suppliers.length
+      : activeTab === 'VENDORS' ? vendors.length
+      : activeTab === 'CUSTOMERS' ? customers.length
+      : associates.length;
 
   const doDelete = (id: string) => {
     if (!confirm('Archive this entity? It will be soft-deleted and hidden from active lists.')) return;
@@ -118,31 +140,64 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
     });
   };
 
+  const closeAdd = () => { setAddOpen(false); setProvisionLogin(false); setActionError(''); };
+
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const u = Object.fromEntries(fd.entries()) as Record<string, string>;
-    const type: EntityType = activeTab === 'SUPPLIERS' ? 'SUPPLIER' : activeTab === 'VENDORS' ? 'VENDOR' : 'ASSOCIATE';
+    const v = (k: string) => (u[k]?.trim() ? u[k].trim() : undefined);
+    const num = (k: string) => (u[k]?.trim() ? Number(u[k]) : undefined);
+    const type = TAB_TO_TYPE[activeTab];
+
+    // Assemble the structured primary address only if a usable line + city + country were entered.
+    const addr = v('addr_line1') && v('addr_city') && v('addr_country')
+      ? [{ kind: 'PRIMARY' as const, line1: u.addr_line1.trim(), line2: v('addr_line2'),
+           city: u.addr_city.trim(), region: v('addr_region'), postalCode: v('addr_postal'),
+           country: u.addr_country as (typeof COUNTRIES)[number] }]
+      : undefined;
+
+    const base = {
+      name: u.name?.trim() ?? '', legalName: v('legalName'), website: v('website'),
+      status: (v('status') as (typeof PARTY_STATUS)[number]) ?? 'ACTIVE', notes: v('notes'),
+      contactPerson: v('contact'), email: v('email'), phone: v('phone'), addresses: addr,
+    };
+
+    let input: CreatePartyInput;
+    if (type === 'SUPPLIER') {
+      input = { type, ...base,
+        subType: v('subType') as never, originCountry: v('origin') as never,
+        materialCategories: fd.getAll('materialCategories') as never,
+        paymentTerms: v('terms') as never, incoterms: v('incoterms') as never,
+        currency: (v('currency') ?? 'USD') as never, creditLimit: num('creditLimit'),
+        taxId: v('taxId'), leadTimeDays: num('leadTimeDays'), minOrderValue: num('minOrderValue'),
+        remittanceInfo: v('remittanceInfo'), certifications: v('certifications') };
+    } else if (type === 'VENDOR') {
+      input = { type, ...base,
+        serviceType: v('service') as never, serviceArea: v('serviceArea'), rateBasis: v('rateBasis') as never,
+        currency: (v('currency') ?? 'USD') as never, paymentTerms: v('terms') as never, taxId: v('taxId'),
+        insurancePolicy: v('insurancePolicy'), licenseNumber: v('licenseNumber'),
+        provisionLogin, loginEmail: v('loginEmail') ?? v('email'), loginRole: (v('loginRole') ?? 'VENDOR') as never };
+    } else if (type === 'CUSTOMER') {
+      input = { type, ...base,
+        subType: v('subType') as never, currency: (v('currency') ?? 'USD') as never, paymentTerms: v('terms') as never,
+        creditLimit: num('creditLimit'), taxId: v('taxId'), taxExempt: u.taxExempt === 'on',
+        resaleCertNumber: v('resaleCertNumber'), priceTier: v('priceTier') as never, source: v('source'),
+        assignedAssociateId: v('assignedAssociateId') };
+    } else {
+      input = { type, ...base,
+        role: v('role'), baseLocation: v('location'), territory: v('territory'), employeeId: v('employeeId'),
+        startDate: v('startDate'), commissionRate: v('commissionRate'), salesTargetAnnual: num('salesTargetAnnual'),
+        provisionLogin, loginEmail: v('loginEmail') ?? v('email'), loginRole: (v('loginRole') ?? 'SALES') as never };
+    }
+
     setActionError('');
     startTransition(async () => {
-      const res = await createPartyAction({
-        type,
-        name: u.name,
-        contactPerson: u.contact || undefined,
-        email: u.email || undefined,
-        phone: u.phone || undefined,
-        originCountry: u.origin || undefined,
-        paymentTerms: u.terms || undefined,
-        incoterms: u.incoterms || undefined,
-        currency: u.currency || undefined,
-        creditLimit: u.creditLimit ? Number(u.creditLimit) : undefined,
-        serviceType: u.service || undefined,
-        role: u.role || undefined,
-        baseLocation: u.location || undefined,
-        commissionRate: u.commissionRate || undefined,
-      });
+      const res = await createPartyAction(input);
       if (!res.ok) { setActionError(res.error); return; }
-      setAddOpen(false);
+      if (res.tempPassword) setTempPassword(res.tempPassword);
+      closeAdd();
       router.refresh();
     });
   };
@@ -168,6 +223,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const viewingSupplier = viewing?.type === 'SUPPLIER' ? suppliers.find((s) => s.id === viewing.id) : null;
   const viewingVendor = viewing?.type === 'VENDOR' ? vendors.find((v) => v.id === viewing.id) : null;
   const viewingAssociate = viewing?.type === 'ASSOCIATE' ? associates.find((a) => a.id === viewing.id) : null;
+  const viewingCustomer = viewing?.type === 'CUSTOMER' ? customers.find((c) => c.id === viewing.id) : null;
   const inputCls = 'w-full bg-[#333234] border border-[#454446] rounded px-2 py-1.5 text-white text-[12px] outline-none focus:border-[#92b0ce]';
   const addInputCls = 'w-full bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2 text-white focus:border-[#92b0ce] outline-none transition-colors';
 
@@ -181,13 +237,13 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
             <p className="text-[13px] text-[#b8b6b9]">Manage your external supply chain and internal sales roster.</p>
           </div>
           {canManage && (
-            <button onClick={() => { setAddOpen(true); setActionError(''); }} className="flex items-center gap-2 bg-[#e3c16c] text-black px-3 py-1.5 rounded-md text-[13px] font-medium hover:bg-[#d2ac55] transition-colors">
-              <Plus size={14} /> Add New {activeTab === 'SUPPLIERS' ? 'Supplier' : activeTab === 'VENDORS' ? 'Vendor' : 'Associate'}
+            <button onClick={() => { setAddOpen(true); setActionError(''); setProvisionLogin(false); }} className="flex items-center gap-2 bg-[#e3c16c] text-black px-3 py-1.5 rounded-md text-[13px] font-medium hover:bg-[#d2ac55] transition-colors">
+              <Plus size={14} /> Add New {TYPE_LABEL[TAB_TO_TYPE[activeTab]]}
             </button>
           )}
         </div>
         <div className="flex items-center gap-6">
-          {([['SUPPLIERS', Building2, '#e3c16c', 'Suppliers'], ['VENDORS', Truck, '#92b0ce', 'Vendors (Logistics)'], ['ASSOCIATES', Users, '#10b981', 'Associates / Sales']] as const).map(([tab, Icon, color, label]) => (
+          {([['SUPPLIERS', Building2, '#e3c16c', 'Suppliers'], ['VENDORS', Truck, '#92b0ce', 'Vendors (Logistics)'], ['CUSTOMERS', UserSquare2, '#e8956b', 'Customers'], ['ASSOCIATES', Users, '#10b981', 'Associates / Sales']] as const).map(([tab, Icon, color, label]) => (
             <button key={tab} onClick={() => { setActiveTab(tab); clearAllFilters(); }} className={`flex items-center gap-2 pb-3 text-[13px] font-medium border-b-2 transition-colors ${activeTab === tab ? 'text-white' : 'border-transparent text-[#b8b6b9] hover:text-white'}`} style={activeTab === tab ? { borderColor: color } : undefined}>
               <Icon size={16} style={activeTab === tab ? { color } : undefined} /> {label}
             </button>
@@ -260,6 +316,9 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {activeTab === 'VENDORS' && <>
                 <Th>Vendor Name</Th><Th>Service Type</Th><Th>Primary Contact</Th><Th right>Active Invoices</Th><Th right>AP Balance</Th>
               </>}
+              {activeTab === 'CUSTOMERS' && <>
+                <Th>Customer Name</Th><Th>Type</Th><Th>Primary Contact</Th><Th>Terms</Th><Th>Assigned Rep</Th><Th right>Open Deals</Th><Th right>Lifetime Value</Th>
+              </>}
               {activeTab === 'ASSOCIATES' && <>
                 <Th>Associate Name</Th><Th>Sales Number</Th><Th>Role &amp; Location</Th><Th>Commission</Th><Th right>Active Pipeline</Th><Th right>YTD Sales</Th>
               </>}
@@ -290,6 +349,19 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 {rowMenu(item.id, 'VENDOR')}
               </tr>
             )))}
+            {activeTab === 'CUSTOMERS' && (filteredCustomers.length === 0 ? <EmptyRow cols={9} /> : filteredCustomers.map((item) => (
+              <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
+                <td className="px-6 py-3" />
+                <td className="px-4 py-3 font-medium text-white"><button className="hover:underline hover:text-[#e8956b]" onClick={() => { setViewing({ id: item.id, type: 'CUSTOMER' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
+                <td className="px-4 py-3"><span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{item.subType}</span></td>
+                <td className="px-4 py-3 text-white">{item.contact}</td>
+                <td className="px-4 py-3"><span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span></td>
+                <td className="px-4 py-3 text-[#b8b6b9]">{item.rep}</td>
+                <td className="px-4 py-3 text-right font-medium text-white">{item.openDeals}</td>
+                <td className="px-4 py-3 text-right text-white font-medium">${item.lifetimeValue.toLocaleString()}</td>
+                {rowMenu(item.id, 'CUSTOMER')}
+              </tr>
+            )))}
             {activeTab === 'ASSOCIATES' && (filteredAssociates.length === 0 ? <EmptyRow cols={8} /> : filteredAssociates.map((item) => (
               <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
                 <td className="px-6 py-3" />
@@ -316,9 +388,10 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 <h2 className="text-[18px] font-medium text-white flex items-center gap-2">
                   {viewing.type === 'SUPPLIER' && <Building2 size={18} className="text-[#e3c16c]" />}
                   {viewing.type === 'VENDOR' && <Truck size={18} className="text-[#92b0ce]" />}
+                  {viewing.type === 'CUSTOMER' && <UserSquare2 size={18} className="text-[#e8956b]" />}
                   {viewing.type === 'ASSOCIATE' && <Target size={18} className="text-[#10b981]" />}
-                  {viewingSupplier?.name ?? viewingVendor?.name ?? viewingAssociate?.name}
-                  <span className="text-[#b8b6b9] font-normal text-[14px]">{viewing.type === 'SUPPLIER' ? ' Supplier' : viewing.type === 'VENDOR' ? ' Vendor' : ' Associate'} Account</span>
+                  {viewingSupplier?.name ?? viewingVendor?.name ?? viewingCustomer?.name ?? viewingAssociate?.name}
+                  <span className="text-[#b8b6b9] font-normal text-[14px]"> {TYPE_LABEL[viewing.type]} Account</span>
                 </h2>
               </div>
               <div className="flex items-center gap-3">
@@ -392,6 +465,23 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     </Field>
                   </div>
                 )}
+                {viewingCustomer && (
+                  <div className="grid grid-cols-3 gap-6">
+                    <Field label="Contact Information">
+                      {isEditingProfile ? <div className="space-y-2"><input name="contact" defaultValue={viewingCustomer.contact} className={inputCls} /><input name="email" defaultValue={viewingCustomer.email} className={inputCls} /><input name="phone" defaultValue={viewingCustomer.phone} className={inputCls} /></div>
+                        : <><p className="text-[13px] text-white font-medium">{viewingCustomer.contact}</p><p className="text-[12px] text-[#92b0ce] flex items-center gap-1 mt-1"><Mail size={12} /> {viewingCustomer.email}</p><p className="text-[12px] text-[#b8b6b9] flex items-center gap-1 mt-0.5"><Phone size={12} /> {viewingCustomer.phone}</p></>}
+                    </Field>
+                    <Field label="Type &amp; Terms">
+                      {isEditingProfile ? <div className="space-y-2"><input name="terms" defaultValue={viewingCustomer.terms} className={inputCls} placeholder="Payment Terms" /><input name="creditLimit" type="number" defaultValue={viewingCustomer.creditLimit} className={inputCls} placeholder="Credit Limit" /></div>
+                        : <><span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{viewingCustomer.subType}</span><div className="flex items-center gap-2 mt-1.5"><span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px]">{viewingCustomer.terms}</span>{viewingCustomer.creditLimit > 0 && <span className="text-[12px] text-[#10b981]">${viewingCustomer.creditLimit.toLocaleString()}</span>}</div></>}
+                    </Field>
+                    <Field label="Relationship">
+                      <p className="text-[13px] text-white">Price tier: <span className="text-[#e3c16c]">{viewingCustomer.priceTier}</span></p>
+                      <p className="text-[12px] text-[#b8b6b9] mt-1 flex items-center gap-1"><Users size={11} /> Rep: {viewingCustomer.rep}</p>
+                      <p className="text-[12px] text-[#b8b6b9] mt-0.5">Lifetime: ${viewingCustomer.lifetimeValue.toLocaleString()}</p>
+                    </Field>
+                  </div>
+                )}
                 {isEditingProfile && (
                   <div className="mt-6 pt-4 border-t border-[#454446] flex justify-end gap-3">
                     <button type="button" onClick={() => setIsEditingProfile(false)} className="px-4 py-2 text-[12px] font-medium text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
@@ -400,7 +490,8 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 )}
               </form>
 
-              {/* Inner tabs */}
+              {/* Inner tabs (activity drill-down) — not shown for customers */}
+              {viewing.type !== 'CUSTOMER' && (
               <div className="flex border-b border-[#454446] mb-4 gap-6">
                 <button onClick={() => setDrawerTab('ACTIVE')} className={`pb-2 text-[13px] font-medium border-b-2 ${drawerTab === 'ACTIVE' ? 'border-[#e3c16c] text-white' : 'border-transparent text-[#b8b6b9] hover:text-white'}`}>
                   {viewing.type === 'SUPPLIER' ? 'Ongoing Purchase Orders' : viewing.type === 'VENDOR' ? 'Pending Invoices' : 'Active Pipeline'}
@@ -409,6 +500,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   {viewing.type === 'SUPPLIER' ? 'Historical Business' : viewing.type === 'VENDOR' ? 'Payment History' : 'Closed Sales'}
                 </button>
               </div>
+              )}
 
               {/* SUPPLIER cards */}
               {viewing.type === 'SUPPLIER' && (() => {
@@ -482,54 +574,189 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         </>
       )}
 
-      {/* Add drawer */}
-      {addOpen && canManage && (
+      {/* Add drawer — comprehensive, sectioned intake per member type */}
+      {addOpen && canManage && (() => {
+        const t = TAB_TO_TYPE[activeTab];
+        const isCompany = t !== 'ASSOCIATE';
+        const showLogin = t === 'ASSOCIATE' || t === 'VENDOR';
+        return (
         <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setAddOpen(false)} />
-          <form onSubmit={handleAdd} className="fixed top-0 right-0 h-full w-[600px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={closeAdd} />
+          <form onSubmit={handleAdd} className="fixed top-0 right-0 h-full w-[640px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
               <div>
-                <h2 className="text-[18px] font-medium text-white">Register New {activeTab === 'SUPPLIERS' ? 'Supplier' : activeTab === 'VENDORS' ? 'Vendor' : 'Associate'}</h2>
-                <p className="text-[13px] text-[#b8b6b9] mt-1">Add them to the global directory.</p>
+                <h2 className="text-[18px] font-medium text-white">Register New {TYPE_LABEL[t]}</h2>
+                <p className="text-[13px] text-[#b8b6b9] mt-1">Capture the full record. Fields marked <span className="text-red-400">*</span> are required.</p>
               </div>
-              <button type="button" onClick={() => setAddOpen(false)} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors"><X size={20} /></button>
+              <button type="button" onClick={closeAdd} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6 text-[13px]">
-              <div className="space-y-1.5"><label className="text-[#b8b6b9] block">{activeTab === 'ASSOCIATES' ? 'Full Name' : 'Company Name'}</label><input name="name" required placeholder={activeTab === 'ASSOCIATES' ? 'e.g. Alex Johnson' : 'e.g. Antolini Italy'} className={addInputCls} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Point of Contact</label><input name="contact" placeholder="e.g. Sarah Jenkins" className={addInputCls} /></div>
-                <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Email</label><input name="email" type="email" placeholder="email@example.com" className={addInputCls} /></div>
-              </div>
-              <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Phone</label><input name="phone" placeholder="+1 (555) 000-0000" className={addInputCls} /></div>
+              {/* Identity */}
+              <Sec title="Identity">
+                <Fld label={isCompany ? 'Company / Trading Name' : 'Full Name'} req>
+                  <input name="name" required placeholder={isCompany ? 'e.g. Antolini Italy' : 'e.g. Alex Johnson'} className={addInputCls} />
+                </Fld>
+                <div className="grid grid-cols-2 gap-4">
+                  {isCompany && <Fld label="Legal Entity Name"><input name="legalName" placeholder="Registered legal name" className={addInputCls} /></Fld>}
+                  <Fld label="Website"><input name="website" placeholder="https://example.com" className={addInputCls} /></Fld>
+                  <Fld label="Status"><select name="status" defaultValue="ACTIVE" className={addInputCls}>{PARTY_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                  {t === 'SUPPLIER' && <Fld label="Supplier Type"><select name="subType" className={addInputCls}><option value="">—</option>{SUPPLIER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>}
+                  {t === 'CUSTOMER' && <Fld label="Customer Type"><select name="subType" className={addInputCls}><option value="">—</option>{CUSTOMER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>}
+                </div>
+              </Sec>
 
-              {activeTab === 'SUPPLIERS' && (
+              {/* Primary contact */}
+              <Sec title="Primary Contact">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Origin Country</label><input name="origin" placeholder="e.g. Italy" className={addInputCls} /></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Payment Terms</label><select name="terms" className={addInputCls}><option value="Pre-Pay">Pre-Pay</option><option value="Net 30">Net 30</option><option value="Net 60">Net 60</option></select></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Incoterms</label><input name="incoterms" placeholder="e.g. FOB Genoa" className={addInputCls} /></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Credit Limit</label><input name="creditLimit" type="number" placeholder="0" className={addInputCls} /></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Currency</label><select name="currency" className={addInputCls}><option value="USD">USD</option><option value="EUR">EUR</option><option value="BRL">BRL</option></select></div>
+                  <Fld label="Point of Contact"><input name="contact" placeholder="e.g. Sarah Jenkins" className={addInputCls} /></Fld>
+                  <Fld label="Email"><input name="email" type="email" placeholder="email@example.com" className={addInputCls} /></Fld>
+                  <Fld label="Phone"><input name="phone" placeholder="+1 (555) 000-0000" className={addInputCls} /></Fld>
                 </div>
-              )}
-              {activeTab === 'VENDORS' && (
-                <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Service Type</label><select name="service" className={addInputCls}><option value="Ocean Freight">Ocean Freight</option><option value="Inland Logistics">Inland Logistics</option><option value="Customs &amp; Tariffs">Customs &amp; Tariffs</option></select></div>
-              )}
-              {activeTab === 'ASSOCIATES' && (
+                <p className="text-[11px] text-[#7d7c7f]">Provide at least one way to reach this member (email or phone).</p>
+              </Sec>
+
+              {/* Address */}
+              <Sec title={t === 'CUSTOMER' ? 'Primary / Billing Address' : 'Address'}>
+                <Fld label="Street Address"><input name="addr_line1" placeholder="Street, building" className={addInputCls} /></Fld>
+                <Fld label="Address Line 2"><input name="addr_line2" placeholder="Suite, unit (optional)" className={addInputCls} /></Fld>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Role</label><input name="role" placeholder="e.g. Sales Rep" className={addInputCls} /></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Base Location</label><input name="location" placeholder="e.g. Maryland Hub" className={addInputCls} /></div>
-                  <div className="space-y-1.5"><label className="text-[#b8b6b9] block">Commission Rate</label><input name="commissionRate" placeholder="e.g. 5%" className={addInputCls} /></div>
+                  <Fld label="City"><input name="addr_city" placeholder="City" className={addInputCls} /></Fld>
+                  <Fld label="State / Region"><input name="addr_region" placeholder="State / province" className={addInputCls} /></Fld>
+                  <Fld label="Postal Code"><input name="addr_postal" placeholder="ZIP / postal" className={addInputCls} /></Fld>
+                  <Fld label="Country"><select name="addr_country" className={addInputCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
                 </div>
+              </Sec>
+
+              {/* SUPPLIER specifics */}
+              {t === 'SUPPLIER' && (
+                <Sec title="Commercial & Compliance">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Fld label="Origin Country"><select name="origin" className={addInputCls}><option value="">—</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Materials Supplied"><select name="materialCategories" multiple className={`${addInputCls} h-[88px]`}>{MATERIAL_CATEGORIES.map((m) => <option key={m} value={m}>{m}</option>)}</select></Fld>
+                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Incoterms"><select name="incoterms" className={addInputCls}><option value="">—</option>{INCOTERMS.map((i) => <option key={i} value={i}>{i}</option>)}</select></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Credit Limit"><input name="creditLimit" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
+                    <Fld label="Lead Time (days)"><input name="leadTimeDays" type="number" min="0" placeholder="e.g. 45" className={addInputCls} /></Fld>
+                    <Fld label="Min Order Value"><input name="minOrderValue" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
+                    <Fld label="Tax / VAT ID"><input name="taxId" placeholder="Tax / registration #" className={addInputCls} /></Fld>
+                    <Fld label="Certifications"><input name="certifications" placeholder="e.g. ISO 9001, CE" className={addInputCls} /></Fld>
+                  </div>
+                  <Fld label="Remittance / Bank Details"><input name="remittanceInfo" placeholder="Bank, IBAN / SWIFT" className={addInputCls} /></Fld>
+                </Sec>
               )}
+
+              {/* VENDOR specifics */}
+              {t === 'VENDOR' && (
+                <Sec title="Service & Compliance">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Fld label="Service Type"><select name="service" className={addInputCls}><option value="">—</option>{VENDOR_SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                    <Fld label="Rate Basis"><select name="rateBasis" className={addInputCls}><option value="">—</option>{VENDOR_RATE_BASIS.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                    <Fld label="Service Area / Lanes"><input name="serviceArea" placeholder="e.g. Genoa → NJ" className={addInputCls} /></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Tax ID"><input name="taxId" placeholder="Tax / registration #" className={addInputCls} /></Fld>
+                    <Fld label="Insurance Policy"><input name="insurancePolicy" placeholder="Policy # + expiry" className={addInputCls} /></Fld>
+                    <Fld label="License # (MC/DOT/FMC)"><input name="licenseNumber" placeholder="Carrier / broker license" className={addInputCls} /></Fld>
+                  </div>
+                </Sec>
+              )}
+
+              {/* CUSTOMER specifics */}
+              {t === 'CUSTOMER' && (
+                <Sec title="Commercial & Tax">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Credit Limit"><input name="creditLimit" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
+                    <Fld label="Price Tier"><select name="priceTier" className={addInputCls}><option value="">—</option>{CUSTOMER_PRICE_TIERS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Tax ID"><input name="taxId" placeholder="Tax / EIN" className={addInputCls} /></Fld>
+                    <Fld label="Resale Cert #"><input name="resaleCertNumber" placeholder="If tax-exempt" className={addInputCls} /></Fld>
+                    <Fld label="Assigned Rep"><select name="assignedAssociateId" className={addInputCls}><option value="">— Unassigned —</option>{associates.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Fld>
+                    <Fld label="Source"><input name="source" placeholder="e.g. Referral, Trade show" className={addInputCls} /></Fld>
+                  </div>
+                  <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9] mt-1"><input type="checkbox" name="taxExempt" className="accent-[#e3c16c]" /> Tax-exempt customer</label>
+                </Sec>
+              )}
+
+              {/* ASSOCIATE specifics */}
+              {t === 'ASSOCIATE' && (
+                <Sec title="Role & Compensation">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Fld label="Role"><select name="role" className={addInputCls}><option value="">—</option>{ASSOCIATE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                    <Fld label="Base Location"><input name="location" placeholder="e.g. Maryland Hub" className={addInputCls} /></Fld>
+                    <Fld label="Territory"><input name="territory" placeholder="e.g. Mid-Atlantic" className={addInputCls} /></Fld>
+                    <Fld label="Employee ID"><input name="employeeId" placeholder="EMP-001" className={addInputCls} /></Fld>
+                    <Fld label="Start Date"><input name="startDate" type="date" className={addInputCls} /></Fld>
+                    <Fld label="Commission Rate"><input name="commissionRate" placeholder="e.g. 5%" className={addInputCls} /></Fld>
+                    <Fld label="Annual Sales Target"><input name="salesTargetAnnual" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
+                  </div>
+                </Sec>
+              )}
+
+              {/* Login provisioning */}
+              {showLogin && (
+                <Sec title="Portal Access">
+                  <label className="flex items-center gap-2 text-[12px] text-white"><input type="checkbox" checked={provisionLogin} onChange={(e) => setProvisionLogin(e.target.checked)} className="accent-[#e3c16c]" /> Create a portal login for this member</label>
+                  {provisionLogin && (
+                    <div className="grid grid-cols-2 gap-4 mt-1">
+                      <Fld label="Login Email"><input name="loginEmail" type="email" placeholder="defaults to contact email" className={addInputCls} /></Fld>
+                      <Fld label="Login Role"><select name="loginRole" defaultValue={t === 'VENDOR' ? 'VENDOR' : 'SALES'} className={addInputCls}>{LOGIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                      <p className="col-span-2 text-[11px] text-[#7d7c7f]">A one-time temporary password will be generated and shown once after saving.</p>
+                    </div>
+                  )}
+                </Sec>
+              )}
+
+              {/* Notes */}
+              <Sec title="Notes">
+                <textarea name="notes" rows={2} placeholder="Internal notes (optional)" className={`${addInputCls} resize-none`} />
+              </Sec>
+
               {actionError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{actionError}</div>}
             </div>
             <div className="p-4 border-t border-[#454446] bg-[#1c1c1c] flex items-center justify-end gap-3 shrink-0">
-              <button type="button" onClick={() => setAddOpen(false)} className="px-4 py-2 text-[13px] font-medium text-white hover:bg-[#333234] rounded-md transition-colors">Cancel</button>
+              <button type="button" onClick={closeAdd} className="px-4 py-2 text-[13px] font-medium text-white hover:bg-[#333234] rounded-md transition-colors">Cancel</button>
               <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] font-medium text-black rounded-md bg-[#e3c16c] hover:bg-[#d2ac55] transition-colors disabled:opacity-60">{isPending ? 'Saving…' : 'Save Record'}</button>
             </div>
           </form>
         </>
+        );
+      })()}
+
+      {/* One-time temp-password reveal after login provisioning */}
+      {tempPassword && (
+        <>
+          <div className="fixed inset-0 bg-black/70 z-[60]" onClick={() => setTempPassword(null)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-2xl z-[61] p-6">
+            <div className="flex items-center gap-2 mb-3"><KeyRound size={18} className="text-[#e3c16c]" /><h3 className="text-[15px] font-medium text-white">Portal login created</h3></div>
+            <p className="text-[13px] text-[#b8b6b9] mb-4">Share this one-time temporary password securely. It won&apos;t be shown again.</p>
+            <div className="flex items-center justify-between bg-[#2b2a2c] border border-[#454446] rounded-lg px-3 py-2.5 mb-5">
+              <code className="text-[15px] text-white font-mono tracking-wide">{tempPassword}</code>
+              <button onClick={() => navigator.clipboard?.writeText(tempPassword)} className="text-[#92b0ce] hover:text-white p-1" title="Copy"><Copy size={15} /></button>
+            </div>
+            <button onClick={() => setTempPassword(null)} className="w-full bg-[#e3c16c] text-black py-2 rounded-md text-[13px] font-medium hover:bg-[#d2ac55] transition-colors">Done</button>
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function Sec({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium border-b border-[#454446] pb-1.5">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Fld({ label, children, req }: { label: string; children: React.ReactNode; req?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[#b8b6b9] block text-[12px]">{label}{req && <span className="text-red-400"> *</span>}</label>
+      {children}
     </div>
   );
 }

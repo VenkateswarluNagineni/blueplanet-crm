@@ -72,29 +72,59 @@ model UserLocation {
 model Party {
   id             String  @id @default(uuid())
   type           String // CUSTOMER, SUPPLIER, VENDOR, ASSOCIATE
-  systemId       String? @unique // Auto-generated ID (e.g. REP-4041)
-  name           String
+  systemId       String? @unique // Auto-generated ID (e.g. REP-4041, S-001, V-001, C-001)
+  name           String // display / trading name
+  legalName      String? // registered legal entity name
+  website        String?
+  status         String  @default("ACTIVE") // ACTIVE, PREFERRED, ON_HOLD, INACTIVE
+  notes          String?
   email          String?
   phone          String?
-  address        String?
+  address        String? // legacy free-text; structured addresses live in Address[]
   contactPerson  String?
   // Supplier-specific
+  subType        String? // Supplier: Quarry/Fabricator/Distributor. Customer: Fabricator/Designer/Contractor/Retail
   originCountry  String?
+  materialCategories String[] @default([]) // e.g. ["Marble","Granite"] supplied
   paymentTerms   String? // Net 30, Net 60, Pre-Pay
   incoterms      String? // FOB Genoa, DDP Boston, CIF Miami
   creditLimit    Float   @default(0.0)
   currency       String  @default("USD")
+  taxId          String? // VAT / tax / business registration number
+  leadTimeDays   Int? // typical production lead time
+  minOrderValue  Float? // minimum order value
+  remittanceInfo String? // bank / IBAN / SWIFT remittance details
+  certifications String? // e.g. CE, ISO 9001
   // Vendor-specific
-  serviceType    String? // Ocean Freight, Inland Logistics, Customs & Tariffs
+  serviceType     String? // Ocean Freight, Inland Logistics, Customs & Tariffs
+  serviceArea     String? // lanes / regions served
+  rateBasis       String? // Per Container, Per Mile, Flat
+  insurancePolicy String? // policy number + expiry
+  licenseNumber   String? // MC/DOT, FMC, customs-broker license
+  // Customer-specific
+  taxExempt         Boolean @default(false)
+  resaleCertNumber  String?
+  priceTier         String? // Standard, Preferred, Wholesale
+  source            String? // how the customer was acquired
   // Associate-specific
   role              String? // Senior Sales Rep, Branch Manager, Sales Rep
   baseLocation      String? // display label e.g. "Maryland Hub"
   commissionRate    String? // e.g. "5%"
   salesTargetAnnual Float?  // personal annual sales quota; editable by the rep or an admin
+  employeeId        String?
+  startDate         DateTime?
+  territory         String?
+  // Customer → assigned sales rep (self-relation Party→Party)
+  assignedAssociateId String?
+  assignedAssociate   Party?  @relation("CustomerRep", fields: [assignedAssociateId], references: [id])
+  repCustomers        Party[] @relation("CustomerRep")
   // Denormalized metrics
   totalPurchased Float   @default(0.0)
   totalSold      Float   @default(0.0)
   balanceDue     Float   @default(0.0)
+
+  addresses Address[]
+  contacts  Contact[]
 
   purchaseOrders       PurchaseOrder[] // As Supplier
   salesOrders          SalesOrder[]    @relation("CustomerSalesOrders")
@@ -112,6 +142,43 @@ model Party {
   deletedAt DateTime?
 
   @@index([type])
+}
+
+model Address {
+  id         String  @id @default(uuid())
+  partyId    String
+  party      Party   @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  kind       String  @default("PRIMARY") // PRIMARY, BILLING, SHIPPING, WAREHOUSE
+  line1      String
+  line2      String?
+  city       String
+  region     String? // state / province
+  postalCode String?
+  country    String
+  isPrimary  Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([partyId])
+}
+
+model Contact {
+  id      String  @id @default(uuid())
+  partyId String
+  party   Party   @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  kind    String  @default("GENERAL") // GENERAL, SALES, AP, DISPATCH, LOGISTICS
+  name    String
+  title   String?
+  email   String?
+  phone   String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([partyId])
 }
 
 // ---------------------------------------------------------

@@ -13,6 +13,10 @@ export type CrmAssociate = {
   id: string; name: string; salesNumber: string; role: string; location: string; commissionRate: string;
   activeOppValue: number; ytdSales: number; salesTargetAnnual: number;
 };
+export type CrmCustomer = {
+  id: string; systemId: string; name: string; subType: string; contact: string; email: string; phone: string;
+  terms: string; creditLimit: number; priceTier: string; rep: string; openDeals: number; lifetimeValue: number;
+};
 
 export type PoCard = { poNumber: string; status: string; amount: number; eta: string; container: string; slabs: number };
 export type InvoiceCard = { invoiceNum: string; status: string; amount: number; dueDate: string; serviceDetails: string };
@@ -24,6 +28,7 @@ export type CrmData = {
   suppliers: CrmSupplier[];
   vendors: CrmVendor[];
   associates: CrmAssociate[];
+  customers: CrmCustomer[];
   activePos: Record<string, PoCard[]>;
   historyPos: Record<string, PoCard[]>;
   vendorInvoices: Record<string, InvoiceCard[]>;
@@ -128,7 +133,7 @@ const PO_STATUS_LABEL: Record<string, string> = {
 
 export async function getCrmData(): Promise<CrmData> {
   const [parties, pos, invoices, opps, sales] = await Promise.all([
-    db.party.findMany({ where: { type: { in: ['SUPPLIER', 'VENDOR', 'ASSOCIATE'] }, deletedAt: null }, orderBy: { name: 'asc' } }),
+    db.party.findMany({ where: { type: { in: ['SUPPLIER', 'VENDOR', 'ASSOCIATE', 'CUSTOMER'] }, deletedAt: null }, orderBy: { name: 'asc' } }),
     db.purchaseOrder.findMany({ where: { deletedAt: null }, orderBy: { issuedAt: 'desc' } }),
     db.vendorInvoice.findMany({ where: { deletedAt: null }, orderBy: { dueDate: 'asc' } }),
     db.opportunity.findMany({ where: { deletedAt: null }, orderBy: { expectedCloseDate: 'asc' } }),
@@ -138,9 +143,13 @@ export async function getCrmData(): Promise<CrmData> {
     }),
   ]);
 
+  // Rep display-name lookup for customers' assigned associate.
+  const repName = new Map(parties.filter((p) => p.type === 'ASSOCIATE').map((p) => [p.id, p.name]));
+
   const suppliers: CrmSupplier[] = [];
   const vendors: CrmVendor[] = [];
   const associates: CrmAssociate[] = [];
+  const customers: CrmCustomer[] = [];
   const activePos: Record<string, PoCard[]> = {};
   const historyPos: Record<string, PoCard[]> = {};
   const vendorInvoices: Record<string, InvoiceCard[]> = {};
@@ -213,8 +222,17 @@ export async function getCrmData(): Promise<CrmData> {
         id: p.id, name: p.name, salesNumber: p.systemId ?? '—', role: p.role ?? '—', location: p.baseLocation ?? '—',
         commissionRate: p.commissionRate ?? '—', activeOppValue, ytdSales: p.totalSold, salesTargetAnnual: target,
       });
+    } else if (p.type === 'CUSTOMER') {
+      const openDeals = opps.filter((o) => o.customerId === p.id && o.status !== 'CLOSED_WON' && o.status !== 'CLOSED_LOST').length;
+      customers.push({
+        id: p.id, systemId: p.systemId ?? '—', name: p.name, subType: p.subType ?? '—',
+        contact: p.contactPerson ?? '—', email: p.email ?? '—', phone: p.phone ?? '—',
+        terms: p.paymentTerms ?? '—', creditLimit: p.creditLimit, priceTier: p.priceTier ?? '—',
+        rep: p.assignedAssociateId ? repName.get(p.assignedAssociateId) ?? '—' : '—',
+        openDeals, lifetimeValue: p.totalSold,
+      });
     }
   }
 
-  return { suppliers, vendors, associates, activePos, historyPos, vendorInvoices, historyInvoices, associatePipeline, associateSales, associateMetrics };
+  return { suppliers, vendors, associates, customers, activePos, historyPos, vendorInvoices, historyInvoices, associatePipeline, associateSales, associateMetrics };
 }
