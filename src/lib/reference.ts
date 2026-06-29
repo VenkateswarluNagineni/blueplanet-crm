@@ -41,3 +41,14 @@ export const CONTACT_KINDS = ['GENERAL', 'SALES', 'AP', 'DISPATCH', 'LOGISTICS']
 
 /** Login roles that can be provisioned when adding a member with portal access. */
 export const LOGIN_ROLES = ['SALES', 'MANAGER', 'VENDOR'] as const;
+
+// ---- Customer-intake reference lists (model the enterprise "New Customer" screen) ----
+
+/** Why a customer is exempt from sales tax — keeps the exemption auditable. */
+export const TAX_EXEMPT_REASONS = ['Resale', 'Government', 'Non-Profit', 'Manufacturing', 'Agricultural', 'Direct Pay', 'Other'] as const;
+
+/** How finished documents (invoices, statements) are delivered to the customer. */
+export const DOC_DELIVERY_METHODS = ['Email', 'Mail', 'Fax', 'Email & Mail', 'Customer Pickup'] as const;
+
+/** Default way orders for this customer are fulfilled. */
+export const FULFILLMENT_METHODS = ['Customer Pickup', 'Local Delivery', 'Freight / LTL', 'Will Call', 'Drop Ship'] as const;

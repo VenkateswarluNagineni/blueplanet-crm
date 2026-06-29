@@ -102,9 +102,30 @@ export async function createPartyAction(input: CreatePartyInput): Promise<Create
     insurancePolicy: d.insurancePolicy || null, licenseNumber: d.licenseNumber || null,
   } : {};
   const customerData = d.type === 'CUSTOMER' ? {
-    subType: d.subType ?? null, currency: d.currency, paymentTerms: d.paymentTerms ?? null, creditLimit: d.creditLimit ?? 0,
-    taxId: d.taxId || null, taxExempt: d.taxExempt ?? false, resaleCertNumber: d.resaleCertNumber || null,
-    priceTier: d.priceTier ?? null, source: d.source || null, assignedAssociateId: d.assignedAssociateId || null,
+    // Identity & classification
+    subType: d.subType ?? null, dba: d.dba || null, referredBy: d.referredBy || null,
+    parentCustomerId: d.parentCustomerId || null,
+    multiLocation: d.multiLocation ?? false, genericCustomer: d.genericCustomer ?? false,
+    // Extra contact channels
+    secondaryPhone: normalizePhone(d.secondaryPhone) || null, mobilePhone: normalizePhone(d.mobilePhone) || null,
+    fax: normalizePhone(d.fax) || null, accountingEmail: d.accountingEmail || null,
+    // Commercial
+    currency: d.currency, paymentTerms: d.paymentTerms ?? null, creditLimit: d.creditLimit ?? 0,
+    priceTier: d.priceTier ?? null, defaultFulfillment: d.defaultFulfillment ?? null,
+    source: d.source || null, assignedAssociateId: d.assignedAssociateId || null,
+    customerSince: d.customerSince ? new Date(d.customerSince) : null,
+    // Tax & compliance
+    taxId: d.taxId || null, taxExempt: d.taxExempt ?? false, taxExemptReason: d.taxExemptReason ?? null,
+    salesTaxCode: d.salesTaxCode || null, resaleCertNumber: d.resaleCertNumber || null,
+    exemptCertExpiry: d.exemptCertExpiry ? new Date(d.exemptCertExpiry) : null,
+    // Accounting controls
+    poRequired: d.poRequired ?? false, applyFinanceCharges: d.applyFinanceCharges ?? false,
+    docDeliveryPref: d.docDeliveryPref ?? null, gracePeriodDays: d.gracePeriodDays ?? null, holdDays: d.holdDays ?? null,
+    // Credit controls
+    creditLockExempt: d.creditLockExempt ?? false, salesAlertNote: d.salesAlertNote || null, salesLockNote: d.salesLockNote || null,
+    // Instructions
+    deliveryInstructions: d.deliveryInstructions || null, collectionNotes: d.collectionNotes || null,
+    copyNotesToOrders: d.copyNotesToOrders ?? false,
   } : {};
   const associateData = d.type === 'ASSOCIATE' ? {
     role: d.role || null, baseLocation: d.baseLocation || null, territory: d.territory || null,
@@ -131,7 +152,7 @@ export async function createPartyAction(input: CreatePartyInput): Promise<Create
       addresses: d.addresses?.length
         ? { create: d.addresses.map((a, i) => ({
             kind: a.kind, line1: a.line1, line2: a.line2 || null, city: a.city,
-            region: a.region || null, postalCode: a.postalCode || null, country: a.country,
+            region: a.region || null, postalCode: a.postalCode || null, county: a.county || null, country: a.country,
             isPrimary: i === 0,
           })) }
         : undefined,

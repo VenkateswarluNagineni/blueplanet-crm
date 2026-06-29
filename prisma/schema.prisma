@@ -106,6 +106,40 @@ model Party {
   resaleCertNumber  String?
   priceTier         String? // Standard, Preferred, Wholesale
   source            String? // how the customer was acquired
+  // Customer — identity & classification
+  dba               String? // "Doing Business As" / print name on documents
+  referredBy        String? // referral source / referring party
+  parentCustomerId  String? // corporate parent for multi-location customers
+  parentCustomer    Party?  @relation("CustomerHierarchy", fields: [parentCustomerId], references: [id])
+  childCustomers    Party[] @relation("CustomerHierarchy")
+  multiLocation     Boolean @default(false)
+  genericCustomer   Boolean @default(false) // walk-in / cash account
+  // Customer — extra contact channels
+  secondaryPhone    String?
+  mobilePhone       String?
+  fax               String?
+  accountingEmail   String? // AP/AR inbox for invoices & statements
+  // Customer — tax & compliance
+  taxExemptReason   String?
+  salesTaxCode      String? // tax jurisdiction / rate code
+  exemptCertExpiry  DateTime?
+  // Customer — sales & fulfillment
+  defaultFulfillment String?
+  customerSince      DateTime?
+  // Customer — accounting controls
+  poRequired          Boolean @default(false) // a PO is required to process sales orders
+  applyFinanceCharges Boolean @default(false)
+  docDeliveryPref     String? // preferred document delivery channel
+  gracePeriodDays     Int? // days after due before past-due lock
+  holdDays            Int? // days an order may sit on hold
+  // Customer — credit controls
+  creditLockExempt  Boolean @default(false)
+  salesAlertNote    String? // soft warning surfaced to sales
+  salesLockNote     String? // hard stop reason surfaced to sales
+  // Customer — instructions
+  deliveryInstructions String?
+  collectionNotes      String?
+  copyNotesToOrders    Boolean @default(false)
   // Associate-specific
   role              String? // Senior Sales Rep, Branch Manager, Sales Rep
   baseLocation      String? // display label e.g. "Maryland Hub"
@@ -154,6 +188,7 @@ model Address {
   city       String
   region     String? // state / province
   postalCode String?
+  county     String? // US county (used on bill-to / ship-to)
   country    String
   isPrimary  Boolean @default(false)
 

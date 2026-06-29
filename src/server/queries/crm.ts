@@ -13,9 +13,32 @@ export type CrmAssociate = {
   id: string; name: string; salesNumber: string; role: string; location: string; commissionRate: string;
   activeOppValue: number; ytdSales: number; salesTargetAnnual: number;
 };
+export type CrmAddressSummary = {
+  kind: string; line1: string; line2: string | null; city: string;
+  region: string | null; postalCode: string | null; county: string | null; country: string;
+};
 export type CrmCustomer = {
   id: string; systemId: string; name: string; subType: string; contact: string; email: string; phone: string;
   terms: string; creditLimit: number; priceTier: string; rep: string; openDeals: number; lifetimeValue: number;
+  // Identity & classification
+  dba: string | null; referredBy: string | null; parentCustomerId: string | null; parentCustomerName: string | null;
+  multiLocation: boolean; genericCustomer: boolean; status: string; website: string | null;
+  // Contact channels
+  secondaryPhone: string | null; mobilePhone: string | null; fax: string | null; accountingEmail: string | null;
+  // Commercial
+  currency: string; defaultFulfillment: string | null; source: string | null; customerSince: string | null;
+  // Tax & compliance
+  taxExempt: boolean; taxExemptReason: string | null; salesTaxCode: string | null; taxId: string | null;
+  resaleCertNumber: string | null; exemptCertExpiry: string | null;
+  // Accounting & credit controls
+  poRequired: boolean; applyFinanceCharges: boolean; docDeliveryPref: string | null;
+  gracePeriodDays: number | null; holdDays: number | null;
+  creditLockExempt: boolean; salesAlertNote: string | null; salesLockNote: string | null;
+  // Instructions
+  deliveryInstructions: string | null; collectionNotes: string | null; copyNotesToOrders: boolean; notes: string | null;
+  // Derived from primary/billing address
+  state: string | null; country: string | null; county: string | null;
+  billingAddress: CrmAddressSummary | null; shippingAddress: CrmAddressSummary | null;
 };
 
 export type PoCard = { poNumber: string; status: string; amount: number; eta: string; container: string; slabs: number };
@@ -133,7 +156,7 @@ const PO_STATUS_LABEL: Record<string, string> = {
 
 export async function getCrmData(): Promise<CrmData> {
   const [parties, pos, invoices, opps, sales] = await Promise.all([
-    db.party.findMany({ where: { type: { in: ['SUPPLIER', 'VENDOR', 'ASSOCIATE', 'CUSTOMER'] }, deletedAt: null }, orderBy: { name: 'asc' } }),
+    db.party.findMany({ where: { type: { in: ['SUPPLIER', 'VENDOR', 'ASSOCIATE', 'CUSTOMER'] }, deletedAt: null }, orderBy: { name: 'asc' }, include: { addresses: true } }),
     db.purchaseOrder.findMany({ where: { deletedAt: null }, orderBy: { issuedAt: 'desc' } }),
     db.vendorInvoice.findMany({ where: { deletedAt: null }, orderBy: { dueDate: 'asc' } }),
     db.opportunity.findMany({ where: { deletedAt: null }, orderBy: { expectedCloseDate: 'asc' } }),
@@ -145,6 +168,18 @@ export async function getCrmData(): Promise<CrmData> {
 
   // Rep display-name lookup for customers' assigned associate.
   const repName = new Map(parties.filter((p) => p.type === 'ASSOCIATE').map((p) => [p.id, p.name]));
+  // Party display-name lookup, used to resolve a customer's parent-customer name.
+  const partyNameById = new Map(parties.map((p) => [p.id, p.name]));
+
+  // Pick the address that best represents a customer: BILLING, else primary, else first.
+  const pickAddress = <T extends { kind: string }>(addrs: T[], kind: string): T | null =>
+    addrs.find((a) => a.kind === kind) ?? null;
+  const toAddrSummary = (a: {
+    kind: string; line1: string; line2: string | null; city: string;
+    region: string | null; postalCode: string | null; county: string | null; country: string;
+  } | null): CrmAddressSummary | null =>
+    a ? { kind: a.kind, line1: a.line1, line2: a.line2, city: a.city, region: a.region, postalCode: a.postalCode, county: a.county, country: a.country } : null;
+  const isoDate = (d: Date | null) => (d ? d.toISOString().split('T')[0] : null);
 
   const suppliers: CrmSupplier[] = [];
   const vendors: CrmVendor[] = [];
@@ -224,12 +259,34 @@ export async function getCrmData(): Promise<CrmData> {
       });
     } else if (p.type === 'CUSTOMER') {
       const openDeals = opps.filter((o) => o.customerId === p.id && o.status !== 'CLOSED_WON' && o.status !== 'CLOSED_LOST').length;
+      const billing = pickAddress(p.addresses, 'BILLING') ?? p.addresses.find((a) => a.isPrimary) ?? p.addresses[0] ?? null;
+      const shipping = pickAddress(p.addresses, 'SHIPPING');
       customers.push({
         id: p.id, systemId: p.systemId ?? '—', name: p.name, subType: p.subType ?? '—',
         contact: p.contactPerson ?? '—', email: p.email ?? '—', phone: p.phone ?? '—',
         terms: p.paymentTerms ?? '—', creditLimit: p.creditLimit, priceTier: p.priceTier ?? '—',
         rep: p.assignedAssociateId ? repName.get(p.assignedAssociateId) ?? '—' : '—',
         openDeals, lifetimeValue: p.totalSold,
+        // Identity & classification
+        dba: p.dba, referredBy: p.referredBy, parentCustomerId: p.parentCustomerId,
+        parentCustomerName: p.parentCustomerId ? partyNameById.get(p.parentCustomerId) ?? null : null,
+        multiLocation: p.multiLocation, genericCustomer: p.genericCustomer, status: p.status, website: p.website,
+        // Contact channels
+        secondaryPhone: p.secondaryPhone, mobilePhone: p.mobilePhone, fax: p.fax, accountingEmail: p.accountingEmail,
+        // Commercial
+        currency: p.currency, defaultFulfillment: p.defaultFulfillment, source: p.source, customerSince: isoDate(p.customerSince),
+        // Tax & compliance
+        taxExempt: p.taxExempt, taxExemptReason: p.taxExemptReason, salesTaxCode: p.salesTaxCode, taxId: p.taxId,
+        resaleCertNumber: p.resaleCertNumber, exemptCertExpiry: isoDate(p.exemptCertExpiry),
+        // Accounting & credit controls
+        poRequired: p.poRequired, applyFinanceCharges: p.applyFinanceCharges, docDeliveryPref: p.docDeliveryPref,
+        gracePeriodDays: p.gracePeriodDays, holdDays: p.holdDays,
+        creditLockExempt: p.creditLockExempt, salesAlertNote: p.salesAlertNote, salesLockNote: p.salesLockNote,
+        // Instructions
+        deliveryInstructions: p.deliveryInstructions, collectionNotes: p.collectionNotes, copyNotesToOrders: p.copyNotesToOrders, notes: p.notes,
+        // Derived from primary/billing address
+        state: billing?.region ?? null, country: billing?.country ?? null, county: billing?.county ?? null,
+        billingAddress: toAddrSummary(billing), shippingAddress: toAddrSummary(shipping),
       });
     }
   }

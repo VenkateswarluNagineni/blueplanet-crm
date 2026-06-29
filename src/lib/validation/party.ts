@@ -8,6 +8,7 @@ import {
   COUNTRIES, CURRENCIES, PAYMENT_TERMS, INCOTERMS, PARTY_STATUS, SUPPLIER_SUBTYPES,
   CUSTOMER_SUBTYPES, MATERIAL_CATEGORIES, VENDOR_SERVICE_TYPES, VENDOR_RATE_BASIS,
   CUSTOMER_PRICE_TIERS, ADDRESS_KINDS, CONTACT_KINDS, LOGIN_ROLES,
+  TAX_EXEMPT_REASONS, DOC_DELIVERY_METHODS, FULFILLMENT_METHODS,
 } from '@/lib/reference';
 
 /** Normalize a phone number toward E.164-ish: keep a single leading +, digits only. */
@@ -34,6 +35,7 @@ export const addressSchema = z.object({
   city: z.string().trim().min(1, 'City is required.').max(120),
   region: optStr,
   postalCode: z.string().trim().max(20).optional().or(z.literal('')),
+  county: optStr,
   country: z.enum(COUNTRIES),
 });
 export type AddressInput = z.input<typeof addressSchema>;
@@ -98,19 +100,53 @@ export const vendorSchema = z.object({
   loginRole: z.enum(LOGIN_ROLES).optional(),
 }).refine(reachable, reachableMsg);
 
+const dateStr = z.string().trim().optional().or(z.literal(''));
+
 export const customerSchema = z.object({
   type: z.literal('CUSTOMER'),
   ...baseShape,
   subType: z.enum(CUSTOMER_SUBTYPES).optional(),
+  // Identity & classification
+  dba: optStr,
+  referredBy: optStr,
+  parentCustomerId: optStr,
+  multiLocation: z.boolean().optional(),
+  genericCustomer: z.boolean().optional(),
+  // Extra contact channels
+  secondaryPhone: phone,
+  mobilePhone: phone,
+  fax: phone,
+  accountingEmail: email,
+  // Commercial
   currency: z.enum(CURRENCIES).default('USD'),
   paymentTerms: z.enum(PAYMENT_TERMS).optional(),
   creditLimit: money,
-  taxId: optStr,
-  taxExempt: z.boolean().optional(),
-  resaleCertNumber: optStr,
   priceTier: z.enum(CUSTOMER_PRICE_TIERS).optional(),
+  defaultFulfillment: z.enum(FULFILLMENT_METHODS).optional(),
   source: optStr,
   assignedAssociateId: optStr,
+  customerSince: dateStr,
+  // Tax & compliance
+  taxId: optStr,
+  taxExempt: z.boolean().optional(),
+  taxExemptReason: z.enum(TAX_EXEMPT_REASONS).optional(),
+  salesTaxCode: optStr,
+  resaleCertNumber: optStr,
+  exemptCertExpiry: dateStr,
+  // Accounting controls
+  poRequired: z.boolean().optional(),
+  applyFinanceCharges: z.boolean().optional(),
+  docDeliveryPref: z.enum(DOC_DELIVERY_METHODS).optional(),
+  gracePeriodDays: z.number().int().min(0).max(365).optional(),
+  holdDays: z.number().int().min(0).max(365).optional(),
+  // Credit controls
+  creditLockExempt: z.boolean().optional(),
+  salesAlertNote: optStr,
+  salesLockNote: optStr,
+  // Instructions
+  deliveryInstructions: optStr,
+  collectionNotes: optStr,
+  copyNotesToOrders: z.boolean().optional(),
 }).refine(reachable, reachableMsg);
 
 export const associateSchema = z.object({

@@ -132,12 +132,19 @@ async function main() {
   const custElite = await prisma.party.create({
     data: {
       type: 'CUSTOMER', systemId: 'C-001', name: 'Elite Kitchens LLC', subType: 'Fabricator',
-      contactPerson: 'Dana Prescott', email: 'info@elitekitchens.com', phone: '+14105550101',
+      dba: 'Elite Kitchens & Bath', referredBy: 'Antolini Italy', contactPerson: 'Dana Prescott',
+      email: 'info@elitekitchens.com', accountingEmail: 'ap@elitekitchens.com', phone: '+14105550101',
+      secondaryPhone: '+14105550102', mobilePhone: '+14105550103', fax: '+14105550104',
       website: 'https://elitekitchens.com', paymentTerms: 'Net 30', currency: 'USD', creditLimit: 150000,
-      priceTier: 'Preferred', source: 'Referral', assignedAssociateId: repJohn.id, status: 'PREFERRED', totalSold: 85000,
+      priceTier: 'Preferred', source: 'Referral', defaultFulfillment: 'Local Delivery',
+      assignedAssociateId: repJohn.id, status: 'PREFERRED', totalSold: 85000,
+      customerSince: new Date('2021-03-15'), multiLocation: true,
+      salesTaxCode: 'MD-BALT-21224', docDeliveryPref: 'Email', poRequired: true, applyFinanceCharges: true,
+      gracePeriodDays: 5, holdDays: 30, deliveryInstructions: 'Dock B, forklift on-site, deliveries 7am–3pm.',
+      collectionNotes: 'Reliable payer; AP contact Renee handles disputes.', copyNotesToOrders: true,
       addresses: { create: [
-        { kind: 'BILLING', line1: '1200 Industrial Pkwy', city: 'Baltimore', region: 'MD', postalCode: '21224', country: 'United States', isPrimary: true },
-        { kind: 'SHIPPING', line1: '88 Fabrication Way', city: 'Baltimore', region: 'MD', postalCode: '21230', country: 'United States' },
+        { kind: 'BILLING', line1: '1200 Industrial Pkwy', city: 'Baltimore', region: 'MD', postalCode: '21224', county: 'Baltimore County', country: 'United States', isPrimary: true },
+        { kind: 'SHIPPING', line1: '88 Fabrication Way', city: 'Baltimore', region: 'MD', postalCode: '21230', county: 'Baltimore County', country: 'United States' },
       ] },
       contacts: { create: [{ kind: 'AP', name: 'Renee Vasquez', title: 'AP Manager', email: 'ap@elitekitchens.com', phone: '+14105550144' }] },
     },
