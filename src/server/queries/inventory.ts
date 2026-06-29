@@ -57,9 +57,13 @@ export type InventoryRow = {
   costLanded: number | null;
   lotNumber: string | null;
   bundleId: string | null;
+  bin: string | null;
   createdAt: Date;
   presentLocationId: string;
-  product: { name: string; materialType: string; originCountry: string | null };
+  product: {
+    name: string; materialType: string; originCountry: string | null;
+    category: string | null; baseColor: string; finish: string; productGroup: string | null;
+  };
   location: { name: string };
   movements: MovementRow[];
   trace: SlabTrace;
@@ -80,7 +84,7 @@ export async function getInventoryItems(
       ...(locationIds ? { presentLocationId: { in: locationIds } } : {}),
     },
     include: {
-      product: { select: { name: true, materialType: true, originCountry: true } },
+      product: { select: { name: true, materialType: true, originCountry: true, category: true, baseColor: true, finish: true, productGroup: true } },
       location: { select: { name: true } },
       movements: { orderBy: { createdAt: 'desc' }, take: 20 },
       poLineItem: {
@@ -159,6 +163,7 @@ export async function getInventoryItems(
       costLanded: canViewCost ? i.costLanded : null,
       lotNumber: i.lotNumber,
       bundleId: i.bundleId,
+      bin: i.bin,
       createdAt: i.createdAt,
       presentLocationId: i.presentLocationId,
       product: i.product,

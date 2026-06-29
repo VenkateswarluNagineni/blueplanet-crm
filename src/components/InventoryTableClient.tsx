@@ -42,6 +42,7 @@ import {
 import { Term } from '@/components/ui/Tooltip';
 import type { InventoryRow, InventoryLocation } from '@/server/queries/inventory';
 import { ArrowLeftRight, PauseCircle, PlayCircle, Trash2, History } from 'lucide-react';
+import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 
 type InventoryItemProps = InventoryRow;
 type BulkOp = 'TRANSFER' | 'HOLD' | 'RELEASE' | 'WRITE_OFF';
@@ -59,6 +60,9 @@ const money = (n: number | null | undefined) =>
 const DEFAULT_COLUMNS = {
   slabId: true,
   product: true,
+  category: true,
+  baseColor: false,
+  bin: false,
   dimensions: true,
   sfCost: false,
   landedCost: true,
@@ -68,7 +72,7 @@ const DEFAULT_COLUMNS = {
 };
 
 const DEFAULT_COLUMN_ORDER = [
-  'slabId', 'product', 'dimensions', 'location', 'container', 'dateReceived', 'status', 'sfCost', 'landedCost'
+  'slabId', 'product', 'category', 'baseColor', 'dimensions', 'location', 'bin', 'container', 'dateReceived', 'status', 'sfCost', 'landedCost'
 ];
 
 export function InventoryTableClient({
@@ -121,11 +125,30 @@ export function InventoryTableClient({
   // Array filters
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
+  // Text + dimension refinements (reference: Lot / Bundle / Bin / Barcode / Length>: / Width>:)
+  const [refLot, setRefLot] = useState('');
+  const [refBundle, setRefBundle] = useState('');
+  const [refBin, setRefBin] = useState('');
+  const [refBarcode, setRefBarcode] = useState('');
+  const [minLength, setMinLength] = useState('');
+  const [minWidth, setMinWidth] = useState('');
 
   // Filter Sidebar states
   const [showFilters, setShowFilters] = useState(true);
+  const [showOverview, setShowOverview] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(true);
   const [isLocationExpanded, setIsLocationExpanded] = useState(true);
+  const [isMaterialExpanded, setIsMaterialExpanded] = useState(false);
+  const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
+  const [isColorExpanded, setIsColorExpanded] = useState(false);
+  const [isOriginExpanded, setIsOriginExpanded] = useState(false);
+  const [isRefineExpanded, setIsRefineExpanded] = useState(false);
+  const toggleIn = (setter: React.Dispatch<React.SetStateAction<string[]>>, v: string) =>
+    setter((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
 
   // Columns & Order
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_COLUMNS);
@@ -262,14 +285,20 @@ export function InventoryTableClient({
       const dateRec = new Date(item.createdAt).toLocaleDateString();
       
       const t = item.trace;
+      const p = item.product;
       const searchableString = `
         ${item.uniqueSlabId}
         ${item.barcode}
-        ${item.product.name}
-        ${item.product.materialType}
+        ${p.name}
+        ${p.materialType}
+        ${p.category || ''}
+        ${p.baseColor}
+        ${p.finish}
         ${item.location.name}
         ${item.status}
         ${item.lotNumber || ''}
+        ${item.bundleId || ''}
+        ${item.bin || ''}
         ${item.lengthInches}x${item.widthInches}
         ${item.totalSf}
         ${landedCostValue}
@@ -283,13 +312,28 @@ export function InventoryTableClient({
         ${fmtDate(t.poIssuedAt)} ${fmtDate(t.poEstimatedDelivery)} ${fmtDate(t.soldAt)}
       `.toLowerCase();
 
+      const contains = (field: string | null | undefined, q: string) =>
+        !q.trim() || (field ?? '').toLowerCase().includes(q.trim().toLowerCase());
+
       const matchSearch = searchableString.includes(searchTerm.toLowerCase());
       const matchLoc = selectedLocations.length === 0 || selectedLocations.includes(item.location.name);
       const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(item.status);
-      
-      return matchSearch && matchLoc && matchStatus;
+      const matchMaterial = selectedMaterials.length === 0 || selectedMaterials.includes(p.materialType);
+      const matchCategory = selectedCategories.length === 0 || selectedCategories.includes(p.category ?? '—');
+      const matchColor = selectedColors.length === 0 || selectedColors.includes(p.baseColor);
+      const matchOrigin = selectedOrigins.length === 0 || selectedOrigins.includes(p.originCountry ?? '—');
+      const matchRefine =
+        contains(item.lotNumber, refLot) && contains(item.bundleId, refBundle) &&
+        contains(item.bin, refBin) && contains(item.barcode, refBarcode);
+      const matchDims =
+        (!minLength || item.lengthInches >= Number(minLength)) &&
+        (!minWidth || item.widthInches >= Number(minWidth));
+
+      return matchSearch && matchLoc && matchStatus && matchMaterial && matchCategory &&
+        matchColor && matchOrigin && matchRefine && matchDims;
     });
-  }, [initialData, searchTerm, selectedLocations, selectedStatuses, role, settings]);
+  }, [initialData, searchTerm, selectedLocations, selectedStatuses, selectedMaterials, selectedCategories,
+      selectedColors, selectedOrigins, refLot, refBundle, refBin, refBarcode, minLength, minWidth, role, settings]);
 
   const PAGE_SIZE = 20;
   const SORT_OPTIONS: { key: typeof sortKey; label: string }[] = [
@@ -327,7 +371,29 @@ export function InventoryTableClient({
   const currentPage = Math.min(page, totalPages);
   const pagedData = sortedData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [searchTerm, selectedLocations, selectedStatuses, sortKey, sortDir]);
+  useEffect(() => { setPage(1); }, [searchTerm, selectedLocations, selectedStatuses, selectedMaterials,
+    selectedCategories, selectedColors, selectedOrigins, refLot, refBundle, refBin, refBarcode, minLength, minWidth, sortKey, sortDir]);
+
+  // Facet options + counts derived from the full dataset (stable overview).
+  const countBy = (fn: (i: InventoryItemProps) => string) => {
+    const m = new Map<string, number>();
+    for (const i of initialData) { const k = fn(i); m.set(k, (m.get(k) ?? 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const materialCounts = useMemo(() => countBy((i) => i.product.materialType), [initialData]);
+  const categoryCounts = useMemo(() => countBy((i) => i.product.category ?? '—'), [initialData]);
+  const colorCounts = useMemo(() => countBy((i) => i.product.baseColor), [initialData]);
+  const originCounts = useMemo(() => countBy((i) => i.product.originCountry ?? '—'), [initialData]);
+  const statusCounts = useMemo(() => countBy((i) => i.status), [initialData]);
+  const locationCounts = useMemo(() => countBy((i) => i.location.name), [initialData]);
+  const refineCount =
+    selectedMaterials.length + selectedCategories.length + selectedColors.length + selectedOrigins.length +
+    (refLot ? 1 : 0) + (refBundle ? 1 : 0) + (refBin ? 1 : 0) + (refBarcode ? 1 : 0) + (minLength ? 1 : 0) + (minWidth ? 1 : 0);
+  const clearAllFilters = () => {
+    setSelectedLocations([]); setSelectedStatuses([]); setSelectedMaterials([]); setSelectedCategories([]);
+    setSelectedColors([]); setSelectedOrigins([]); setRefLot(''); setRefBundle(''); setRefBin(''); setRefBarcode('');
+    setMinLength(''); setMinWidth(''); setSearchTerm('');
+  };
 
   const toggleColumn = (key: keyof typeof visibleColumns) => {
     setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
@@ -389,6 +455,9 @@ export function InventoryTableClient({
     switch (colKey) {
       case 'slabId': title = "Unique Slab Identifier. Format: BP-[Location]-[Year]-[Material]-[Sequence]"; label = "Slab ID"; break;
       case 'product': title = "The master catalog material name"; label = "Product"; break;
+      case 'category': title = "Catalog category"; label = "Category"; break;
+      case 'baseColor': title = "Base color"; label = "Color"; break;
+      case 'bin': title = "Warehouse bin / rack location"; label = "Bin"; break;
       case 'dimensions': title = "Physical length and width in inches"; label = "Dimensions"; break;
       case 'location': title = "Warehouse location"; label = "Location"; break;
       case 'container': title = "Ocean container tracking number"; label = "Container"; break;
@@ -434,6 +503,9 @@ export function InventoryTableClient({
         </td>
       );
       case 'product': return <td key={colKey} className="px-4 py-3 border-b border-[#454446]">{item.product.name}</td>;
+      case 'category': return <td key={colKey} className="px-4 py-3 border-b border-[#454446] text-[#b8b6b9]">{item.product.category ?? '—'}</td>;
+      case 'baseColor': return <td key={colKey} className="px-4 py-3 border-b border-[#454446] text-[#b8b6b9]">{item.product.baseColor || '—'}</td>;
+      case 'bin': return <td key={colKey} className="px-4 py-3 border-b border-[#454446] text-[#b8b6b9]">{item.bin || '—'}</td>;
       case 'dimensions': return (
         <td key={colKey} className="px-4 py-3 border-b border-[#454446]">
           {isEditing ? (
@@ -527,12 +599,18 @@ export function InventoryTableClient({
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-2 py-1 rounded transition-colors ${showFilters ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
             >
-              <ListFilter size={14} /> {showFilters ? 'Hide Filters' : 'Show Filters'} 
-              {(selectedLocations.length > 0 || selectedStatuses.length > 0) && (
+              <ListFilter size={14} /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+              {(selectedStatuses.length + selectedLocations.length + refineCount) > 0 && (
                 <span className="bg-[#e3c16c] text-black text-[10px] px-1 rounded-sm ml-1 font-medium">
-                  {selectedLocations.length + selectedStatuses.length}
+                  {selectedStatuses.length + selectedLocations.length + refineCount}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setShowOverview(!showOverview)}
+              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors ${showOverview ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
+            >
+              <Grid size={14} /> Overview
             </button>
 
             <div className="ml-4 flex items-center bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-1.5 focus-within:border-[#92b0ce] transition-colors w-64">
@@ -653,8 +731,8 @@ export function InventoryTableClient({
                   <div className="p-2 space-y-1 bg-[#2b2a2c]">
                     {availableLocations.map(loc => (
                       <label key={loc} className="flex items-center gap-3 px-2 py-1.5 hover:bg-[#333234] rounded cursor-pointer group/label">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={selectedLocations.includes(loc)}
                           onChange={() => toggleLocation(loc)}
                           className="w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] text-[#e3c16c] focus:ring-[#e3c16c] focus:ring-offset-[#2b2a2c]"
@@ -666,14 +744,47 @@ export function InventoryTableClient({
                 )}
               </div>
 
+              <SidebarFacet title="Material Type" expanded={isMaterialExpanded} onToggle={() => setIsMaterialExpanded(!isMaterialExpanded)} options={materialCounts} selected={selectedMaterials} onSelect={(v) => toggleIn(setSelectedMaterials, v)} />
+              <SidebarFacet title="Category" expanded={isCategoryExpanded} onToggle={() => setIsCategoryExpanded(!isCategoryExpanded)} options={categoryCounts} selected={selectedCategories} onSelect={(v) => toggleIn(setSelectedCategories, v)} />
+              <SidebarFacet title="Base Color" expanded={isColorExpanded} onToggle={() => setIsColorExpanded(!isColorExpanded)} options={colorCounts} selected={selectedColors} onSelect={(v) => toggleIn(setSelectedColors, v)} />
+              <SidebarFacet title="Origin" expanded={isOriginExpanded} onToggle={() => setIsOriginExpanded(!isOriginExpanded)} options={originCounts} selected={selectedOrigins} onSelect={(v) => toggleIn(setSelectedOrigins, v)} />
+
+              {/* Refine: free-text identifiers + dimension thresholds */}
+              <div className="border border-[#454446] rounded-md overflow-hidden shrink-0">
+                <div onClick={() => setIsRefineExpanded(!isRefineExpanded)} className="bg-[#333234] px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-[#454446] transition-colors">
+                  <span className="text-[13px] font-medium text-white">Refine</span>
+                  {isRefineExpanded ? <ChevronUp size={14} className="text-[#b8b6b9]" /> : <ChevronDown size={14} className="text-[#b8b6b9]" />}
+                </div>
+                {isRefineExpanded && (
+                  <div className="p-2.5 space-y-2 bg-[#2b2a2c]">
+                    {([['Lot', refLot, setRefLot], ['Bundle', refBundle, setRefBundle], ['Bin', refBin, setRefBin], ['Barcode', refBarcode, setRefBarcode]] as const).map(([label, val, set]) => (
+                      <div key={label}>
+                        <label className="text-[11px] text-[#b8b6b9] block mb-0.5">{label}</label>
+                        <input value={val} onChange={(e) => set(e.target.value)} placeholder={`Filter by ${label.toLowerCase()}…`} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-2 py-1.5 text-[12px] text-white outline-none focus:border-[#92b0ce]" />
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] text-[#b8b6b9] block mb-0.5">Length &gt;=</label>
+                        <input type="number" min="0" value={minLength} onChange={(e) => setMinLength(e.target.value)} placeholder="in" className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-2 py-1.5 text-[12px] text-white outline-none focus:border-[#92b0ce]" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-[#b8b6b9] block mb-0.5">Width &gt;=</label>
+                        <input type="number" min="0" value={minWidth} onChange={(e) => setMinWidth(e.target.value)} placeholder="in" className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-2 py-1.5 text-[12px] text-white outline-none focus:border-[#92b0ce]" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
 
             <div className="p-3 border-t border-[#454446] flex justify-between items-center text-[13px] shrink-0">
-              <button 
-                onClick={() => { setSelectedLocations([]); setSelectedStatuses([]); setSearchTerm(''); }}
+              <button
+                onClick={clearAllFilters}
                 className="text-[#b8b6b9] hover:text-white"
               >
-                Clear all {selectedLocations.length + selectedStatuses.length > 0 && <span className="bg-[#454446] text-white px-1.5 rounded ml-1">{selectedLocations.length + selectedStatuses.length}</span>}
+                Clear all {(selectedLocations.length + selectedStatuses.length + refineCount) > 0 && <span className="bg-[#454446] text-white px-1.5 rounded ml-1">{selectedLocations.length + selectedStatuses.length + refineCount}</span>}
               </button>
             </div>
           </div>
@@ -681,6 +792,30 @@ export function InventoryTableClient({
 
         {/* Right Pane (Table Area) */}
         <div className="flex-1 overflow-auto bg-[#2b2a2c] relative">
+          {showOverview && (
+            <div className="p-4 border-b border-[#454446] bg-[#1c1c1c]">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                <FacetCard title="Status">
+                  {statusCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedStatuses.includes(v)} onClick={() => toggleIn(setSelectedStatuses, v)} />)}
+                </FacetCard>
+                <FacetCard title="Material Type">
+                  {materialCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedMaterials.includes(v)} onClick={() => toggleIn(setSelectedMaterials, v)} />)}
+                </FacetCard>
+                <FacetCard title="Category">
+                  {categoryCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedCategories.includes(v)} onClick={() => toggleIn(setSelectedCategories, v)} />)}
+                </FacetCard>
+                <FacetCard title="Origin">
+                  {originCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedOrigins.includes(v)} onClick={() => toggleIn(setSelectedOrigins, v)} />)}
+                </FacetCard>
+                <FacetCard title="Location">
+                  {locationCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedLocations.includes(v)} onClick={() => toggleIn(setSelectedLocations, v)} />)}
+                </FacetCard>
+                <FacetCard title="Base Color">
+                  {colorCounts.map(([v, n]) => <FacetRow key={v} label={v} count={n} active={selectedColors.includes(v)} onClick={() => toggleIn(setSelectedColors, v)} />)}
+                </FacetCard>
+              </div>
+            </div>
+          )}
           <table className="w-full text-left text-[13px] text-[#d9d8d9] whitespace-nowrap border-collapse min-w-max">
             <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
               <tr>
@@ -1178,6 +1313,38 @@ export function InventoryTableClient({
         </>
       )}
 
+    </div>
+  );
+}
+
+/** A collapsible multi-select facet group for the inventory filter sidebar (with per-value counts). */
+function SidebarFacet({ title, expanded, onToggle, options, selected, onSelect }: {
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  options: [string, number][];
+  selected: string[];
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <div className="border border-[#454446] rounded-md overflow-hidden shrink-0">
+      <div onClick={onToggle} className="bg-[#333234] px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-[#454446] transition-colors">
+        <span className="text-[13px] font-medium text-white">{title}{selected.length > 0 && <span className="ml-2 text-[11px] text-[#e3c16c]">({selected.length})</span>}</span>
+        {expanded ? <ChevronUp size={14} className="text-[#b8b6b9]" /> : <ChevronDown size={14} className="text-[#b8b6b9]" />}
+      </div>
+      {expanded && (
+        <div className="p-2 space-y-1 bg-[#2b2a2c] max-h-52 overflow-y-auto">
+          {options.length === 0 ? (
+            <p className="text-[11px] text-[#b8b6b9] italic px-2 py-1">No values</p>
+          ) : options.map(([value, count]) => (
+            <label key={value} className="flex items-center gap-3 px-2 py-1.5 hover:bg-[#333234] rounded cursor-pointer group/label">
+              <input type="checkbox" checked={selected.includes(value)} onChange={() => onSelect(value)} className="w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] accent-[#e3c16c]" />
+              <span className="text-[13px] text-[#d9d8d9] group-hover/label:text-white truncate">{value}</span>
+              <span className="ml-auto text-[11px] text-[#b8b6b9]">({count})</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
