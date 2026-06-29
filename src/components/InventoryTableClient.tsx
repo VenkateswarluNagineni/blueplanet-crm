@@ -31,14 +31,20 @@ import {
   Receipt,
   Package,
 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useTransition } from 'react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/components/ui/Toast';
-import { submitMeasurementOverrideAction } from '@/server/actions/inventory';
+import {
+  submitMeasurementOverrideAction,
+  transferSlabsAction, holdSlabsAction, releaseSlabsAction, writeOffSlabsAction,
+} from '@/server/actions/inventory';
 import { Term } from '@/components/ui/Tooltip';
-import type { InventoryRow } from '@/server/queries/inventory';
+import type { InventoryRow, InventoryLocation } from '@/server/queries/inventory';
+import { ArrowLeftRight, PauseCircle, PlayCircle, Trash2, History } from 'lucide-react';
 
 type InventoryItemProps = InventoryRow;
+type BulkOp = 'TRANSFER' | 'HOLD' | 'RELEASE' | 'WRITE_OFF';
 
 const RESTRICTED = (
   <span className="text-[#b8b6b9] text-[10px] bg-[#333234] px-1.5 py-0.5 rounded uppercase tracking-wider">Restricted</span>
@@ -68,12 +74,43 @@ const DEFAULT_COLUMN_ORDER = [
 export function InventoryTableClient({
   initialData,
   availableLocations,
+  locations,
 }: {
   initialData: InventoryItemProps[];
   availableLocations: string[];
+  locations: InventoryLocation[];
 }) {
   const { role, settings } = useRole();
   const toast = useToast();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  // Bulk selection + operations. MANAGER isn't a client-side role here, so the UI
+  // gate is ADMIN; the server action additionally permits MANAGER for forward-compat.
+  const canOperate = role === 'ADMIN';
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkOp, setBulkOp] = useState<BulkOp | null>(null);
+  const [bulkReason, setBulkReason] = useState('');
+  const [bulkDestId, setBulkDestId] = useState('');
+  const toggleRow = (id: string) =>
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const clearSelection = () => setSelectedIds(new Set());
+  const openBulk = (op: BulkOp) => { setBulkOp(op); setBulkReason(''); setBulkDestId(locations[0]?.id ?? ''); };
+  const runBulk = () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    startTransition(async () => {
+      let res: { ok: true; affected: number; skipped: number } | { ok: false; error: string };
+      if (bulkOp === 'TRANSFER') res = await transferSlabsAction(ids, bulkDestId, bulkReason || undefined);
+      else if (bulkOp === 'HOLD') res = await holdSlabsAction(ids, bulkReason);
+      else if (bulkOp === 'RELEASE') res = await releaseSlabsAction(ids);
+      else res = await writeOffSlabsAction(ids, bulkReason);
+      if (!res.ok) { toast(res.error, 'error'); return; }
+      const skipped = res.skipped ? `, ${res.skipped} skipped` : '';
+      toast(`${res.affected} slab${res.affected === 1 ? '' : 's'} updated${skipped}.`, 'success');
+      setBulkOp(null); clearSelection(); router.refresh();
+    });
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<'none' | 'slabId' | 'product' | 'totalSf' | 'landedCost' | 'createdAt' | 'status'>('none');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -648,7 +685,18 @@ export function InventoryTableClient({
             <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
               <tr>
                 <th className="px-4 py-3 w-10 border-b border-[#454446]">
-                  <input type="checkbox" className="w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] text-[#e3c16c] focus:ring-[#e3c16c]" />
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on this page"
+                    className="w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] accent-[#e3c16c]"
+                    checked={pagedData.length > 0 && pagedData.every((i) => selectedIds.has(i.id))}
+                    onChange={(e) => setSelectedIds((prev) => {
+                      const n = new Set(prev);
+                      if (e.target.checked) pagedData.forEach((i) => n.add(i.id));
+                      else pagedData.forEach((i) => n.delete(i.id));
+                      return n;
+                    })}
+                  />
                 </th>
                 
                 {/* Dynamically Rendered Draggable Columns */}
@@ -699,9 +747,15 @@ export function InventoryTableClient({
                   const isPendingApproval = pendingApprovals.includes(item.uniqueSlabId);
                   
                   return (
-                    <tr key={item.id} className={`hover:bg-[#333234] transition-colors group ${isEditing ? 'bg-[#333234]' : ''}`}>
+                    <tr key={item.id} className={`hover:bg-[#333234] transition-colors group ${isEditing ? 'bg-[#333234]' : ''} ${selectedIds.has(item.id) ? 'bg-[#333234]' : ''}`}>
                       <td className="px-4 py-3 border-b border-[#454446]">
-                        <input type="checkbox" className="w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] text-[#e3c16c] focus:ring-[#e3c16c] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${item.uniqueSlabId}`}
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleRow(item.id)}
+                          className={`w-4 h-4 rounded-sm bg-[#1c1c1c] border-[#454446] accent-[#e3c16c] transition-opacity ${selectedIds.has(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        />
                       </td>
                       
                       {/* Render Table Data according to columnOrder */}
@@ -784,6 +838,63 @@ export function InventoryTableClient({
         </div>
 
       </div>
+
+      {/* Floating bulk-action bar (ADMIN/MANAGER) */}
+      {canOperate && selectedIds.size > 0 && !bulkOp && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-2xl px-3 py-2">
+          <span className="text-[13px] text-white px-2 font-medium">{selectedIds.size} selected</span>
+          <div className="w-px h-5 bg-[#454446] mx-1" />
+          <button onClick={() => openBulk('TRANSFER')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[#333234] px-2.5 py-1.5 rounded-md transition-colors"><ArrowLeftRight size={14} className="text-[#92b0ce]" /> Transfer</button>
+          <button onClick={() => openBulk('HOLD')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[#333234] px-2.5 py-1.5 rounded-md transition-colors"><PauseCircle size={14} className="text-[#e3c16c]" /> Hold</button>
+          <button onClick={() => openBulk('RELEASE')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[#333234] px-2.5 py-1.5 rounded-md transition-colors"><PlayCircle size={14} className="text-[#10b981]" /> Release</button>
+          <button onClick={() => openBulk('WRITE_OFF')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[#333234] px-2.5 py-1.5 rounded-md transition-colors"><Trash2 size={14} className="text-red-400" /> Write-off</button>
+          <div className="w-px h-5 bg-[#454446] mx-1" />
+          <button onClick={clearSelection} aria-label="Clear selection" className="text-[#b8b6b9] hover:text-white p-1 rounded hover:bg-[#333234]"><X size={16} /></button>
+        </div>
+      )}
+
+      {/* Bulk operation modal */}
+      {bulkOp && (() => {
+        const count = selectedIds.size;
+        const TITLES: Record<BulkOp, string> = { TRANSFER: 'Transfer slabs', HOLD: 'Place hold', RELEASE: 'Release hold', WRITE_OFF: 'Write off slabs' };
+        const needsReason = bulkOp === 'HOLD' || bulkOp === 'WRITE_OFF';
+        const disabled = isPending || (bulkOp === 'TRANSFER' && !bulkDestId) || (needsReason && !bulkReason.trim());
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-[60]" onClick={() => setBulkOp(null)} />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-2xl z-[61] p-6">
+              <h3 className="text-[15px] font-medium text-white mb-1">{TITLES[bulkOp]}</h3>
+              <p className="text-[13px] text-[#b8b6b9] mb-4">{count} slab{count === 1 ? '' : 's'} selected. Only eligible slabs are affected.</p>
+              {bulkOp === 'TRANSFER' && (
+                <div className="space-y-3 mb-5">
+                  <div>
+                    <label className="text-[12px] text-[#b8b6b9] block mb-1">Destination warehouse</label>
+                    <select value={bulkDestId} onChange={(e) => setBulkDestId(e.target.value)} className="w-full bg-[#2b2a2c] border border-[#454446] rounded px-2 py-2 text-white text-[13px] outline-none focus:border-[#92b0ce]">
+                      {locations.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[12px] text-[#b8b6b9] block mb-1">Note (optional)</label>
+                    <input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="e.g. Rebalancing showroom stock" className="w-full bg-[#2b2a2c] border border-[#454446] rounded px-2 py-2 text-white text-[13px] outline-none focus:border-[#92b0ce]" />
+                  </div>
+                </div>
+              )}
+              {needsReason && (
+                <div className="mb-5">
+                  <label className="text-[12px] text-[#b8b6b9] block mb-1">Reason <span className="text-red-400">*</span></label>
+                  <input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkOp === 'HOLD' ? 'e.g. Reserved for quote #1234' : 'e.g. Damaged in handling'} className="w-full bg-[#2b2a2c] border border-[#454446] rounded px-2 py-2 text-white text-[13px] outline-none focus:border-[#92b0ce]" />
+                  {bulkOp === 'WRITE_OFF' && <p className="text-[11px] text-red-300/80 mt-2">Write-off is permanent — slabs are removed from sellable inventory.</p>}
+                </div>
+              )}
+              {bulkOp === 'RELEASE' && <p className="text-[13px] text-[#d9d8d9] mb-5">Return selected on-hold slabs to AVAILABLE.</p>}
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setBulkOp(null)} className="px-4 py-2 text-[13px] font-medium text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
+                <button onClick={runBulk} disabled={disabled} className={`px-4 py-2 text-[13px] font-medium rounded-md transition-colors disabled:opacity-50 ${bulkOp === 'WRITE_OFF' ? 'bg-red-500 hover:bg-red-400 text-white' : 'bg-[#e3c16c] hover:bg-[#d2ac55] text-black'}`}>{isPending ? 'Working…' : 'Confirm'}</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Floating Approval Toast Notification */}
       {showApprovalModal && (
@@ -869,6 +980,43 @@ export function InventoryTableClient({
 
             {/* Drawer Content (Timeline) — real lineage from the database */}
             <div className="flex-1 overflow-y-auto p-6">
+              {/* Operational movement history (transfers / holds / write-offs) */}
+              {(selectedPassportSlab.holdReason || selectedPassportSlab.movements.length > 0) && (
+                <div className="mb-8">
+                  <h3 className="text-[12px] uppercase tracking-wider text-[#b8b6b9] font-medium flex items-center gap-2 mb-3"><History size={13} /> Movement History</h3>
+                  {selectedPassportSlab.status === 'ON_HOLD' && selectedPassportSlab.holdReason && (
+                    <div className="mb-3 bg-[#e3c16c]/10 border border-[#e3c16c]/30 text-[#e3c16c] text-[12px] px-3 py-2 rounded">On hold: {selectedPassportSlab.holdReason}</div>
+                  )}
+                  {selectedPassportSlab.movements.length === 0 ? (
+                    <p className="text-[12px] text-[#b8b6b9] italic">No operational movements recorded.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedPassportSlab.movements.map((m) => {
+                        const tone = m.type === 'TRANSFER' ? 'text-[#92b0ce] border-[#92b0ce]/30 bg-[#92b0ce]/10'
+                          : m.type === 'HOLD' ? 'text-[#e3c16c] border-[#e3c16c]/30 bg-[#e3c16c]/10'
+                          : m.type === 'RELEASE' ? 'text-[#10b981] border-[#10b981]/30 bg-[#10b981]/10'
+                          : 'text-red-400 border-red-500/30 bg-red-500/10';
+                        const desc = m.type === 'TRANSFER' ? `Moved ${m.fromLocation ?? '—'} → ${m.toLocation ?? '—'}`
+                          : m.type === 'HOLD' ? 'Placed on hold'
+                          : m.type === 'RELEASE' ? 'Released to available'
+                          : 'Written off';
+                        return (
+                          <div key={m.id} className="flex items-start gap-3 bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${tone}`}>{m.type.replace('_', '-')}</span>
+                            <div className="flex-1 text-[12px] min-w-0">
+                              <p className="text-white">{desc}</p>
+                              {m.reason && <p className="text-[#b8b6b9] truncate" title={m.reason}>{m.reason}</p>}
+                              {m.note && <p className="text-[#b8b6b9] truncate" title={m.note}>{m.note}</p>}
+                              {m.byRole && <p className="text-[11px] text-[#7d7c7f]">by {m.byRole}</p>}
+                            </div>
+                            <span className="text-[11px] text-[#b8b6b9] whitespace-nowrap">{fmtDate(m.createdAt)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               {(() => {
                 const t = selectedPassportSlab.trace;
                 const hasPO = !!t.poNumber;

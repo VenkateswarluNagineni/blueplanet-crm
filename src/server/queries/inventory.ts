@@ -30,11 +30,25 @@ export type SlabTrace = {
   soldPricePerSf: number | null; // cost-gated
 };
 
+export type MovementRow = {
+  id: string;
+  type: string; // TRANSFER, HOLD, RELEASE, WRITE_OFF
+  fromLocation: string | null;
+  toLocation: string | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  reason: string | null;
+  note: string | null;
+  byRole: string | null;
+  createdAt: string; // ISO
+};
+
 export type InventoryRow = {
   id: string;
   uniqueSlabId: string;
   barcode: string;
   status: string;
+  holdReason: string | null;
   lengthInches: number;
   widthInches: number;
   totalSf: number;
@@ -44,10 +58,14 @@ export type InventoryRow = {
   lotNumber: string | null;
   bundleId: string | null;
   createdAt: Date;
+  presentLocationId: string;
   product: { name: string; materialType: string; originCountry: string | null };
   location: { name: string };
+  movements: MovementRow[];
   trace: SlabTrace;
 };
+
+export type InventoryLocation = { id: string; name: string; code: string };
 
 const VENDOR_COVERED = 'SUPPLIER_COVERED';
 
@@ -64,6 +82,7 @@ export async function getInventoryItems(
     include: {
       product: { select: { name: true, materialType: true, originCountry: true } },
       location: { select: { name: true } },
+      movements: { orderBy: { createdAt: 'desc' }, take: 20 },
       poLineItem: {
         include: { purchaseOrder: { include: { supplier: { select: { name: true, originCountry: true } } } } },
       },
@@ -80,6 +99,10 @@ export async function getInventoryItems(
     },
     orderBy: { uniqueSlabId: 'asc' },
   });
+
+  // Location id → name map for resolving movement from/to locations in one round-trip.
+  const locs = await db.location.findMany({ where: { deletedAt: null }, select: { id: true, name: true } });
+  const locName = new Map(locs.map((l) => [l.id, l.name]));
 
   // Resolve logistics-vendor ids (ocean/customs/inland are stored as Party ids
   // or the SUPPLIER_COVERED sentinel) to display names in one round-trip.
@@ -127,6 +150,7 @@ export async function getInventoryItems(
       uniqueSlabId: i.uniqueSlabId,
       barcode: i.barcode,
       status: i.status,
+      holdReason: i.holdReason,
       lengthInches: i.lengthInches,
       widthInches: i.widthInches,
       totalSf: i.totalSf,
@@ -136,18 +160,26 @@ export async function getInventoryItems(
       lotNumber: i.lotNumber,
       bundleId: i.bundleId,
       createdAt: i.createdAt,
+      presentLocationId: i.presentLocationId,
       product: i.product,
       location: i.location,
+      movements: i.movements.map((m) => ({
+        id: m.id, type: m.type,
+        fromLocation: m.fromLocationId ? locName.get(m.fromLocationId) ?? null : null,
+        toLocation: m.toLocationId ? locName.get(m.toLocationId) ?? null : null,
+        fromStatus: m.fromStatus, toStatus: m.toStatus, reason: m.reason, note: m.note,
+        byRole: m.byRole, createdAt: m.createdAt.toISOString(),
+      })),
       trace,
     };
   });
 }
 
-export async function getInventoryLocations(): Promise<string[]> {
+export async function getInventoryLocations(): Promise<InventoryLocation[]> {
   const locs = await db.location.findMany({
     where: { deletedAt: null },
-    select: { name: true },
+    select: { id: true, name: true, code: true },
     orderBy: { name: 'asc' },
   });
-  return locs.map((l) => l.name);
+  return locs;
 }

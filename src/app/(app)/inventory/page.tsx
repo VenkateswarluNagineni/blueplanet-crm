@@ -21,5 +21,11 @@ export default async function InventoryPage() {
     getInventoryLocations(),
   ]);
 
-  return <InventoryTableClient initialData={items} availableLocations={locations} />;
+  return (
+    <InventoryTableClient
+      initialData={items}
+      availableLocations={locations.map((l) => l.name)}
+      locations={locations}
+    />
+  );
 }

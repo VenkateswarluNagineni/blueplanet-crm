@@ -270,9 +270,13 @@ model InventoryItem {
   bin    String?
   status String // ORDERED, RECEIVED, AVAILABLE, ON_HOLD, COMMITTED, SOLD, WRITTEN_OFF
 
+  holdReason String? // why the slab is currently ON_HOLD (cleared on release)
+
   // Grouping
   lotNumber String?
   bundleId  String?
+
+  movements StockMovement[]
 
   // Dimensions
   lengthInches Float
@@ -298,6 +302,25 @@ model InventoryItem {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+}
+
+// Audit trail of every operational change to a slab (transfer / hold / release / write-off).
+model StockMovement {
+  id              String        @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  type            String // TRANSFER, HOLD, RELEASE, WRITE_OFF
+  fromLocationId  String?
+  toLocationId    String?
+  fromStatus      String?
+  toStatus        String?
+  reason          String?
+  note            String?
+  byUserId        String?
+  byRole          String?
+  createdAt       DateTime      @default(now())
+
+  @@index([inventoryItemId])
 }
 
 // ---------------------------------------------------------
