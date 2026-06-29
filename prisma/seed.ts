@@ -27,6 +27,7 @@ async function wipe() {
   await prisma.opportunity.deleteMany()
   await prisma.vendorInvoice.deleteMany()
   await prisma.eventOutbox.deleteMany()
+  await prisma.stockMovement.deleteMany() // must precede inventoryItem (FK is ON DELETE RESTRICT)
   await prisma.inventoryItem.deleteMany()
   await prisma.product.deleteMany()
   await prisma.party.deleteMany()
