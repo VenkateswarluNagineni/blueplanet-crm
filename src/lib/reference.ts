@@ -66,3 +66,6 @@ export const PRODUCT_CATEGORIES = [
 
 /** Commercial grouping that drives positioning and price expectations. */
 export const PRODUCT_GROUPS = ['Exotics', 'Premium', 'Semi-precious', 'Standard'] as const;
+
+/** Physical kind of a company location/warehouse. */
+export const LOCATION_TYPES = ['Warehouse', 'Showroom', 'Consignment', 'Office'] as const;

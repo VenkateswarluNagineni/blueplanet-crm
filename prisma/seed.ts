@@ -45,10 +45,22 @@ async function main() {
   const company = await prisma.company.create({ data: { name: 'BluePlanet Inc.' } })
   await prisma.companySetting.create({ data: { companyId: company.id } })
 
-  // 2. Locations
-  const locNJ = await prisma.location.create({ data: { companyId: company.id, name: 'New Jersey HQ', code: 'BP-NJ' } })
-  const locMD = await prisma.location.create({ data: { companyId: company.id, name: 'Maryland Hub', code: 'BP-MD' } })
-  const locMA = await prisma.location.create({ data: { companyId: company.id, name: 'Boston HQ', code: 'BP-MA' } })
+  // 2. Locations (with address + contact details)
+  const locNJ = await prisma.location.create({ data: {
+    companyId: company.id, name: 'Blue Planet Inc - New Jersey', code: 'BP-NJ', type: 'Warehouse',
+    line1: '876 N Lenola Road', line2: 'Suite #1', city: 'Moorestown', region: 'NJ', postalCode: '08057', country: 'United States',
+    phone: '301-595-7006', fax: '856-663-5401', defaultPriceLevel: 'Retail-Retail',
+  } })
+  const locMD = await prisma.location.create({ data: {
+    companyId: company.id, name: 'Blue Planet Inc - Maryland', code: 'BP-MD', type: 'Warehouse',
+    line1: '6701 Ammendale Rd', city: 'Beltsville', region: 'MD', postalCode: '20705', country: 'United States',
+    phone: '301-595-7006', fax: '301-595-7008', defaultPriceLevel: 'Retail-Retail',
+  } })
+  const locMA = await prisma.location.create({ data: {
+    companyId: company.id, name: 'Blue Planet Inc - Boston', code: 'BP-MA', type: 'Warehouse',
+    line1: '135 Oak Hill Way', city: 'Brockton', region: 'MA', postalCode: '02301', country: 'United States',
+    phone: '508-857-2440', fax: '508-857-2445', defaultPriceLevel: 'Retail-Retail',
+  } })
 
   // 3. Users (auth). Each login is linked to the Party it acts as further below.
   const users = [

@@ -27,6 +27,19 @@ model Location {
   company        Company         @relation(fields: [companyId], references: [id])
   name           String
   code           String // e.g., BP-NJ
+  type           String          @default("Warehouse") // Warehouse, Showroom, Consignment, Office
+
+  // Address + contact
+  line1            String?
+  line2            String?
+  city             String?
+  region           String?
+  postalCode       String?
+  country          String?
+  phone            String?
+  fax              String?
+  defaultPriceLevel String?
+
   inventoryItems InventoryItem[]
   userLocations  UserLocation[]
   createdAt      DateTime        @default(now())
