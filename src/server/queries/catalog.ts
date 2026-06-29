@@ -6,7 +6,14 @@ export type CatalogSlab = { id: string; uniqueSlabId: string; totalSf: number };
 export type CatalogProduct = {
   id: string;
   name: string;
+  sku: string;
   materialType: string;
+  productType: string;
+  category: string | null;
+  subCategory: string | null;
+  productGroup: string | null;
+  altName: string | null;
+  genericSku: string | null;
   finish: string;
   baseColor: string;
   thickness: string | null;
@@ -64,7 +71,14 @@ export async function getCatalog(
     return {
       id: p.id,
       name: p.name,
+      sku: p.sku,
       materialType: p.materialType,
+      productType: p.productType,
+      category: p.category,
+      subCategory: p.subCategory,
+      productGroup: p.productGroup,
+      altName: p.altName,
+      genericSku: p.genericSku,
       finish: p.finish,
       baseColor: p.baseColor,
       thickness: p.thickness,

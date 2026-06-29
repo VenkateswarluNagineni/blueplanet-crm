@@ -52,3 +52,17 @@ export const DOC_DELIVERY_METHODS = ['Email', 'Mail', 'Fax', 'Email & Mail', 'Cu
 
 /** Default way orders for this customer are fulfilled. */
 export const FULFILLMENT_METHODS = ['Customer Pickup', 'Local Delivery', 'Freight / LTL', 'Will Call', 'Drop Ship'] as const;
+
+// ---- Product-catalog hierarchy (model the enterprise "Products Master List") ----
+
+/** Physical product form — the top-level discriminator in the master list. */
+export const PRODUCT_TYPES = ['SLAB', 'SINK', 'TILE', 'PADS', 'A-FRAME'] as const;
+
+/** Material/product categories used to pivot the catalog (broader than materialType). */
+export const PRODUCT_CATEGORIES = [
+  'GRANITE', 'MARBLE', 'QUARTZITE', 'QUARTZ', 'TRAVERTINE', 'ONYX', 'LIMESTONE',
+  'SOAPSTONE', 'DOLOMITE', 'SINKS', 'CERAMIC', 'TILES', 'POLISHING PADS', 'PRINTED QUARTZ',
+] as const;
+
+/** Commercial grouping that drives positioning and price expectations. */
+export const PRODUCT_GROUPS = ['Exotics', 'Premium', 'Semi-precious', 'Standard'] as const;

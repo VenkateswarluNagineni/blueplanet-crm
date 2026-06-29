@@ -168,13 +168,17 @@ async function main() {
     },
   })
 
-  // 5. Products (catalog) with pricing + approved suppliers
+  // 5. Products (catalog) with pricing + approved suppliers + master-list hierarchy
   const products = [
-    { sku: 'MBL-CAL-001', name: 'Calacatta Gold', materialType: 'Marble', finish: 'Polished', baseColor: 'White', thickness: '2cm', originCountry: 'Italy', retailPricePerSf: 125, minPricePerSf: 105, avgCostPerSf: 45, approvedSupplierIds: [supAntolini.id], yard: 12, location: locMD },
-    { sku: 'QZT-TAJ-002', name: 'Taj Mahal', materialType: 'Quartzite', finish: 'Leathered', baseColor: 'Cream', thickness: '3cm', originCountry: 'Brazil', retailPricePerSf: 185, minPricePerSf: 155, avgCostPerSf: 75, approvedSupplierIds: [supCemex.id], yard: 5, hold: 1, location: locNJ },
-    { sku: 'GRN-BLK-003', name: 'Absolute Black', materialType: 'Granite', finish: 'Honed', baseColor: 'Black', thickness: '3cm', originCountry: 'India', retailPricePerSf: 65, minPricePerSf: 50, avgCostPerSf: 22, approvedSupplierIds: [], yard: 18, location: locNJ },
-    { sku: 'MBL-STA-004', name: 'Statuario', materialType: 'Marble', finish: 'Polished', baseColor: 'White', thickness: '2cm', originCountry: 'Italy', retailPricePerSf: 155, minPricePerSf: 130, avgCostPerSf: 65, approvedSupplierIds: [supAntolini.id], yard: 3, location: locMD },
-    { sku: 'TRV-SIL-005', name: 'Silver Travertine', materialType: 'Travertine', finish: 'Unfilled', baseColor: 'Grey', thickness: '2cm', originCountry: 'Turkey', retailPricePerSf: 45, minPricePerSf: 35, avgCostPerSf: 15, approvedSupplierIds: [], yard: 14, location: locNJ },
+    { sku: 'MBL-CAL-001', name: 'Calacatta Gold', materialType: 'Marble', productType: 'SLAB', category: 'MARBLE', subCategory: 'Calacatta', productGroup: 'Premium', altName: 'White Gold Marble', genericSku: 'GEN-MBL-WHT', finish: 'Polished', baseColor: 'White', thickness: '2cm', originCountry: 'Italy', retailPricePerSf: 125, minPricePerSf: 105, avgCostPerSf: 45, approvedSupplierIds: [supAntolini.id], yard: 12, location: locMD },
+    { sku: 'QZT-TAJ-002', name: 'Taj Mahal', materialType: 'Quartzite', productType: 'SLAB', category: 'QUARTZITE', subCategory: 'Premium Quartzite', productGroup: 'Exotics', genericSku: 'GEN-QZT-CRM', finish: 'Leathered', baseColor: 'Cream', thickness: '3cm', originCountry: 'Brazil', retailPricePerSf: 185, minPricePerSf: 155, avgCostPerSf: 75, approvedSupplierIds: [supCemex.id], yard: 5, hold: 1, location: locNJ },
+    { sku: 'GRN-BLK-003', name: 'Absolute Black', materialType: 'Granite', productType: 'SLAB', category: 'GRANITE', subCategory: 'Solid', productGroup: 'Standard', finish: 'Honed', baseColor: 'Black', thickness: '3cm', originCountry: 'India', retailPricePerSf: 65, minPricePerSf: 50, avgCostPerSf: 22, approvedSupplierIds: [], yard: 18, location: locNJ },
+    { sku: 'MBL-STA-004', name: 'Statuario', materialType: 'Marble', productType: 'SLAB', category: 'MARBLE', subCategory: 'Statuario', productGroup: 'Premium', finish: 'Polished', baseColor: 'White', thickness: '2cm', originCountry: 'Italy', retailPricePerSf: 155, minPricePerSf: 130, avgCostPerSf: 65, approvedSupplierIds: [supAntolini.id], yard: 3, location: locMD },
+    { sku: 'TRV-SIL-005', name: 'Silver Travertine', materialType: 'Travertine', productType: 'SLAB', category: 'TRAVERTINE', subCategory: 'Vein-Cut', productGroup: 'Standard', finish: 'Unfilled', baseColor: 'Grey', thickness: '2cm', originCountry: 'Turkey', retailPricePerSf: 45, minPricePerSf: 35, avgCostPerSf: 15, approvedSupplierIds: [], yard: 14, location: locNJ },
+    // Non-slab catalog items so Type / Category / Group facets are meaningful.
+    { sku: 'SNK-UND-006', name: 'Undermount Granite Composite Sink', materialType: 'Granite', productType: 'SINK', category: 'SINKS', subCategory: 'Undermount', productGroup: 'Standard', finish: 'Matte', baseColor: 'Black', thickness: null, originCountry: 'China', retailPricePerSf: 220, minPricePerSf: 180, avgCostPerSf: 90, approvedSupplierIds: [], yard: 0, location: locNJ },
+    { sku: 'TIL-CAR-007', name: 'Carrara Mosaic Tile', materialType: 'Marble', productType: 'TILE', category: 'TILES', subCategory: 'Mosaic', productGroup: 'Standard', finish: 'Polished', baseColor: 'White', thickness: '1cm', originCountry: 'Italy', retailPricePerSf: 18, minPricePerSf: 12, avgCostPerSf: 6, approvedSupplierIds: [supAntolini.id], yard: 0, location: locMD },
+    { sku: 'PAD-POL-008', name: 'Diamond Polishing Pads (7-Step Set)', materialType: 'Granite', productType: 'PADS', category: 'POLISHING PADS', subCategory: '7-Step', productGroup: 'Standard', finish: 'N/A', baseColor: 'Mixed', thickness: null, originCountry: 'China', retailPricePerSf: 95, minPricePerSf: 70, avgCostPerSf: 40, approvedSupplierIds: [], yard: 0, location: locNJ },
   ]
 
   const productByName: Record<string, { id: string; avgCostPerSf: number }> = {}
@@ -183,6 +187,8 @@ async function main() {
     const product = await prisma.product.create({
       data: {
         sku: p.sku, name: p.name, materialType: p.materialType, finish: p.finish, baseColor: p.baseColor,
+        productType: p.productType, category: p.category, subCategory: p.subCategory, productGroup: p.productGroup,
+        altName: p.altName ?? null, genericSku: p.genericSku ?? null,
         thickness: p.thickness, originCountry: p.originCountry, retailPricePerSf: p.retailPricePerSf,
         minPricePerSf: p.minPricePerSf, avgCostPerSf: p.avgCostPerSf, approvedSupplierIds: p.approvedSupplierIds,
       },

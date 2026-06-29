@@ -229,6 +229,14 @@ model Product {
   baseColor    String // Sea Green, Deep Purple
   attributes   Json? // { "veining": "Heavy", "bookmatched": true }
 
+  // Catalog hierarchy (Products Master List)
+  productType  String  @default("SLAB") // SLAB, SINK, TILE, PADS, A-FRAME
+  category     String? // GRANITE, MARBLE, QUARTZITE, QUARTZ, SINKS, ...
+  subCategory  String?
+  productGroup String? // Exotics, Premium, Semi-precious, Standard
+  altName      String? // Generic / alternate display name
+  genericSku   String? // Generic SKU for cross-reference
+
   thickness           String? // 2cm, 3cm
   originCountry       String?
   retailPricePerSf    Float?

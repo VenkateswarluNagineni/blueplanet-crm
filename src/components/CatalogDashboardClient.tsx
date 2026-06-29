@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
@@ -14,9 +14,55 @@ import {
   ListFilter,
   Eye,
   ChevronDown,
+  LayoutGrid,
+  Rows3,
+  Columns3,
+  ArrowUpDown,
 } from 'lucide-react';
 import type { CatalogProduct, CatalogSlab } from '@/server/queries/catalog';
 import { createQuoteAction } from '@/server/actions/sales';
+import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
+
+// ---- Products Master List: price band + facet/column config ----
+
+const PRICE_BANDS = ['≤ $50', '$50 – 100', '$100 – 150', '> $150', 'Unpriced'] as const;
+function priceBand(n: number | null): string {
+  if (n == null) return 'Unpriced';
+  if (n <= 50) return '≤ $50';
+  if (n <= 100) return '$50 – 100';
+  if (n <= 150) return '$100 – 150';
+  return '> $150';
+}
+
+type ProdFacet = { id: string; label: string; valueOf: (p: CatalogProduct) => string; order?: readonly string[] };
+const PROD_FACETS: ProdFacet[] = [
+  { id: 'type', label: 'Type', valueOf: (p) => p.productType || '—' },
+  { id: 'category', label: 'Category', valueOf: (p) => p.category || p.materialType || '—' },
+  { id: 'subCategory', label: 'Sub-Category', valueOf: (p) => p.subCategory || '—' },
+  { id: 'group', label: 'Product Group', valueOf: (p) => p.productGroup || '—' },
+  { id: 'price', label: 'Price Range', valueOf: (p) => priceBand(p.retailPricePerSf), order: PRICE_BANDS },
+  { id: 'origin', label: 'Origin', valueOf: (p) => p.originCountry || '—' },
+  { id: 'finish', label: 'Finish', valueOf: (p) => p.finish || '—' },
+];
+
+type ProdColKey = 'type' | 'category' | 'subCategory' | 'group' | 'finish' | 'color' | 'origin' | 'thickness' | 'yard' | 'hold' | 'transit' | 'retail' | 'cost' | 'margin';
+const PROD_COLUMNS: { key: ProdColKey; label: string; right?: boolean; def: boolean; cost?: boolean }[] = [
+  { key: 'type', label: 'Type', def: true },
+  { key: 'category', label: 'Category', def: true },
+  { key: 'subCategory', label: 'Sub-Category', def: false },
+  { key: 'group', label: 'Group', def: true },
+  { key: 'finish', label: 'Finish', def: false },
+  { key: 'color', label: 'Base Color', def: true },
+  { key: 'origin', label: 'Origin', def: true },
+  { key: 'thickness', label: 'Thickness', def: false },
+  { key: 'yard', label: 'In Yard', right: true, def: true },
+  { key: 'hold', label: 'On Hold', right: true, def: false },
+  { key: 'transit', label: 'In Transit', right: true, def: false },
+  { key: 'retail', label: 'Retail $/sf', right: true, def: true },
+  { key: 'cost', label: 'Cost $/sf', right: true, def: false, cost: true },
+  { key: 'margin', label: 'Margin', right: true, def: false, cost: true },
+];
+const PROD_COLS_LS_KEY = 'bp.catalog.prodCols.v1';
 
 export default function CatalogDashboardClient({
   products,
@@ -39,30 +85,114 @@ export default function CatalogDashboardClient({
   const [quoteCustomer, setQuoteCustomer] = useState('');
   const [quoteError, setQuoteError] = useState('');
 
-  // Filter state
+  // Filter / view state
   const [showFilters, setShowFilters] = useState(false);
-  const [openFilterMenu, setOpenFilterMenu] = useState<'type' | 'origin' | null>(null);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
+  const [openFilterMenu, setOpenFilterMenu] = useState<string | null>(null);
+  const [prodFilters, setProdFilters] = useState<Record<string, string[]>>({});
+  const [viewLayout, setViewLayout] = useState<'GALLERY' | 'LIST'>('GALLERY');
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [showColPicker, setShowColPicker] = useState(false);
+  const [sortKey, setSortKey] = useState<'name' | 'type' | 'category' | 'yard' | 'retail'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [visibleProdCols, setVisibleProdCols] = useState<Set<ProdColKey>>(
+    () => new Set(PROD_COLUMNS.filter((c) => c.def).map((c) => c.key)),
+  );
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROD_COLS_LS_KEY);
+      if (raw) {
+        const keys = (JSON.parse(raw) as ProdColKey[]).filter((k) => PROD_COLUMNS.some((c) => c.key === k));
+        if (keys.length) setVisibleProdCols(new Set(keys));
+      }
+    } catch { /* ignore corrupt storage */ }
+  }, []);
+  const toggleProdCol = (key: ProdColKey) =>
+    setVisibleProdCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem(PROD_COLS_LS_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
 
-  const uniqueTypes = Array.from(new Set(products.map((m) => m.materialType)));
-  const uniqueOrigins = Array.from(new Set(products.map((m) => m.originCountry).filter(Boolean) as string[]));
+  const toggleProd = (facet: string, value: string) =>
+    setProdFilters((prev) => {
+      const cur = prev[facet] ?? [];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      return { ...prev, [facet]: next };
+    });
+  const clearProdFilters = () => setProdFilters({});
+  const prodFilterCount = Object.values(prodFilters).reduce((n, arr) => n + arr.length, 0);
 
-  const toggleFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, val: string) => {
-    setter((prev) => (prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]));
+  const matchSearch = (m: CatalogProduct) =>
+    [m.name, m.sku, m.materialType, m.altName, m.genericSku, m.category, m.baseColor]
+      .filter(Boolean).join(' ').toLowerCase().includes(searchTerm.toLowerCase());
+  const prodFacetPass = (m: CatalogProduct) =>
+    PROD_FACETS.every((f) => {
+      const sel = prodFilters[f.id];
+      return !sel || sel.length === 0 || sel.includes(f.valueOf(m));
+    });
+  const filteredMaterials = products.filter((m) => matchSearch(m) && prodFacetPass(m));
+
+  const sortedMaterials = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const key = (m: CatalogProduct) => {
+      switch (sortKey) {
+        case 'type': return m.productType;
+        case 'category': return m.category ?? m.materialType;
+        case 'yard': return m.slabsInYard;
+        case 'retail': return m.retailPricePerSf ?? -1;
+        default: return m.name;
+      }
+    };
+    return [...filteredMaterials].sort((a, b) => {
+      const ka = key(a), kb = key(b);
+      if (typeof ka === 'number' && typeof kb === 'number') return (ka - kb) * dir;
+      return String(ka).localeCompare(String(kb)) * dir;
+    });
+  }, [filteredMaterials, sortKey, sortDir]);
+
+  // Faceted count cards computed over all products (stable catalog overview).
+  const productFacetCards = useMemo(() =>
+    PROD_FACETS.map((f) => {
+      const counts = new Map<string, number>();
+      for (const p of products) { const v = f.valueOf(p); counts.set(v, (counts.get(v) ?? 0) + 1); }
+      let entries = Array.from(counts.entries());
+      entries = f.order
+        ? entries.sort((a, b) => f.order!.indexOf(a[0]) - f.order!.indexOf(b[0]))
+        : entries.sort((a, b) => b[1] - a[1]);
+      return { id: f.id, label: f.label, entries };
+    }), [products]);
+
+  const setSort = (key: typeof sortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
   };
-  const removeFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, val: string) => {
-    setter((prev) => prev.filter((v) => v !== val));
-  };
+  const visibleProductCols = PROD_COLUMNS.filter((c) => visibleProdCols.has(c.key) && (!c.cost || (canViewCost && viewMode === 'ADMIN')));
 
-  const filteredMaterials = products.filter((m) => {
-    const matchSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.materialType.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchType = selectedTypes.length === 0 || selectedTypes.includes(m.materialType);
-    const matchOrigin = selectedOrigins.length === 0 || (m.originCountry != null && selectedOrigins.includes(m.originCountry));
-    return matchSearch && matchType && matchOrigin;
-  });
+  const badge = (s: string) => <span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{s}</span>;
+  const dim = (s: string | null) => <span className="text-[#b8b6b9]">{s ?? '—'}</span>;
+  const prodCell = (key: ProdColKey, item: CatalogProduct): React.ReactNode => {
+    switch (key) {
+      case 'type': return badge(item.productType);
+      case 'category': return dim(item.category ?? item.materialType);
+      case 'subCategory': return dim(item.subCategory);
+      case 'group': return item.productGroup ? badge(item.productGroup) : dim(null);
+      case 'finish': return dim(item.finish);
+      case 'color': return dim(item.baseColor);
+      case 'origin': return dim(item.originCountry);
+      case 'thickness': return dim(item.thickness);
+      case 'yard': return <span className="text-white font-medium">{item.slabsInYard}</span>;
+      case 'hold': return <span className={item.slabsOnHold > 0 ? 'text-[#e3c16c]' : 'text-[#7d7c7f]'}>{item.slabsOnHold}</span>;
+      case 'transit': return <span className={item.slabsInTransit > 0 ? 'text-[#92b0ce]' : 'text-[#7d7c7f]'}>{item.slabsInTransit}</span>;
+      case 'retail': return <span className="text-white">{item.retailPricePerSf != null ? `$${item.retailPricePerSf}` : '—'}</span>;
+      case 'cost': return <span className="text-[#b8b6b9]">{item.avgCostPerSf != null ? `$${item.avgCostPerSf}` : '—'}</span>;
+      case 'margin': {
+        const m = item.avgCostPerSf != null && item.retailPricePerSf ? (((item.retailPricePerSf - item.avgCostPerSf) / item.retailPricePerSf) * 100).toFixed(0) : null;
+        return <span className="text-[#10b981]">{m != null ? `${m}%` : '—'}</span>;
+      }
+      default: return null;
+    }
+  };
 
   const handleQuoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,84 +277,110 @@ export default function CatalogDashboardClient({
               className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showFilters ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
             >
               <ListFilter size={14} /> Filters
-              {selectedTypes.length + selectedOrigins.length > 0 && (
-                <span className="bg-[#e3c16c] text-black text-[10px] px-1.5 rounded-sm ml-1 font-medium">
-                  {selectedTypes.length + selectedOrigins.length}
-                </span>
+              {prodFilterCount > 0 && (
+                <span className="bg-[#e3c16c] text-black text-[10px] px-1.5 rounded-sm ml-1 font-medium">{prodFilterCount}</span>
               )}
             </button>
+            <button
+              onClick={() => setShowCatalog(!showCatalog)}
+              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showCatalog ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
+            >
+              <LayoutGrid size={14} /> Catalog
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            {viewLayout === 'LIST' && (
+              <div className="relative">
+                <button onClick={() => setShowColPicker(!showColPicker)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showColPicker ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
+                  <Columns3 size={14} /> Columns
+                </button>
+                {showColPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowColPicker(false)} />
+                    <div className="absolute right-0 top-9 w-56 max-h-[60vh] overflow-y-auto bg-[#1c1c1c] border border-[#454446] rounded-md shadow-xl z-50 py-2">
+                      <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[#7d7c7f]">Visible columns</p>
+                      {PROD_COLUMNS.filter((c) => !c.cost || (canViewCost && viewMode === 'ADMIN')).map((c) => (
+                        <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[#333234] cursor-pointer">
+                          <input type="checkbox" checked={visibleProdCols.has(c.key)} onChange={() => toggleProdCol(c.key)} className="accent-[#e3c16c]" />
+                          {c.label}
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            <div className="bg-[#1c1c1c] p-1 rounded-md border border-[#454446] flex text-[13px] font-medium">
+              <button onClick={() => setViewLayout('GALLERY')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'GALLERY' ? 'bg-[#333234] text-white' : 'text-[#b8b6b9] hover:text-white'}`}><LayoutGrid size={14} /> Gallery</button>
+              <button onClick={() => setViewLayout('LIST')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'LIST' ? 'bg-[#333234] text-white' : 'text-[#b8b6b9] hover:text-white'}`}><Rows3 size={14} /> Master List</button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conditional Filter Bar */}
+      {/* Conditional Filter Bar — one dropdown per facet */}
       {showFilters && (
-        <div className="px-6 py-3 bg-[#1c1c1c] border-b border-[#454446] flex items-center gap-4 text-[13px]">
+        <div className="px-6 py-3 bg-[#1c1c1c] border-b border-[#454446] flex items-center gap-3 text-[13px] flex-wrap">
           <span className="text-[#b8b6b9]">Filter by:</span>
-          <div className="relative">
-            <button
-              onClick={() => setOpenFilterMenu(openFilterMenu === 'type' ? null : 'type')}
-              aria-expanded={openFilterMenu === 'type'}
-              className="flex items-center gap-1 text-white hover:text-[#92b0ce] bg-[#333234] px-3 py-1 rounded border border-[#454446]"
-            >
-              Material Type {selectedTypes.length > 0 && <span className="text-[#e3c16c]">({selectedTypes.length})</span>} <ChevronDown size={14} />
-            </button>
-            {openFilterMenu === 'type' && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setOpenFilterMenu(null)} />
-                <div className="absolute top-full mt-1 left-0 w-48 bg-[#1c1c1c] border border-[#454446] rounded shadow-xl z-50 p-2">
-                  {uniqueTypes.map((type) => (
-                    <label key={type} className="flex items-center gap-2 p-1.5 hover:bg-[#333234] rounded cursor-pointer text-white">
-                      <input type="checkbox" checked={selectedTypes.includes(type)} onChange={() => toggleFilter(setSelectedTypes, type)} className="accent-[#e3c16c]" />
-                      {type}
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="relative">
-            <button
-              onClick={() => setOpenFilterMenu(openFilterMenu === 'origin' ? null : 'origin')}
-              aria-expanded={openFilterMenu === 'origin'}
-              className="flex items-center gap-1 text-white hover:text-[#92b0ce] bg-[#333234] px-3 py-1 rounded border border-[#454446]"
-            >
-              Origin {selectedOrigins.length > 0 && <span className="text-[#e3c16c]">({selectedOrigins.length})</span>} <ChevronDown size={14} />
-            </button>
-            {openFilterMenu === 'origin' && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setOpenFilterMenu(null)} />
-                <div className="absolute top-full mt-1 left-0 w-48 bg-[#1c1c1c] border border-[#454446] rounded shadow-xl z-50 p-2">
-                  {uniqueOrigins.map((origin) => (
-                    <label key={origin} className="flex items-center gap-2 p-1.5 hover:bg-[#333234] rounded cursor-pointer text-white">
-                      <input type="checkbox" checked={selectedOrigins.includes(origin)} onChange={() => toggleFilter(setSelectedOrigins, origin)} className="accent-[#e3c16c]" />
-                      {origin}
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {productFacetCards.map((f) => {
+            const sel = prodFilters[f.id] ?? [];
+            return (
+              <div key={f.id} className="relative">
+                <button
+                  onClick={() => setOpenFilterMenu(openFilterMenu === f.id ? null : f.id)}
+                  aria-expanded={openFilterMenu === f.id}
+                  className="flex items-center gap-1 text-white hover:text-[#92b0ce] bg-[#333234] px-3 py-1 rounded border border-[#454446]"
+                >
+                  {f.label} {sel.length > 0 && <span className="text-[#e3c16c]">({sel.length})</span>} <ChevronDown size={14} />
+                </button>
+                {openFilterMenu === f.id && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpenFilterMenu(null)} />
+                    <div className="absolute top-full mt-1 left-0 w-56 max-h-64 overflow-y-auto bg-[#1c1c1c] border border-[#454446] rounded shadow-xl z-50 p-2">
+                      {f.entries.map(([val, n]) => (
+                        <label key={val} className="flex items-center justify-between gap-2 p-1.5 hover:bg-[#333234] rounded cursor-pointer text-white">
+                          <span className="flex items-center gap-2"><input type="checkbox" checked={sel.includes(val)} onChange={() => toggleProd(f.id, val)} className="accent-[#e3c16c]" />{val}</span>
+                          <span className="text-[11px] text-[#b8b6b9]">{n}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Active Filters Pill Bar */}
-      {(selectedTypes.length > 0 || selectedOrigins.length > 0) && (
+      {prodFilterCount > 0 && (
         <div className="px-6 py-2 bg-[#2b2a2c] border-b border-[#454446] flex gap-2 flex-wrap items-center">
           <span className="text-[12px] text-[#b8b6b9] mr-2">Active:</span>
-          {selectedTypes.map((type) => (
-            <span key={type} className="flex items-center gap-1 bg-[#454446] text-white px-2 py-0.5 rounded text-[12px]">
-              {type} <X size={12} className="cursor-pointer hover:text-[#e3c16c]" onClick={() => removeFilter(setSelectedTypes, type)} />
-            </span>
-          ))}
-          {selectedOrigins.map((origin) => (
-            <span key={origin} className="flex items-center gap-1 bg-[#454446] text-white px-2 py-0.5 rounded text-[12px]">
-              {origin} <X size={12} className="cursor-pointer hover:text-[#e3c16c]" onClick={() => removeFilter(setSelectedOrigins, origin)} />
-            </span>
-          ))}
-          <button onClick={() => { setSelectedTypes([]); setSelectedOrigins([]); }} className="text-[12px] text-[#92b0ce] hover:underline ml-2">
-            Clear All
-          </button>
+          {Object.entries(prodFilters).flatMap(([facet, vals]) =>
+            vals.map((v) => {
+              const label = PROD_FACETS.find((f) => f.id === facet)?.label ?? facet;
+              return (
+                <span key={`${facet}:${v}`} className="flex items-center gap-1 bg-[#454446] text-white px-2 py-0.5 rounded text-[12px]">
+                  {label}: {v} <X size={12} className="cursor-pointer hover:text-[#e3c16c]" onClick={() => toggleProd(facet, v)} />
+                </span>
+              );
+            }))}
+          <button onClick={clearProdFilters} className="text-[12px] text-[#92b0ce] hover:underline ml-2">Clear All</button>
+        </div>
+      )}
+
+      {/* Products Master List — faceted count cards (click a value to filter) */}
+      {showCatalog && (
+        <div className="px-6 py-4 bg-[#1c1c1c] border-b border-[#454446] shrink-0 max-h-[42vh] overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {productFacetCards.map((f) => (
+              <FacetCard key={f.id} title={f.label}>
+                {f.entries.map(([val, n]) => (
+                  <FacetRow key={val} label={val} count={n} active={(prodFilters[f.id] ?? []).includes(val)} onClick={() => toggleProd(f.id, val)} />
+                ))}
+              </FacetCard>
+            ))}
+          </div>
         </div>
       )}
 
@@ -248,8 +404,10 @@ export default function CatalogDashboardClient({
         );
       })()}
 
-      {/* 2. Grid View */}
-      <div className="flex-1 overflow-y-auto p-6">
+      {/* 2. Gallery / Master List */}
+      <div className="flex-1 overflow-y-auto">
+        {viewLayout === 'GALLERY' ? (
+        <div className="p-6">
         {filteredMaterials.length === 0 ? (
           <div className="h-full flex items-center justify-center text-[13px] text-[#b8b6b9]">
             No materials match your search.
@@ -322,6 +480,38 @@ export default function CatalogDashboardClient({
             })}
           </div>
         )}
+        </div>
+        ) : (
+          <table className="w-full text-left text-[13px] text-[#d9d8d9] whitespace-nowrap border-collapse min-w-max">
+            <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
+              <tr>
+                <th className="px-4 py-3 font-medium border-b border-[#454446]">
+                  <button onClick={() => setSort('name')} className="inline-flex items-center gap-1 hover:text-white">Product / SKU <ArrowUpDown size={11} /></button>
+                </th>
+                {visibleProductCols.map((c) => {
+                  const sortable = (['type', 'category', 'yard', 'retail'] as const).includes(c.key as 'type');
+                  return (
+                    <th key={c.key} className={`px-4 py-3 font-medium border-b border-[#454446] ${c.right ? 'text-right' : ''}`}>
+                      {sortable
+                        ? <button onClick={() => setSort(c.key as 'type' | 'category' | 'yard' | 'retail')} className="inline-flex items-center gap-1 hover:text-white">{c.label} <ArrowUpDown size={11} /></button>
+                        : c.label}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#454446]">
+              {sortedMaterials.length === 0 ? (
+                <tr><td colSpan={visibleProductCols.length + 1} className="px-6 py-12 text-center text-[#b8b6b9]">No products match your filters.</td></tr>
+              ) : sortedMaterials.map((item) => (
+                <tr key={item.id} className="hover:bg-[#333234] transition-colors cursor-pointer" onClick={() => setSelectedMaterial(item)}>
+                  <td className="px-4 py-3"><div className="font-medium text-white hover:text-[#92b0ce]">{item.name}</div><div className="text-[11px] text-[#b8b6b9] font-mono">{item.sku}</div></td>
+                  {visibleProductCols.map((c) => <td key={c.key} className={`px-4 py-3 ${c.right ? 'text-right' : ''}`}>{prodCell(c.key, item)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* 3. Slide-in Details Drawer */}
@@ -332,10 +522,13 @@ export default function CatalogDashboardClient({
             <div className="px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-start">
               <div>
                 <h2 className="text-[20px] font-medium text-white flex items-center gap-2">{selectedMaterial.name}</h2>
-                <div className="flex gap-2 mt-2 text-[12px] text-[#b8b6b9]">
-                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.materialType}</span>
+                <div className="flex gap-2 mt-2 text-[12px] text-[#b8b6b9] flex-wrap">
+                  <span className="bg-[#e3c16c]/10 text-[#e3c16c] border border-[#e3c16c]/30 px-2 py-0.5 rounded">{selectedMaterial.productType}</span>
+                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.category ?? selectedMaterial.materialType}</span>
+                  {selectedMaterial.productGroup && <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.productGroup}</span>}
                   {selectedMaterial.originCountry && <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.originCountry}</span>}
                   <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.finish}</span>
+                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded font-mono text-[11px]">{selectedMaterial.sku}</span>
                 </div>
               </div>
               <button onClick={() => setSelectedMaterial(null)} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors">

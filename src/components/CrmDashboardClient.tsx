@@ -8,6 +8,7 @@ import {
   LayoutGrid, Columns3, AlertTriangle, Lock,
 } from 'lucide-react';
 import type { CrmData, CrmCustomer } from '@/server/queries/crm';
+import { FacetCard } from '@/components/ui/FacetCard';
 import type { CreatePartyInput } from '@/lib/validation/party';
 import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/actions/crm';
 import {
@@ -1231,16 +1232,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
   return <div className="bg-[#333234] border border-[#454446] p-3 rounded-md"><p className="text-[11px] text-[#b8b6b9] uppercase tracking-wider mb-1">{label}</p><p className="text-[14px] font-medium" style={{ color: color ?? '#ffffff' }}>{value}</p></div>;
-}
-
-// A faceted count card for the Customer Catalog: a titled, scrollable list of clickable value rows.
-function FacetCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg overflow-hidden flex flex-col">
-      <div className="px-3 py-2 bg-[#333234]/40 border-b border-[#454446]"><h4 className="text-[12px] font-medium text-[#92b0ce]">{title}</h4></div>
-      <div className="p-1.5 space-y-0.5 max-h-44 overflow-y-auto">{children}</div>
-    </div>
-  );
 }
 
 // A titled detail section for the customer drill-down drawer; lays its fields out in a grid.
