@@ -336,6 +336,23 @@ async function main() {
     },
   })
 
+  // 11. Stock-movement audit log — demo history for the Stock Movements page.
+  const moveSlabs = await prisma.inventoryItem.findMany({ where: { status: 'AVAILABLE', deletedAt: null }, take: 3, orderBy: { uniqueSlabId: 'asc' } })
+  if (moveSlabs.length === 3) {
+    const [sa, sb, sc] = moveSlabs
+    const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 3600 * 1000)
+    const by = { byUserId: userByRole.ADMIN.id, byRole: 'ADMIN' }
+    // Transfer sa to NJ (apply so the log matches slab state)
+    await prisma.inventoryItem.update({ where: { id: sa.id }, data: { presentLocationId: locNJ.id } })
+    await prisma.stockMovement.create({ data: { inventoryItemId: sa.id, type: 'TRANSFER', fromLocationId: sa.presentLocationId, toLocationId: locNJ.id, fromStatus: 'AVAILABLE', toStatus: 'AVAILABLE', note: 'Rebalancing showroom stock', ...by, createdAt: daysAgo(10) } })
+    // Hold then release sb (net AVAILABLE)
+    await prisma.stockMovement.create({ data: { inventoryItemId: sb.id, type: 'HOLD', fromStatus: 'AVAILABLE', toStatus: 'ON_HOLD', reason: 'Reserved for quote Q-1188', ...by, createdAt: daysAgo(6) } })
+    await prisma.stockMovement.create({ data: { inventoryItemId: sb.id, type: 'RELEASE', fromStatus: 'ON_HOLD', toStatus: 'AVAILABLE', reason: 'Quote expired', ...by, createdAt: daysAgo(3) } })
+    // Write off sc (apply)
+    await prisma.inventoryItem.update({ where: { id: sc.id }, data: { status: 'WRITTEN_OFF' } })
+    await prisma.stockMovement.create({ data: { inventoryItemId: sc.id, type: 'WRITE_OFF', fromStatus: 'AVAILABLE', toStatus: 'WRITTEN_OFF', reason: 'Cracked during handling', ...by, createdAt: daysAgo(1) } })
+  }
+
   console.log('Database Seeded Successfully! 🚀')
 }
 

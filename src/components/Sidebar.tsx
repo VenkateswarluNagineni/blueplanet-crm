@@ -17,6 +17,7 @@ import {
   Menu,
   BarChart3,
   Warehouse,
+  History,
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { BrandMark } from '@/components/brand/Wordmark';
@@ -108,6 +109,7 @@ export function Sidebar() {
 
             <NavGroup title="Operations">
               <NavItem icon={Warehouse} label="Locations" href="/admin/locations" />
+              <NavItem icon={History} label="Stock Movements" href="/admin/movements" />
               <NavItem icon={BarChart3} label="Profitability Analytics" href="/analytics" />
               <NavItem icon={Truck} label="Logistics Tracker" href="/logistics" />
               <NavItem icon={CheckCircle} label="Pending Approvals" href="/admin/approvals" />
