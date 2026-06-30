@@ -209,6 +209,17 @@ export function InventoryTableClient({
     if (match) setSelectedPassportSlab(match);
   }, [searchParams, initialData]);
 
+  // Deep-link filters: arriving with ?location=<name> / ?status=<STATUS> (e.g. from the
+  // Inventory Overview by-location rows) pre-seeds the matching sidebar filter once on mount.
+  useEffect(() => {
+    const loc = searchParams.get('location');
+    if (loc && initialData.some((i) => i.location.name === loc)) setSelectedLocations([loc]);
+    const status = searchParams.get('status');
+    if (status && initialData.some((i) => i.status === status)) setSelectedStatuses([status]);
+    // run once on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Resizable Sidebar State (Fixed jumping logic)
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const isResizing = useRef(false);

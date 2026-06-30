@@ -18,6 +18,7 @@ import {
   BarChart3,
   Warehouse,
   History,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { BrandMark } from '@/components/brand/Wordmark';
@@ -96,6 +97,7 @@ export function Sidebar() {
         {role === 'ADMIN' && (
           <div className="space-y-2">
             <NavGroup title="Inventory Pipeline">
+              <NavItem icon={LayoutDashboard} label="Inventory Overview" href="/inventory/overview" />
               <NavItem icon={Search} label="Inventory Search" href="/inventory" />
               <NavItem icon={Package} label="Purchasing & POs" href="/purchases" />
               <NavItem icon={Box} label="Product Catalog" href="/catalog" />
@@ -127,6 +129,7 @@ export function Sidebar() {
             </NavGroup>
 
             <NavGroup title="Catalog & Stock">
+              <NavItem icon={LayoutDashboard} label="Inventory Overview" href="/inventory/overview" />
               <NavItem icon={Search} label="Local Inventory Search" href="/inventory" />
               <NavItem icon={Box} label="Product Catalog (Pricing)" href="/catalog" />
             </NavGroup>
