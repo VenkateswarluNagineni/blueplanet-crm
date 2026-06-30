@@ -9,6 +9,11 @@ import {
 } from 'lucide-react';
 import type { CrmData, CrmCustomer } from '@/server/queries/crm';
 import { FacetCard } from '@/components/ui/FacetCard';
+import { Badge, StatusPill } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { ArrowUpDown } from 'lucide-react';
 import type { CreatePartyInput } from '@/lib/validation/party';
 import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/actions/crm';
 import {
@@ -115,7 +120,11 @@ const CUST_COLS_LS_KEY = 'bp.crm.custCols.v1';
 
 export function CrmDashboardClient({ data, canManage }: { data: CrmData; canManage: boolean }) {
   const router = useRouter();
+  const toast = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
+  // Customer table sorting
+  const [custSort, setCustSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const {
     suppliers, vendors, associates, customers,
     activePos, historyPos, vendorInvoices, historyInvoices,
@@ -226,6 +235,27 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
     matchSearch(`${i.name} ${i.systemId} ${i.contact} ${i.email} ${i.subType} ${i.rep} ${i.dba ?? ''} ${i.state ?? ''} ${i.parentCustomerName ?? ''}`) &&
     custFacetPass(i) && acctFlagPass(i));
 
+  // Customer table sorting
+  const custSortVal = (c: CrmCustomer, key: string): string | number => {
+    switch (key) {
+      case 'type': return c.subType; case 'contact': return c.contact; case 'terms': return c.terms;
+      case 'rep': return c.rep; case 'creditLimit': return c.creditLimit; case 'since': return c.customerSince ?? '';
+      case 'openDeals': return c.openDeals; case 'ltv': return c.lifetimeValue; case 'dba': return c.dba ?? '';
+      case 'parent': return c.parentCustomerName ?? ''; case 'state': return c.state ?? ''; case 'status': return c.status;
+      case 'multiLoc': return c.multiLocation ? 1 : 0; case 'poReq': return c.poRequired ? 1 : 0;
+      case 'taxExempt': return c.taxExempt ? 1 : 0; case 'fulfillment': return c.defaultFulfillment ?? '';
+      case 'acctEmail': return c.accountingEmail ?? ''; default: return c.name;
+    }
+  };
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+    const dir = custSort.dir === 'asc' ? 1 : -1;
+    const av = custSortVal(a, custSort.key), bv = custSortVal(b, custSort.key);
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+    return String(av).localeCompare(String(bv)) * dir;
+  });
+  const toggleCustSort = (key: string) =>
+    setCustSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+
   // Faceted count cards (computed over ALL customers for a stable catalog overview).
   const customerFacetCards = useMemo(() =>
     CUST_FACETS.map((f) => {
@@ -246,14 +276,19 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
       : activeTab === 'CUSTOMERS' ? customers.length
       : associates.length;
 
-  const doDelete = (id: string) => {
-    if (!confirm('Archive this entity? It will be soft-deleted and hidden from active lists.')) return;
+  const doDelete = async (id: string) => {
     setOpenMenuId(null);
+    const okToDelete = await confirm({
+      title: 'Archive this record?',
+      message: 'It will be soft-deleted and hidden from active lists.',
+      confirmLabel: 'Archive', tone: 'danger',
+    });
+    if (!okToDelete) return;
     setActionError('');
     startTransition(async () => {
       const res = await softDeletePartyAction(id);
-      if (!res.ok) setActionError(res.error);
-      else router.refresh();
+      if (!res.ok) { toast(res.error, 'error'); setActionError(res.error); }
+      else { toast('Record archived.', 'success'); router.refresh(); }
     });
   };
 
@@ -412,7 +447,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
     : <span className="text-[#7d7c7f]">—</span>;
   const custCell = (key: CustColKey, item: CrmCustomer): React.ReactNode => {
     switch (key) {
-      case 'type': return <span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{item.subType}</span>;
+      case 'type': return <Badge>{item.subType}</Badge>;
       case 'contact': return <span className="text-white">{item.contact}</span>;
       case 'terms': return <span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span>;
       case 'rep': return <span className="text-[#b8b6b9]">{item.rep}</span>;
@@ -423,7 +458,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
       case 'dba': return <span className="text-[#b8b6b9]">{item.dba ?? '—'}</span>;
       case 'parent': return <span className="text-[#b8b6b9]">{item.parentCustomerName ?? '—'}</span>;
       case 'state': return <span className="text-[#b8b6b9]">{item.state ?? '—'}</span>;
-      case 'status': return <span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{item.status}</span>;
+      case 'status': return <StatusPill status={item.status} />;
       case 'multiLoc': return yesNo(item.multiLocation);
       case 'poReq': return yesNo(item.poRequired);
       case 'taxExempt': return yesNo(item.taxExempt);
@@ -433,6 +468,14 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
     }
   };
   const visibleCustCols = CUST_COLUMNS.filter((c) => visibleCols.has(c.key));
+  // A sortable customer column header.
+  const custTh = (key: string, label: string, right?: boolean) => (
+    <th className={`px-4 py-3 font-medium border-b border-[#454446] ${right ? 'text-right' : ''}`}>
+      <button onClick={() => toggleCustSort(key)} className={`inline-flex items-center gap-1 hover:text-white transition-colors ${right ? 'flex-row-reverse' : ''} ${custSort.key === key ? 'text-white' : ''}`}>
+        {label} <ArrowUpDown size={11} className={custSort.key === key ? 'text-[#e3c16c]' : 'text-[#7d7c7f]'} />
+      </button>
+    </th>
+  );
 
   const viewingSupplier = viewing?.type === 'SUPPLIER' ? suppliers.find((s) => s.id === viewing.id) : null;
   const viewingVendor = viewing?.type === 'VENDOR' ? vendors.find((v) => v.id === viewing.id) : null;
@@ -443,6 +486,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
 
   return (
     <div className="flex flex-col h-full bg-[#2b2a2c] text-[#d9d8d9] overflow-hidden relative">
+      {confirmDialog}
       {/* Header & Tabs */}
       <div className="pt-6 px-6 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
         <div className="flex items-center justify-between mb-6">
@@ -604,8 +648,8 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 <Th>Vendor Name</Th><Th>Service Type</Th><Th>Primary Contact</Th><Th right>Active Invoices</Th><Th right>AP Balance</Th>
               </>}
               {activeTab === 'CUSTOMERS' && <>
-                <Th>Customer Name</Th>
-                {visibleCustCols.map((c) => <Th key={c.key} right={c.right}>{c.label}</Th>)}
+                {custTh('name', 'Customer Name')}
+                {visibleCustCols.map((c) => <React.Fragment key={c.key}>{custTh(c.key, c.label, c.right)}</React.Fragment>)}
               </>}
               {activeTab === 'ASSOCIATES' && <>
                 <Th>Associate Name</Th><Th>Sales Number</Th><Th>Role &amp; Location</Th><Th>Commission</Th><Th right>Active Pipeline</Th><Th right>YTD Sales</Th>
@@ -637,7 +681,9 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 {rowMenu(item.id, 'VENDOR')}
               </tr>
             )))}
-            {activeTab === 'CUSTOMERS' && (filteredCustomers.length === 0 ? <EmptyRow cols={visibleCustCols.length + 2} /> : filteredCustomers.map((item) => (
+            {activeTab === 'CUSTOMERS' && (sortedCustomers.length === 0 ? (
+              <tr><td colSpan={visibleCustCols.length + 2}><EmptyState icon={UserSquare2} title="No customers match" hint={searchTerm || activeFiltersCount > 0 ? 'Try clearing your search or filters.' : 'Add your first customer to get started.'} /></td></tr>
+            ) : sortedCustomers.map((item) => (
               <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
                 <td className="px-6 py-3" />
                 <td className="px-4 py-3 font-medium text-white">

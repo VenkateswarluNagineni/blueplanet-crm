@@ -7,11 +7,16 @@ import { BrandMark } from '@/components/brand/Wordmark';
 import { LOCATION_TYPES, COUNTRIES } from '@/lib/reference';
 import { createLocationAction, updateLocationAction, softDeleteLocationAction, type LocationInput } from '@/server/actions/locations';
 import type { AdminLocation } from '@/server/queries/locations';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { Badge } from '@/components/ui/Badge';
 
 const inputCls = 'w-full bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2 text-white text-[13px] focus:border-[#92b0ce] outline-none transition-colors';
 
 export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
   const router = useRouter();
+  const toast = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [drawer, setDrawer] = useState<{ mode: 'ADD' } | { mode: 'EDIT'; loc: AdminLocation } | null>(null);
   const [actionError, setActionError] = useState('');
@@ -41,12 +46,17 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
     });
   };
 
-  const handleDelete = (loc: AdminLocation) => {
-    if (!confirm(`Delete ${loc.name}? It will be archived.`)) return;
-    setActionError('');
+  const handleDelete = async (loc: AdminLocation) => {
+    const okToDelete = await confirm({
+      title: `Delete ${loc.name}?`,
+      message: 'The location will be archived and hidden from active lists.',
+      confirmLabel: 'Delete', tone: 'danger',
+    });
+    if (!okToDelete) return;
     startTransition(async () => {
       const res = await softDeleteLocationAction(loc.id);
-      if (!res.ok) { alert(res.error); return; }
+      if (!res.ok) { toast(res.error, 'error'); return; }
+      toast(`${loc.name} archived.`, 'success');
       router.refresh();
     });
   };
@@ -55,6 +65,7 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
 
   return (
     <div className="flex flex-col h-full bg-[#2b2a2c] text-[#d9d8d9] overflow-hidden">
+      {confirmDialog}
       {/* Header */}
       <div className="pt-6 px-6 pb-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0 flex items-center justify-between">
         <div>
@@ -82,7 +93,7 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
                   </div>
                 </div>
                 <h3 className="text-[15px] font-medium text-white">{l.name} <span className="text-[#b8b6b9] font-normal">({l.code})</span></h3>
-                <p className="text-[12px] text-[#b8b6b9] mt-0.5">Type: <span className="text-[#d9d8d9]">{l.type}</span></p>
+                <div className="mt-1.5"><Badge tone="blue">{l.type}</Badge></div>
 
                 <div className="mt-4 pt-4 border-t border-[#454446] space-y-1.5 text-[12px]">
                   {(l.line1 || l.city) ? (
