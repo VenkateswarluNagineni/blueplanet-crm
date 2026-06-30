@@ -18,10 +18,13 @@ import {
   Rows3,
   Columns3,
   ArrowUpDown,
+  Box,
 } from 'lucide-react';
 import type { CatalogProduct, CatalogSlab } from '@/server/queries/catalog';
 import { createQuoteAction } from '@/server/actions/sales';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Badge } from '@/components/ui/Badge';
 
 // ---- Products Master List: price band + facet/column config ----
 
@@ -169,11 +172,11 @@ export default function CatalogDashboardClient({
   };
   const visibleProductCols = PROD_COLUMNS.filter((c) => visibleProdCols.has(c.key) && (!c.cost || (canViewCost && viewMode === 'ADMIN')));
 
-  const badge = (s: string) => <span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{s}</span>;
+  const badge = (s: string) => <Badge>{s}</Badge>;
   const dim = (s: string | null) => <span className="text-[#b8b6b9]">{s ?? '—'}</span>;
   const prodCell = (key: ProdColKey, item: CatalogProduct): React.ReactNode => {
     switch (key) {
-      case 'type': return badge(item.productType);
+      case 'type': return <Badge tone="blue">{item.productType}</Badge>;
       case 'category': return dim(item.category ?? item.materialType);
       case 'subCategory': return dim(item.subCategory);
       case 'group': return item.productGroup ? badge(item.productGroup) : dim(null);
@@ -369,6 +372,21 @@ export default function CatalogDashboardClient({
         </div>
       )}
 
+      {/* Reorder-point alert band — full-width so it never overlaps the facet panel */}
+      {(() => {
+        const criticalLow = filteredMaterials.filter((m) => m.slabsInYard <= 5);
+        if (criticalLow.length === 0) return null;
+        return (
+          <div className="px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/30 flex items-center justify-between gap-3 text-amber-300 shrink-0">
+            <div className="flex items-center gap-3 text-[13px] min-w-0">
+              <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] rounded-full uppercase tracking-wider shrink-0">ROP Alert</span>
+              <span className="truncate"><strong>Velocity Exception:</strong> {criticalLow.length} line{criticalLow.length === 1 ? '' : 's'} ({criticalLow.map((c) => c.name).slice(0, 2).join(', ')}{criticalLow.length > 2 ? '…' : ''}) below safety reserve (≤ 5 slabs).</span>
+            </div>
+            <button onClick={() => router.push('/purchases')} className="text-[12px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0">Issue Emergency PO →</button>
+          </div>
+        );
+      })()}
+
       {/* Products Master List — faceted count cards (click a value to filter) */}
       {showCatalog && (
         <div className="px-6 py-4 bg-[#1c1c1c] border-b border-[#454446] shrink-0 max-h-[42vh] overflow-y-auto">
@@ -384,34 +402,12 @@ export default function CatalogDashboardClient({
         </div>
       )}
 
-      {/* Automated Supply Chain Exception Banner */}
-      {(() => {
-        const criticalLow = filteredMaterials.filter(m => m.slabsInYard <= 5);
-        if (criticalLow.length === 0) return null;
-        return (
-          <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex items-center justify-between text-amber-300 shadow-md">
-            <div className="flex items-center gap-3 text-[13px]">
-              <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] rounded-full uppercase tracking-wider shadow-sm">ROP Alert</span>
-              <span><strong>Velocity Exception Detected:</strong> {criticalLow.length} active stone line{criticalLow.length === 1 ? '' : 's'} ({criticalLow.map(c => c.name).slice(0, 2).join(', ')}{criticalLow.length > 2 ? '...' : ''}) below safety yard reserve (≤ 5 slabs).</span>
-            </div>
-            <button 
-              onClick={() => router.push('/purchases')}
-              className="text-[12px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-3.5 py-2 rounded-lg transition-all cursor-pointer shrink-0 shadow hover:shadow-md"
-            >
-              Issue Emergency PO →
-            </button>
-          </div>
-        );
-      })()}
-
       {/* 2. Gallery / Master List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {viewLayout === 'GALLERY' ? (
         <div className="p-6">
         {filteredMaterials.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[13px] text-[#b8b6b9]">
-            No materials match your search.
-          </div>
+          <EmptyState icon={Box} title="No materials match" hint="Try clearing your search or filters to see the full catalog." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredMaterials.map((item) => {
