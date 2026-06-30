@@ -714,7 +714,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
       {viewing && (
         <>
           <div className="fixed inset-0 bg-black/60 z-40" onClick={() => { setViewing(null); setIsEditingProfile(false); }} />
-          <div className="fixed top-0 right-0 h-full w-[700px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full max-w-[700px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
               <div>
                 <h2 className="text-[18px] font-medium text-white flex items-center gap-2">
@@ -978,7 +978,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         return (
         <>
           <div className="fixed inset-0 bg-black/60 z-40" onClick={closeAdd} />
-          <form onSubmit={handleAdd} className="fixed top-0 right-0 h-full w-[640px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
+          <form onSubmit={handleAdd} className="fixed top-0 right-0 h-full w-full max-w-[640px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
               <div>
                 <h2 className="text-[18px] font-medium text-white">Register New {TYPE_LABEL[t]}</h2>

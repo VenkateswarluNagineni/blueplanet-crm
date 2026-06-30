@@ -1,13 +1,15 @@
 'use client';
 
-import { Search, Settings, ShieldAlert, X, LogOut } from 'lucide-react';
+import { Search, Settings, ShieldAlert, X, LogOut, Menu } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useMobileNav } from '@/context/MobileNav';
 import { useState, useEffect } from 'react';
 import { logoutAction } from '@/server/session-actions';
 import { CommandPalette } from '@/components/CommandPalette';
 
 export function Header() {
   const { role, setRole, settings, updateSetting, canImpersonate, userEmail } = useRole();
+  const { setOpen: setMobileNavOpen } = useMobileNav();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
 
@@ -25,25 +27,32 @@ export function Header() {
   return (
     <>
       <header className="h-[52px] border-b border-[#454446] bg-[#2b2a2c] flex items-center justify-between px-4 z-10 shrink-0 relative">
-        <div className="flex-1 flex items-center max-w-2xl">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+          className="md:hidden mr-2 shrink-0 text-[#b8b6b9] hover:text-white p-1.5 rounded hover:bg-[#333234] transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="flex-1 flex items-center max-w-2xl min-w-0">
           <button
             onClick={() => setCmdOpen(true)}
             aria-label="Open command menu"
             className="flex items-center w-full bg-[#1c1c1c] border border-[#454446] rounded-lg px-3.5 py-2 hover:border-[#92b0ce] transition-all text-left shadow-sm"
           >
             <Search size={14} className="text-[#b8b6b9] mr-2.5 shrink-0" />
-            <span className="text-[13px] text-[#b8b6b9] w-full">Jump to a module…</span>
-            <span className="text-[10px] text-[#b8b6b9] border border-[#454446] px-1.5 py-0.5 rounded ml-2 whitespace-nowrap shrink-0 flex items-center gap-1 font-mono"><span className="bg-[#333234] px-1 rounded">Ctrl</span><span className="bg-[#333234] px-1 rounded">K</span></span>
+            <span className="text-[13px] text-[#b8b6b9] w-full truncate whitespace-nowrap text-left">Search or jump to…</span>
+            <span className="text-[10px] text-[#b8b6b9] border border-[#454446] px-1.5 py-0.5 rounded ml-2 whitespace-nowrap shrink-0 hidden sm:flex items-center gap-1 font-mono"><span className="bg-[#333234] px-1 rounded">Ctrl</span><span className="bg-[#333234] px-1 rounded">K</span></span>
           </button>
         </div>
         
         {/* Right Side: Environment & User Profile */}
-        <div className="flex items-center gap-6 ml-4">
-          
+        <div className="flex items-center gap-3 sm:gap-6 ml-3 sm:ml-4 shrink-0">
+
           {/* Admin-only impersonation switcher (server-enforced via cookie) */}
           {canImpersonate && (
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[#b8b6b9] uppercase tracking-wider">View as:</span>
+              <span className="hidden sm:inline text-[11px] text-[#b8b6b9] uppercase tracking-wider">View as:</span>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'ADMIN' | 'SALES' | 'VENDOR')}
@@ -97,7 +106,7 @@ export function Header() {
             className="fixed inset-0 bg-black/60 z-40 transition-opacity" 
             onClick={() => setIsSettingsOpen(false)}
           />
-          <div className="fixed top-0 right-0 h-full w-[450px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
+          <div className="fixed top-0 right-0 h-full w-full max-w-[450px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c]">
               <div>

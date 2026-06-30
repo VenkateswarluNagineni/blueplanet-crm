@@ -125,7 +125,7 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
       {drawer && (
         <>
           <div className="fixed inset-0 bg-black/60 z-40" onClick={close} />
-          <form onSubmit={handleSubmit} className="fixed top-0 right-0 h-full w-[560px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
+          <form onSubmit={handleSubmit} className="fixed top-0 right-0 h-full w-full max-w-[560px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
               <h2 className="text-[18px] font-medium text-white">{drawer.mode === 'ADD' ? 'New Location' : `Edit ${cur?.name}`}</h2>
               <button type="button" onClick={close} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors"><X size={20} /></button>

@@ -518,7 +518,7 @@ export default function CatalogDashboardClient({
       {selectedMaterial && (
         <>
           <div className="fixed inset-0 bg-black/60 z-40 transition-opacity" onClick={() => setSelectedMaterial(null)} />
-          <div className="fixed top-0 right-0 h-full w-[600px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full max-w-[600px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
             <div className="px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-start">
               <div>
                 <h2 className="text-[20px] font-medium text-white flex items-center gap-2">{selectedMaterial.name}</h2>

@@ -1062,7 +1062,7 @@ export function InventoryTableClient({
             onClick={() => setSelectedPassportSlab(null)}
           />
           {/* Drawer */}
-          <div className="fixed top-0 right-0 h-full w-[700px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
+          <div className="fixed top-0 right-0 h-full w-full max-w-[700px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c]">
               <div>

@@ -21,17 +21,19 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useMobileNav } from '@/context/MobileNav';
 import { BrandMark } from '@/components/brand/Wordmark';
 
 export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { role, settings } = useRole();
+  const { open: mobileOpen, setOpen: setMobileOpen } = useMobileNav();
 
   const NavItem = ({ icon: Icon, label, href }: { icon: any; label: string; href: string }) => {
     const active = pathname === href;
     return (
-      <Link href={href} className="block">
+      <Link href={href} className="block" onClick={() => setMobileOpen(false)}>
         <div 
           className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3.5'} py-2.5 rounded-lg cursor-pointer transition-all mb-1 text-[13px] ${active ? 'bg-[#333234] text-white font-medium shadow-sm border-l-2 border-[#e3c16c]' : 'text-[#b8b6b9] hover:bg-[#333234]/70 hover:text-white'}`}
           title={isCollapsed ? label : `Navigate to the ${label} module.`}
@@ -61,15 +63,18 @@ export function Sidebar() {
   };
 
   return (
-    <aside 
-      className={`bg-[#1c1c1c] border-r border-[#454446] flex flex-col justify-between shrink-0 h-screen sticky top-0 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[64px]' : 'w-[240px]'}`}
+    <>
+    {/* Mobile backdrop */}
+    {mobileOpen && <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setMobileOpen(false)} />}
+    <aside
+      className={`bg-[#1c1c1c] border-r border-[#454446] flex flex-col justify-between shrink-0 h-screen z-50 fixed md:sticky top-0 left-0 transition-transform md:transition-all duration-300 ease-in-out w-[240px] ${isCollapsed ? 'md:w-[64px]' : 'md:w-[240px]'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
     >
       <div className="p-4 overflow-y-auto overflow-x-hidden relative">
         
         {/* Collapse Toggle Button */}
-        <button 
+        <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`absolute top-4 ${isCollapsed ? 'right-0 left-0 mx-auto w-6' : 'right-2 w-6'} h-6 rounded bg-[#333234] hover:bg-[#454446] border border-[#454446] flex items-center justify-center text-[#b8b6b9] hover:text-white transition-colors z-10 cursor-pointer`}
+          className={`absolute top-4 ${isCollapsed ? 'right-0 left-0 mx-auto w-6' : 'right-2 w-6'} h-6 rounded bg-[#333234] hover:bg-[#454446] border border-[#454446] hidden md:flex items-center justify-center text-[#b8b6b9] hover:text-white transition-colors z-10 cursor-pointer`}
           title={isCollapsed ? "Expand sidebar" : "Close sidebar"}
         >
           {isCollapsed ? <Menu size={12} /> : <ChevronsLeft size={12} />}
@@ -153,5 +158,6 @@ export function Sidebar() {
 
       </div>
     </aside>
+    </>
   );
 }

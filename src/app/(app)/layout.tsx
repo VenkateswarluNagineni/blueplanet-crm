@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { SessionProvider } from '@/context/RoleContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import { MobileNavProvider } from '@/context/MobileNav';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -21,15 +22,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       userEmail={user.email}
     >
       <ToastProvider>
-        <div className="flex h-screen w-full">
-          <Sidebar />
-          <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-            <Header />
-            <div className="flex-1 overflow-y-auto relative bg-[var(--color-background)]">
-              {children}
-            </div>
-          </main>
-        </div>
+        <MobileNavProvider>
+          <div className="flex h-screen w-full">
+            <Sidebar />
+            <main className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
+              <Header />
+              <div className="flex-1 overflow-y-auto relative bg-[var(--color-background)]">
+                {children}
+              </div>
+            </main>
+          </div>
+        </MobileNavProvider>
       </ToastProvider>
     </SessionProvider>
   );
