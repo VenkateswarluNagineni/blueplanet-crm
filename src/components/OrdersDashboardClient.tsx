@@ -16,8 +16,6 @@ import type { OrderRow } from '@/server/queries/orders';
 import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/actions/sales';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { FileText } from 'lucide-react';
 
 type SortField = 'date' | 'material' | 'customer' | 'value';
 type SortDir = 'asc' | 'desc';
@@ -52,8 +50,8 @@ export default function OrdersDashboardClient({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const toast = useToast();
-  const { confirm, confirmDialog } = useConfirm();
+  const _toast = useToast();
+  const { confirm, confirmDialog: _confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');

@@ -7,7 +7,6 @@ import {
   Package, 
   BarChart3, 
   ArrowUpRight, 
-  ArrowDownRight,
   ShieldCheck,
   Download,
   Filter

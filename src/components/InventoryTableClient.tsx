@@ -6,7 +6,6 @@ import {
   ListFilter, 
   Search, 
   ArrowUpDown, 
-  Settings, 
   Plus, 
   Pencil, 
   CheckCircle,
@@ -283,7 +282,7 @@ export function InventoryTableClient({
     // Optional: set a drag ghost image here
   };
 
-  const handleDragOver = (e: React.DragEvent, colId: string) => {
+  const handleDragOver = (e: React.DragEvent, _colId: string) => {
     e.preventDefault();
   };
 
@@ -404,17 +403,17 @@ export function InventoryTableClient({
     selectedCategories, selectedColors, selectedOrigins, refLot, refBundle, refBin, refBarcode, minLength, minWidth, sortKey, sortDir]);
 
   // Facet options + counts derived from the full dataset (stable overview).
-  const countBy = (fn: (i: InventoryItemProps) => string) => {
+  const countBy = useCallback((fn: (i: InventoryItemProps) => string) => {
     const m = new Map<string, number>();
     for (const i of initialData) { const k = fn(i); m.set(k, (m.get(k) ?? 0) + 1); }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  };
-  const materialCounts = useMemo(() => countBy((i) => i.product.materialType), [initialData]);
-  const categoryCounts = useMemo(() => countBy((i) => i.product.category ?? '—'), [initialData]);
-  const colorCounts = useMemo(() => countBy((i) => i.product.baseColor), [initialData]);
-  const originCounts = useMemo(() => countBy((i) => i.product.originCountry ?? '—'), [initialData]);
-  const statusCounts = useMemo(() => countBy((i) => i.status), [initialData]);
-  const locationCounts = useMemo(() => countBy((i) => i.location.name), [initialData]);
+  }, [initialData]);
+  const materialCounts = useMemo(() => countBy((i) => i.product.materialType), [countBy]);
+  const categoryCounts = useMemo(() => countBy((i) => i.product.category ?? '—'), [countBy]);
+  const colorCounts = useMemo(() => countBy((i) => i.product.baseColor), [countBy]);
+  const originCounts = useMemo(() => countBy((i) => i.product.originCountry ?? '—'), [countBy]);
+  const statusCounts = useMemo(() => countBy((i) => i.status), [countBy]);
+  const locationCounts = useMemo(() => countBy((i) => i.location.name), [countBy]);
   const refineCount =
     selectedMaterials.length + selectedCategories.length + selectedColors.length + selectedOrigins.length +
     (refLot ? 1 : 0) + (refBundle ? 1 : 0) + (refBin ? 1 : 0) + (refBarcode ? 1 : 0) + (minLength ? 1 : 0) + (minWidth ? 1 : 0);

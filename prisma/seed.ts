@@ -244,6 +244,8 @@ async function main() {
     },
   })
   void poCalacatta
+  void supCosentino
+  void locMA
 
   // A fully-received PO with per-slab line items — gives several slabs a complete,
   // real lineage (supplier → ocean → customs → inland → received → optionally sold).
