@@ -661,7 +661,7 @@ export default function PurchasesDashboardClient({
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">{slip.title}</h1>
                   <p className="text-sm text-gray-500 font-mono">DOC NO: <span className="font-bold text-gray-800">{viewerPo.poNumber}-{slip.suffix}</span></p>
-                  <p className="text-sm text-gray-500 font-mono">ISSUED: <span className="font-bold text-gray-800">{new Date(viewerPo.issuedAt ?? Date.now()).toLocaleString()}</span></p>
+                  <p className="text-sm text-gray-500 font-mono">ISSUED: <span className="font-bold text-gray-800">{viewerPo.issuedAt ? new Date(viewerPo.issuedAt).toLocaleString() : 'Just now'}</span></p>
                 </div>
                 <div className="text-right">
                   <h2 className="text-xl font-bold text-gray-800">BluePlanet CRM Ledger</h2>

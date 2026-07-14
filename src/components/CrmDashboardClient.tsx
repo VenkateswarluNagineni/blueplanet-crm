@@ -160,20 +160,19 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const [customerView, setCustomerView] = useState<'LIST' | 'CATALOG'>('LIST');
   const [custFilters, setCustFilters] = useState<Record<string, string[]>>({});
   const [showColPicker, setShowColPicker] = useState(false);
-  const [visibleCols, setVisibleCols] = useState<Set<CustColKey>>(
-    () => new Set(CUST_COLUMNS.filter((c) => c.def).map((c) => c.key)),
-  );
-  // Load saved column visibility once on mount (client-only; avoids SSR hydration mismatch).
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CUST_COLS_LS_KEY);
-      if (raw) {
-        const keys = JSON.parse(raw) as CustColKey[];
-        const valid = keys.filter((k) => CUST_COLUMNS.some((c) => c.key === k));
-        if (valid.length) setVisibleCols(new Set(valid));
-      }
-    } catch { /* ignore corrupt storage */ }
-  }, []);
+  const [visibleCols, setVisibleCols] = useState<Set<CustColKey>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(CUST_COLS_LS_KEY);
+        if (raw) {
+          const keys = JSON.parse(raw) as CustColKey[];
+          const valid = keys.filter((k) => CUST_COLUMNS.some((c) => c.key === k));
+          if (valid.length) return new Set(valid);
+        }
+      } catch { /* ignore */ }
+    }
+    return new Set(CUST_COLUMNS.filter((c) => c.def).map((c) => c.key));
+  });
   const toggleCol = (key: CustColKey) =>
     setVisibleCols((prev) => {
       const next = new Set(prev);

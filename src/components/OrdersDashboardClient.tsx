@@ -14,9 +14,35 @@ import {
 } from 'lucide-react';
 import type { OrderRow } from '@/server/queries/orders';
 import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/actions/sales';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FileText } from 'lucide-react';
 
 type SortField = 'date' | 'material' | 'customer' | 'value';
 type SortDir = 'asc' | 'desc';
+
+interface SortHeaderProps {
+  field: SortField;
+  label: string;
+  align?: 'left' | 'right';
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+}
+
+const SortHeader = ({ field, label, align = 'left', sortField, sortDir, onSort }: SortHeaderProps) => (
+  <button
+    type="button"
+    onClick={() => onSort(field)}
+    className={`flex items-center gap-1 hover:text-white transition-colors ${align === 'right' ? 'ml-auto' : ''} ${sortField === field ? 'text-white' : ''}`}
+    title={`Sort by ${label.toLowerCase()}`}
+  >
+    {label}
+    <ArrowUpDown size={11} className={sortField === field ? 'opacity-100' : 'opacity-40'} />
+    {sortField === field && <span className="text-[9px]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+  </button>
+);
 
 export default function OrdersDashboardClient({
   orders,
@@ -26,6 +52,8 @@ export default function OrdersDashboardClient({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -52,8 +80,14 @@ export default function OrdersDashboardClient({
     });
   };
 
-  const handleCancelOrder = (orderId: string) => {
-    if (!confirm('Are you sure you want to cancel this Sales Order?')) return;
+  const handleCancelOrder = async (orderId: string) => {
+    const ok = await confirm({
+      title: 'Cancel Sales Order?',
+      message: 'Are you sure you want to cancel this Sales Order? This action cannot be undone.',
+      confirmLabel: 'Cancel Order',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setActionError('');
     startTransition(async () => {
       const res = await cancelOrderAction(orderId);
@@ -65,8 +99,14 @@ export default function OrdersDashboardClient({
     });
   };
 
-  const handleReopenOrder = (orderId: string) => {
-    if (!confirm('Reopen this order? It returns to Pending and its slabs are re-held.')) return;
+  const handleReopenOrder = async (orderId: string) => {
+    const ok = await confirm({
+      title: 'Reopen Order?',
+      message: 'Reopen this order? It returns to Pending status and its slabs will be re-held.',
+      confirmLabel: 'Reopen Order',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setActionError('');
     startTransition(async () => {
       const res = await reopenOrderAction(orderId);
@@ -110,19 +150,6 @@ export default function OrdersDashboardClient({
           return a.placedAt.localeCompare(b.placedAt) * dir;
       }
     });
-
-  const SortHeader = ({ field, label, align = 'left' }: { field: SortField; label: string; align?: 'left' | 'right' }) => (
-    <button
-      type="button"
-      onClick={() => toggleSort(field)}
-      className={`flex items-center gap-1 hover:text-white transition-colors ${align === 'right' ? 'ml-auto' : ''} ${sortField === field ? 'text-white' : ''}`}
-      title={`Sort by ${label.toLowerCase()}`}
-    >
-      {label}
-      <ArrowUpDown size={11} className={sortField === field ? 'opacity-100' : 'opacity-40'} />
-      {sortField === field && <span className="text-[9px]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
-    </button>
-  );
 
   return (
     <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
@@ -185,10 +212,10 @@ export default function OrdersDashboardClient({
             <thead>
               <tr className="bg-[#333234] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
                 <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Order ID</th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
                 <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Rep ID</th>
                 <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Status</th>
                 <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-center">Actions</th>

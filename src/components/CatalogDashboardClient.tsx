@@ -97,18 +97,18 @@ export default function CatalogDashboardClient({
   const [showColPicker, setShowColPicker] = useState(false);
   const [sortKey, setSortKey] = useState<'name' | 'type' | 'category' | 'yard' | 'retail'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [visibleProdCols, setVisibleProdCols] = useState<Set<ProdColKey>>(
-    () => new Set(PROD_COLUMNS.filter((c) => c.def).map((c) => c.key)),
-  );
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PROD_COLS_LS_KEY);
-      if (raw) {
-        const keys = (JSON.parse(raw) as ProdColKey[]).filter((k) => PROD_COLUMNS.some((c) => c.key === k));
-        if (keys.length) setVisibleProdCols(new Set(keys));
-      }
-    } catch { /* ignore corrupt storage */ }
-  }, []);
+  const [visibleProdCols, setVisibleProdCols] = useState<Set<ProdColKey>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(PROD_COLS_LS_KEY);
+        if (raw) {
+          const keys = (JSON.parse(raw) as ProdColKey[]).filter((k) => PROD_COLUMNS.some((c) => c.key === k));
+          if (keys.length) return new Set(keys);
+        }
+      } catch { /* ignore */ }
+    }
+    return new Set(PROD_COLUMNS.filter((c) => c.def).map((c) => c.key));
+  });
   const toggleProdCol = (key: ProdColKey) =>
     setVisibleProdCols((prev) => {
       const next = new Set(prev);

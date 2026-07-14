@@ -151,8 +151,24 @@ export function InventoryTableClient({
     setter((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
 
   // Columns & Order
-  const [visibleColumns, setVisibleColumns] = useState(DEFAULT_COLUMNS);
-  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMN_ORDER);
+  const [visibleColumns, setVisibleColumns] = useState<typeof DEFAULT_COLUMNS>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedCols = localStorage.getItem('blueplanet_inventory_columns');
+        if (savedCols) return JSON.parse(savedCols) as typeof DEFAULT_COLUMNS;
+      } catch { /* ignore */ }
+    }
+    return DEFAULT_COLUMNS;
+  });
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedOrder = localStorage.getItem('blueplanet_inventory_column_order');
+        if (savedOrder) return JSON.parse(savedOrder) as string[];
+      } catch { /* ignore */ }
+    }
+    return DEFAULT_COLUMN_ORDER;
+  });
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
 
@@ -161,15 +177,8 @@ export function InventoryTableClient({
 
   // Load saved preferences on mount
   useEffect(() => {
-    setIsClient(true);
-    const savedCols = localStorage.getItem('blueplanet_inventory_columns');
-    const savedOrder = localStorage.getItem('blueplanet_inventory_column_order');
-    if (savedCols) {
-      try { setVisibleColumns(JSON.parse(savedCols)); } catch (e) {}
-    }
-    if (savedOrder) {
-      try { setColumnOrder(JSON.parse(savedOrder)); } catch (e) {}
-    }
+    const t = setTimeout(() => setIsClient(true), 0);
+    return () => clearTimeout(t);
   }, []);
 
   const saveAsDefaultView = () => {
@@ -206,16 +215,22 @@ export function InventoryTableClient({
     const wanted = searchParams.get('slab');
     if (!wanted) return;
     const match = initialData.find((i) => i.uniqueSlabId === wanted || i.id === wanted);
-    if (match) setSelectedPassportSlab(match);
+    if (match) {
+      const t = setTimeout(() => setSelectedPassportSlab(match), 0);
+      return () => clearTimeout(t);
+    }
   }, [searchParams, initialData]);
 
   // Deep-link filters: arriving with ?location=<name> / ?status=<STATUS> (e.g. from the
   // Inventory Overview by-location rows) pre-seeds the matching sidebar filter once on mount.
   useEffect(() => {
-    const loc = searchParams.get('location');
-    if (loc && initialData.some((i) => i.location.name === loc)) setSelectedLocations([loc]);
-    const status = searchParams.get('status');
-    if (status && initialData.some((i) => i.status === status)) setSelectedStatuses([status]);
+    const t = setTimeout(() => {
+      const loc = searchParams.get('location');
+      if (loc && initialData.some((i) => i.location.name === loc)) setSelectedLocations([loc]);
+      const status = searchParams.get('status');
+      if (status && initialData.some((i) => i.status === status)) setSelectedStatuses([status]);
+    }, 0);
+    return () => clearTimeout(t);
     // run once on mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -245,7 +260,7 @@ export function InventoryTableClient({
   const resize = useCallback((mouseMoveEvent: MouseEvent) => {
     if (isResizing.current) {
       const delta = mouseMoveEvent.clientX - startX.current;
-      let newWidth = startWidth.current + delta;
+      const newWidth = startWidth.current + delta;
       if (newWidth >= 200 && newWidth <= 600) {
         setSidebarWidth(newWidth);
       }
@@ -382,7 +397,10 @@ export function InventoryTableClient({
   const currentPage = Math.min(page, totalPages);
   const pagedData = sortedData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [searchTerm, selectedLocations, selectedStatuses, selectedMaterials,
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(t);
+  }, [searchTerm, selectedLocations, selectedStatuses, selectedMaterials,
     selectedCategories, selectedColors, selectedOrigins, refLot, refBundle, refBin, refBarcode, minLength, minWidth, sortKey, sortDir]);
 
   // Facet options + counts derived from the full dataset (stable overview).
@@ -527,17 +545,17 @@ export function InventoryTableClient({
                 onChange={(e) => setEditForm({...editForm, lengthInches: Number(e.target.value)})}
                 className="w-16 bg-[#1c1c1c] border border-[#e3c16c] rounded px-2 py-1 text-white text-[12px] outline-none"
               />
-              <span>" ×</span>
+              <span>&quot; ×</span>
               <input 
                 type="number" 
                 value={editForm.widthInches}
                 onChange={(e) => setEditForm({...editForm, widthInches: Number(e.target.value)})}
                 className="w-16 bg-[#1c1c1c] border border-[#e3c16c] rounded px-2 py-1 text-white text-[12px] outline-none"
               />
-              <span>"</span>
+              <span>&quot;</span>
             </div>
           ) : (
-            <>{item.lengthInches}" × {item.widthInches}" <span className="text-[#b8b6b9] ml-1">({item.totalSf} SF)</span></>
+            <>{item.lengthInches}&quot; × {item.widthInches}&quot; <span className="text-[#b8b6b9] ml-1">({item.totalSf} SF)</span></>
           )}
         </td>
       );

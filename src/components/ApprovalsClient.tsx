@@ -46,9 +46,9 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
                     <div className="min-w-0">
                       <p className="text-[13px] text-white font-medium truncate">{a.productName} <span className="text-[#92b0ce] font-mono">· {a.slabId}</span></p>
                       <div className="flex items-center gap-2 text-[12px] text-[#b8b6b9] mt-0.5">
-                        <span>{a.currentLength ?? '—'}" × {a.currentWidth ?? '—'}"</span>
+                        <span>{a.currentLength ?? '—'}&quot; × {a.currentWidth ?? '—'}&quot;</span>
                         <ArrowRight size={12} className="text-[#e3c16c]" />
-                        <span className="text-white">{a.proposedLength}" × {a.proposedWidth}"</span>
+                        <span className="text-white">{a.proposedLength}&quot; × {a.proposedWidth}&quot;</span>
                         <span className="ml-2 text-[#b8b6b9]">submitted by {a.submittedByRole} · {a.createdAt}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1.5">
@@ -77,7 +77,7 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
             <div className="space-y-2">
               {resolved.map((a) => (
                 <div key={a.id} className="bg-[#1c1c1c] border border-[#454446] rounded-md p-3 flex items-center justify-between opacity-80">
-                  <p className="text-[12px] text-[#b8b6b9]"><span className="text-white font-mono">{a.slabId}</span> · {a.proposedLength}" × {a.proposedWidth}"</p>
+                  <p className="text-[12px] text-[#b8b6b9]"><span className="text-white font-mono">{a.slabId}</span> · {a.proposedLength}&quot; × {a.proposedWidth}&quot;</p>
                   {a.status === 'COMPLETED' ? (
                     <span className="text-[11px] text-[#10b981] flex items-center gap-1"><CheckCircle2 size={13} /> Approved</span>
                   ) : (

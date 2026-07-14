@@ -107,9 +107,6 @@ export async function getSalesCrmData(associatePartyId: string | null): Promise<
       : Promise.resolve(null),
   ]);
 
-  const orderValue = (o: (typeof orders)[number]) =>
-    o.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0);
-
   const customerCards: SalesCustomer[] = customers.map((c) => {
     const cOpps = opps.filter((o) => o.customerId === c.id);
     const cOrders = orders.filter((o) => o.customerId === c.id);

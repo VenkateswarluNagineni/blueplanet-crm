@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -24,45 +24,66 @@ import { useRole } from '@/context/RoleContext';
 import { useMobileNav } from '@/context/MobileNav';
 import { BrandMark } from '@/components/brand/Wordmark';
 
+interface SidebarContextType {
+  isCollapsed: boolean;
+  pathname: string;
+  onItemClick: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextType>({
+  isCollapsed: false,
+  pathname: '',
+  onItemClick: () => {},
+});
+
+const NavItem = ({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) => {
+  const { isCollapsed, pathname, onItemClick } = useContext(SidebarContext);
+  const active = pathname === href;
+  return (
+    <Link href={href} className="block" onClick={onItemClick}>
+      <div 
+        className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3.5'} py-2.5 rounded-lg cursor-pointer transition-all mb-1 text-[13px] ${active ? 'bg-[#333234] text-white font-medium shadow-sm border-l-2 border-[#e3c16c]' : 'text-[#b8b6b9] hover:bg-[#333234]/70 hover:text-white'}`}
+        title={isCollapsed ? label : `Navigate to the ${label} module.`}
+      >
+        <Icon size={16} className={`shrink-0 ${active ? 'opacity-100 text-[#e3c16c]' : 'opacity-80'}`} />
+        {!isCollapsed && <span className="whitespace-nowrap truncate">{label}</span>}
+      </div>
+    </Link>
+  );
+};
+
+const NavGroup = ({ title, children }: { title: string; children: React.ReactNode }) => {
+  const { isCollapsed } = useContext(SidebarContext);
+  if (!children) return null;
+  return (
+    <div className="mb-6">
+      {!isCollapsed && (
+        <div className="flex items-center justify-between px-3 py-1 mb-1 cursor-pointer hover:bg-[#333234] rounded-md text-[#b8b6b9] transition-colors">
+          <h3 className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{title}</h3>
+          <span className="text-[10px]">▼</span>
+        </div>
+      )}
+      <div className={isCollapsed ? 'flex flex-col items-center gap-1' : 'ml-2 pl-2 border-l border-[#454446]'}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { role, settings } = useRole();
   const { open: mobileOpen, setOpen: setMobileOpen } = useMobileNav();
 
-  const NavItem = ({ icon: Icon, label, href }: { icon: any; label: string; href: string }) => {
-    const active = pathname === href;
-    return (
-      <Link href={href} className="block" onClick={() => setMobileOpen(false)}>
-        <div 
-          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3.5'} py-2.5 rounded-lg cursor-pointer transition-all mb-1 text-[13px] ${active ? 'bg-[#333234] text-white font-medium shadow-sm border-l-2 border-[#e3c16c]' : 'text-[#b8b6b9] hover:bg-[#333234]/70 hover:text-white'}`}
-          title={isCollapsed ? label : `Navigate to the ${label} module.`}
-        >
-          <Icon size={16} className={`shrink-0 ${active ? 'opacity-100 text-[#e3c16c]' : 'opacity-80'}`} />
-          {!isCollapsed && <span className="whitespace-nowrap truncate">{label}</span>}
-        </div>
-      </Link>
-    );
-  };
-
-  const NavGroup = ({ title, children }: { title: string, children: React.ReactNode }) => {
-    if (!children) return null;
-    return (
-      <div className="mb-6">
-        {!isCollapsed && (
-          <div className="flex items-center justify-between px-3 py-1 mb-1 cursor-pointer hover:bg-[#333234] rounded-md text-[#b8b6b9] transition-colors">
-            <h3 className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{title}</h3>
-            <span className="text-[10px]">▼</span>
-          </div>
-        )}
-        <div className={isCollapsed ? 'flex flex-col items-center gap-1' : 'ml-2 pl-2 border-l border-[#454446]'}>
-          {children}
-        </div>
-      </div>
-    );
+  const ctxValue = {
+    isCollapsed,
+    pathname,
+    onItemClick: () => setMobileOpen(false),
   };
 
   return (
+    <SidebarContext.Provider value={ctxValue}>
     <>
     {/* Mobile backdrop */}
     {mobileOpen && <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setMobileOpen(false)} />}
@@ -159,5 +180,6 @@ export function Sidebar() {
       </div>
     </aside>
     </>
+    </SidebarContext.Provider>
   );
 }

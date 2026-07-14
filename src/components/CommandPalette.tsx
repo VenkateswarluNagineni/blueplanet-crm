@@ -54,9 +54,17 @@ export function CommandPalette({ open, onClose, role }: { open: boolean; onClose
   // Debounced record search.
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setRecords([]); setLoading(false); return; }
-    setLoading(true);
+    if (q.length < 2) {
+      const t0 = setTimeout(() => {
+        setRecords([]);
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(t0);
+    }
     let stale = false;
+    const tLoad = setTimeout(() => {
+      if (!stale) setLoading(true);
+    }, 0);
     const t = setTimeout(async () => {
       try {
         const res = await globalSearchAction(q);
@@ -65,13 +73,24 @@ export function CommandPalette({ open, onClose, role }: { open: boolean; onClose
         if (!stale) setLoading(false);
       }
     }, 200);
-    return () => { stale = true; clearTimeout(t); };
+    return () => { stale = true; clearTimeout(tLoad); clearTimeout(t); };
   }, [query]);
 
   useEffect(() => {
-    if (open) { setQuery(''); setRecords([]); setActive(0); setTimeout(() => inputRef.current?.focus(), 0); }
+    if (open) {
+      const t = setTimeout(() => {
+        setQuery('');
+        setRecords([]);
+        setActive(0);
+        inputRef.current?.focus();
+      }, 0);
+      return () => clearTimeout(t);
+    }
   }, [open]);
-  useEffect(() => { setActive(0); }, [query, records.length]);
+  useEffect(() => {
+    const t = setTimeout(() => setActive(0), 0);
+    return () => clearTimeout(t);
+  }, [query, records.length]);
 
   // Flattened list: records first (more specific), then matching modules.
   const rows: Row[] = useMemo(() => {
