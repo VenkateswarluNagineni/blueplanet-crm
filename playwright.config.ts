@@ -8,8 +8,9 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  timeout: 90_000,
-  expect: { timeout: 15_000 },
+  // Serial 150-case matrix: allow headroom for occasional re-login / page recreate
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
