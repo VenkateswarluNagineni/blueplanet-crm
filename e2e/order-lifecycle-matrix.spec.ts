@@ -9,10 +9,10 @@
  *   npm run e2e:generate
  *   npm run e2e
  */
-import { test, expect, type Page, type Browser } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { loginAs, ensureAuthed } from './helpers/auth';
+import { loginAs } from './helpers/auth';
 
 type Case = {
   index: number;
@@ -36,6 +36,8 @@ type Case = {
 };
 
 const fixturePath = path.join(__dirname, 'fixtures', 'order-matrix.json');
+const authDir = path.join(__dirname, '.auth');
+const authFile = path.join(authDir, 'admin.json');
 
 function loadCases(): Case[] {
   if (!fs.existsSync(fixturePath)) {
@@ -67,129 +69,100 @@ test.describe('150 order lifecycle combinations (serial)', () => {
     expect(cases.length).toBe(150);
   });
 
-  // Shared authenticated page for speed + full admin visibility.
-  // Recreate if the browser crashes mid-suite (long serial runs on Windows).
-  let browserRef: Browser;
-  let page: Page;
-
-  async function freshPage(): Promise<Page> {
-    if (page && !page.isClosed()) {
-      await page.close().catch(() => {});
-    }
-    page = await browserRef.newPage();
-    await loginAs(page, 'ADMIN');
-    return page;
-  }
-
-  async function readyPage(): Promise<Page> {
-    if (!page || page.isClosed()) {
-      return freshPage();
-    }
-    return page;
-  }
-
+  /**
+   * Fresh context per case (with saved auth) avoids long-lived shared page crashes
+   * that abort the serial suite on Windows after ~50–100 cases.
+   */
   test.beforeAll(async ({ browser }) => {
-    browserRef = browser;
-    await freshPage();
-  });
-
-  test.afterAll(async () => {
-    if (page && !page.isClosed()) {
-      await page.close().catch(() => {});
-    }
+    fs.mkdirSync(authDir, { recursive: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await loginAs(page, 'ADMIN');
+    await context.storageState({ path: authFile });
+    await context.close();
   });
 
   for (const c of cases) {
-    test(`#${String(c.index).padStart(3, '0')} ${c.soNumber} · ${c.uniqueSlabId} · ${c.productName}`, async () => {
-      test.setTimeout(120_000);
+    test(`#${String(c.index).padStart(3, '0')} ${c.soNumber} · ${c.uniqueSlabId} · ${c.productName}`, async ({
+      browser,
+    }) => {
+      test.setTimeout(90_000);
 
-      // ── 0) Session guard (serial suite reuses one browser page) ───
-      let p = await readyPage();
+      const context = await browser.newContext({ storageState: authFile });
+      const page = await context.newPage();
+
       try {
-        await p.goto('/orders', { waitUntil: 'domcontentloaded' });
-      } catch {
-        p = await freshPage();
-        await p.goto('/orders', { waitUntil: 'domcontentloaded' });
-      }
-      await ensureAuthed(p, 'ADMIN');
-      if (p.isClosed()) {
-        p = await freshPage();
-        await p.goto('/orders', { waitUntil: 'domcontentloaded' });
-      }
-      if (!p.url().includes('/orders')) {
-        await p.goto('/orders', { waitUntil: 'domcontentloaded' });
-      }
-      page = p;
+        // ── 1) Order appears ──────────────────────────────────────────
+        await page.goto('/orders', { waitUntil: 'domcontentloaded' });
+        // Cookie expired / secret mismatch → re-login and refresh storage
+        if (page.url().includes('/login')) {
+          await loginAs(page, 'ADMIN');
+          await context.storageState({ path: authFile });
+          await page.goto('/orders', { waitUntil: 'domcontentloaded' });
+        }
 
-      // ── 1) Order appears ──────────────────────────────────────────
-      await expect(page.getByRole('heading', { name: /orders/i })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByRole('heading', { name: /orders/i })).toBeVisible({
+          timeout: 20_000,
+        });
 
-      const search = page.getByPlaceholder(/search orders/i);
-      await search.fill('');
-      await search.fill(c.soNumber);
-      // Allow filter to recompute
-      await page.waitForTimeout(200);
+        const search = page.getByPlaceholder(/search orders/i);
+        await search.fill('');
+        await search.fill(c.soNumber);
+        await page.waitForTimeout(200);
 
-      await expect(page.getByText(c.soNumber, { exact: true }).first()).toBeVisible({
-        timeout: 20_000,
-      });
-      await expect(page.getByText(c.customerName, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.uniqueSlabId, { exact: false }).first()).toBeVisible();
-      // Completed sale
-      await expect(page.getByText(/completed|sold/i).first()).toBeVisible();
+        await expect(page.getByText(c.soNumber, { exact: true }).first()).toBeVisible({
+          timeout: 20_000,
+        });
+        await expect(page.getByText(c.customerName, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText(c.uniqueSlabId, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText(/completed|sold/i).first()).toBeVisible();
 
-      // ── 2) Inventory Material Passport ────────────────────────────
-      const slabUrl = `/inventory?slab=${encodeURIComponent(c.uniqueSlabId)}`;
-      try {
+        // ── 2) Inventory Material Passport ────────────────────────────
+        const slabUrl = `/inventory?slab=${encodeURIComponent(c.uniqueSlabId)}`;
         await page.goto(slabUrl, { waitUntil: 'domcontentloaded' });
-      } catch {
-        page = await freshPage();
-        await page.goto(slabUrl, { waitUntil: 'domcontentloaded' });
-      }
-      await ensureAuthed(page, 'ADMIN');
-      if (page.isClosed()) {
-        page = await freshPage();
-        await page.goto(slabUrl, { waitUntil: 'domcontentloaded' });
-      }
-      if (!page.url().includes('/inventory')) {
-        await page.goto(slabUrl, { waitUntil: 'domcontentloaded' });
-      }
-      // Prefer testid (stable); fall back to heading role
-      const passportTitle = page
-        .getByTestId('passport-title')
-        .or(page.getByRole('heading', { name: /material passport/i }));
-      await expect(passportTitle).toBeVisible({ timeout: 25_000 });
-      await expect(page.getByText(c.uniqueSlabId, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.productName, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.locationName, { exact: false }).first()).toBeVisible();
+        if (page.url().includes('/login')) {
+          await loginAs(page, 'ADMIN');
+          await context.storageState({ path: authFile });
+          await page.goto(slabUrl, { waitUntil: 'domcontentloaded' });
+        }
 
-      // ── 3) Lineage: supplier / PO ─────────────────────────────────
-      await expect(page.getByText(/1\.\s*supplier origin/i).first()).toBeVisible();
-      await expect(page.getByText(c.supplierName, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.poNumber, { exact: true }).first()).toBeVisible();
+        const passportTitle = page
+          .getByTestId('passport-title')
+          .or(page.getByRole('heading', { name: /material passport/i }));
+        await expect(passportTitle).toBeVisible({ timeout: 25_000 });
+        await expect(page.getByText(c.uniqueSlabId, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText(c.productName, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText(c.locationName, { exact: false }).first()).toBeVisible();
 
-      // Transit vendors
-      await expect(page.getByText(/2\.\s*transit/i).first()).toBeVisible();
-      if (c.oceanVendorName) {
-        await expect(page.getByText(c.oceanVendorName, { exact: false }).first()).toBeVisible();
-      }
-      if (c.customsVendorName) {
-        await expect(page.getByText(c.customsVendorName, { exact: false }).first()).toBeVisible();
-      }
-      if (c.inlandVendorName) {
-        await expect(page.getByText(c.inlandVendorName, { exact: false }).first()).toBeVisible();
-      }
+        // ── 3) Lineage: supplier / PO ─────────────────────────────────
+        await expect(page.getByText(/1\.\s*supplier origin/i).first()).toBeVisible();
+        await expect(page.getByText(c.supplierName, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText(c.poNumber, { exact: true }).first()).toBeVisible();
 
-      // Warehouse
-      await expect(page.getByText(/3\.\s*current inventory/i).first()).toBeVisible();
+        await expect(page.getByText(/2\.\s*transit/i).first()).toBeVisible();
+        if (c.oceanVendorName) {
+          await expect(page.getByText(c.oceanVendorName, { exact: false }).first()).toBeVisible();
+        }
+        if (c.customsVendorName) {
+          await expect(page.getByText(c.customsVendorName, { exact: false }).first()).toBeVisible();
+        }
+        if (c.inlandVendorName) {
+          await expect(page.getByText(c.inlandVendorName, { exact: false }).first()).toBeVisible();
+        }
 
-      // Sale node — scroll to bottom of passport
-      await scrollPassportBody(page);
-      await expect(page.getByText(/4\.\s*sales\s*&\s*customer/i).first()).toBeVisible();
-      await expect(page.getByText(c.customerName, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.associateName, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText(c.soNumber, { exact: true }).first()).toBeVisible();
-      await expect(page.getByText(/sold/i).first()).toBeVisible();
+        // Warehouse / current inventory
+        await expect(page.getByText(/3\.\s*current inventory/i).first()).toBeVisible();
+
+        // Sales / customer (sold slabs)
+        await scrollPassportBody(page);
+        await expect(page.getByText(/4\.\s*sales/i).first()).toBeVisible();
+        await expect(page.getByText(c.customerName, { exact: false }).first()).toBeVisible();
+        if (c.associateName) {
+          await expect(page.getByText(c.associateName, { exact: false }).first()).toBeVisible();
+        }
+      } finally {
+        await context.close();
+      }
     });
   }
 });
