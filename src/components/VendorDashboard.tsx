@@ -41,22 +41,63 @@ const CATALOG: WidgetDef[] = [
 
 const DEFAULT_LAYOUT = ['vkpi:balanceDue', 'vkpi:activeShipments', 'vkpi:totalPos', 'vkpi:overdueAmount'];
 
-function KpiCard({ def, kpis }: { def: WidgetDef; kpis: VendorKpis }) {
+function KpiCard({
+  def,
+  kpis,
+  onClick,
+  editing,
+}: {
+  def: WidgetDef;
+  kpis: VendorKpis;
+  onClick?: () => void;
+  editing: boolean;
+}) {
   const Icon = def.icon;
-  return (
-    <div className="bg-[#1c1c1c] border border-[#454446] rounded-xl p-5 hover:border-[#5a595c] transition-all shadow-md h-full">
+  const interactive = !!onClick && !editing;
+  const shell = `p-5 h-full ${
+    interactive ? 'bp-card-interactive cursor-pointer' : 'bp-card'
+  }`;
+  const body = (
+    <>
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-inner" style={{ background: `${def.accent}1a`, color: def.accent }}>
+        <div
+          className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0 shadow-inner"
+          style={{ background: `${def.accent}1a`, color: def.accent }}
+        >
           <Icon size={16} />
         </div>
-        <p className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium leading-tight">{def.label}</p>
+        <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-secondary)] font-medium leading-tight">
+          {def.label}
+        </p>
       </div>
-      <p className="text-[22px] font-medium text-white tabular-nums tracking-tight" style={{ fontFamily: 'var(--font-fraunces), serif' }}>{def.value(kpis)}</p>
-    </div>
+      <p className="bp-kpi-value">{def.value(kpis)}</p>
+      {interactive && (
+        <p className="mt-2 text-[10px] text-[var(--color-fog-500)] group-hover:text-[var(--color-sodalite)]">
+          Jump to details →
+        </p>
+      )}
+    </>
   );
+  if (interactive) {
+    return (
+      <button type="button" onClick={onClick} className={`${shell} w-full text-left`}>
+        {body}
+      </button>
+    );
+  }
+  return <div className={shell}>{body}</div>;
 }
 
-export function VendorDashboard({ kpis, initialLayout }: { kpis: VendorKpis; initialLayout: string[] | null }) {
+export function VendorDashboard({
+  kpis,
+  initialLayout,
+  onKpiClick,
+}: {
+  kpis: VendorKpis;
+  initialLayout: string[] | null;
+  /** Optional: scroll to section when a KPI is clicked (disabled while customizing). */
+  onKpiClick?: (key: string) => void;
+}) {
   const byKey = useMemo(() => new Map(CATALOG.map((w) => [w.key, w])), []);
   const allowedKeys = useMemo(() => new Set(CATALOG.map((w) => w.key)), []);
   const sanitize = (keys: string[]) => keys.filter((k) => allowedKeys.has(k));
@@ -86,24 +127,24 @@ export function VendorDashboard({ kpis, initialLayout }: { kpis: VendorKpis; ini
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
-        {pending && <span className="text-[11px] text-[#b8b6b9]">Saving…</span>}
+        {pending && <span className="text-[11px] text-[var(--color-text-secondary)]">Saving…</span>}
         {editing && (
-          <button onClick={reset} className="flex items-center gap-1.5 text-[12px] text-[#b8b6b9] hover:text-white border border-[#454446] rounded-lg px-2.5 py-1.5 transition-colors">
+          <button onClick={reset} className="flex items-center gap-1.5 text-[12px] text-[var(--color-text-secondary)] hover:text-white border border-[var(--color-basalt-500)] rounded-lg px-2.5 py-1.5 transition-colors">
             <RotateCcw size={13} /> Reset
           </button>
         )}
-        <button onClick={() => setEditing((v) => !v)} className={`flex items-center gap-1.5 text-[12px] rounded-lg px-2.5 py-1.5 transition-colors border ${editing ? 'bg-[#e3c16c] text-[#1c1c1c] border-[#e3c16c] font-medium' : 'text-[#b8b6b9] hover:text-white border-[#454446]'}`}>
+        <button type="button" onClick={() => setEditing((v) => !v)} className={editing ? 'btn-primary !min-h-8 !px-2.5 text-[12px]' : 'btn-secondary !min-h-8 !px-2.5 text-[12px]'}>
           {editing ? <><Check size={13} /> Done</> : <><Sliders size={13} /> Customize</>}
         </button>
       </div>
 
       {editing && available.length > 0 && (
-        <div className="bg-[#1c1c1c] border border-dashed border-[#454446] rounded-xl p-4">
-          <p className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium mb-3">Add a card</p>
+        <div className="bg-[var(--color-basalt-900)] border border-dashed border-[var(--color-basalt-500)] rounded-xl p-4">
+          <p className="text-[11px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-3">Add a card</p>
           <div className="flex flex-wrap gap-2">
             {available.map((w) => (
-              <button key={w.key} onClick={() => add(w.key)} className="flex items-center gap-1.5 text-[12px] text-white bg-[#2b2a2c] hover:bg-[#353436] border border-[#454446] rounded-lg px-2.5 py-1.5 transition-colors">
-                <Plus size={13} className="text-[#10b981]" /> {w.label}
+              <button type="button" key={w.key} onClick={() => add(w.key)} className="flex items-center gap-1.5 text-[12px] text-white bg-[var(--color-basalt-800)] hover:bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] rounded-lg px-2.5 py-1.5 transition-colors">
+                <Plus size={13} className="text-[var(--color-emerald)]" /> {w.label}
               </button>
             ))}
           </div>
@@ -118,20 +159,25 @@ export function VendorDashboard({ kpis, initialLayout }: { kpis: VendorKpis; ini
             return (
               <div key={key} className="relative">
                 {editing && (
-                  <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-[#0f0f0f]/90 border border-[#454446] rounded-lg px-1 py-0.5 shadow-lg">
-                    <button onClick={() => move(key, -1)} disabled={i === 0} className="p-1 rounded text-[#b8b6b9] hover:text-white disabled:opacity-30"><ChevronLeft size={14} /></button>
-                    <button onClick={() => move(key, 1)} disabled={i === layout.length - 1} className="p-1 rounded text-[#b8b6b9] hover:text-white disabled:opacity-30"><ChevronRight size={14} /></button>
-                    <button onClick={() => remove(key)} className="p-1 rounded text-[#e8956b] hover:text-white"><X size={14} /></button>
+                  <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-[var(--color-basalt-950)]/90 border border-[var(--color-basalt-500)] rounded-lg px-1 py-0.5 shadow-lg">
+                    <button onClick={() => move(key, -1)} disabled={i === 0} className="p-1 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"><ChevronLeft size={14} /></button>
+                    <button onClick={() => move(key, 1)} disabled={i === layout.length - 1} className="p-1 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"><ChevronRight size={14} /></button>
+                    <button onClick={() => remove(key)} className="p-1 rounded text-[var(--color-coral)] hover:text-white"><X size={14} /></button>
                   </div>
                 )}
-                <KpiCard def={def} kpis={kpis} />
+                <KpiCard
+                  def={def}
+                  kpis={kpis}
+                  editing={editing}
+                  onClick={onKpiClick ? () => onKpiClick(def.key + def.label) : undefined}
+                />
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="bg-[#1c1c1c] border border-dashed border-[#454446] rounded-xl p-8 text-center">
-          <p className="text-[13px] text-[#b8b6b9]">No summary cards. Click <span className="text-white font-medium">Customize</span> to add some.</p>
+        <div className="vein border border-dashed border-[var(--color-basalt-500)] rounded-xl p-8 text-center">
+          <p className="text-[13px] text-[var(--color-text-secondary)]">No summary cards. Click <span className="text-white font-medium">Customize</span> to add some.</p>
         </div>
       )}
     </div>

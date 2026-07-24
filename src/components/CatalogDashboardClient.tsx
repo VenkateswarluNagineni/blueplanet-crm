@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Building2,
   Truck,
@@ -25,6 +25,10 @@ import { createQuoteAction } from '@/server/actions/sales';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
+import { Drawer } from '@/components/ui/Drawer';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { swatchBaseForMaterial } from '@/lib/material-swatch';
 
 // ---- Products Master List: price band + facet/column config ----
 
@@ -75,12 +79,28 @@ export default function CatalogDashboardClient({
   canViewCost: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   // Cost view is only available to viewers permitted to see landed cost.
   const [viewMode, setViewMode] = useState<'ADMIN' | 'SALES'>('SALES');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState<CatalogProduct | null>(null);
+
+  // Deep-link: /catalog?product=<id|sku> opens that material detail.
+  useEffect(() => {
+    const wanted = searchParams.get('product');
+    if (!wanted) return;
+    const match = products.find(
+      (p) => p.id === wanted || p.sku === wanted || p.name.toLowerCase() === wanted.toLowerCase(),
+    );
+    if (!match) return;
+    const t = setTimeout(() => {
+      setSelectedMaterial(match);
+      setSearchTerm(match.name);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParams, products]);
 
   // Quoting modal state
   const [quotingSlab, setQuotingSlab] = useState<CatalogSlab | null>(null);
@@ -173,7 +193,7 @@ export default function CatalogDashboardClient({
   const visibleProductCols = PROD_COLUMNS.filter((c) => visibleProdCols.has(c.key) && (!c.cost || (canViewCost && viewMode === 'ADMIN')));
 
   const badge = (s: string) => <Badge>{s}</Badge>;
-  const dim = (s: string | null) => <span className="text-[#b8b6b9]">{s ?? '—'}</span>;
+  const dim = (s: string | null) => <span className="text-[var(--color-text-secondary)]">{s ?? '—'}</span>;
   const prodCell = (key: ProdColKey, item: CatalogProduct): React.ReactNode => {
     switch (key) {
       case 'type': return <Badge tone="blue">{item.productType}</Badge>;
@@ -185,13 +205,13 @@ export default function CatalogDashboardClient({
       case 'origin': return dim(item.originCountry);
       case 'thickness': return dim(item.thickness);
       case 'yard': return <span className="text-white font-medium">{item.slabsInYard}</span>;
-      case 'hold': return <span className={item.slabsOnHold > 0 ? 'text-[#e3c16c]' : 'text-[#7d7c7f]'}>{item.slabsOnHold}</span>;
-      case 'transit': return <span className={item.slabsInTransit > 0 ? 'text-[#92b0ce]' : 'text-[#7d7c7f]'}>{item.slabsInTransit}</span>;
+      case 'hold': return <span className={item.slabsOnHold > 0 ? 'text-[var(--color-vein)]' : 'text-[var(--color-fog-500)]'}>{item.slabsOnHold}</span>;
+      case 'transit': return <span className={item.slabsInTransit > 0 ? 'text-[var(--color-sodalite)]' : 'text-[var(--color-fog-500)]'}>{item.slabsInTransit}</span>;
       case 'retail': return <span className="text-white">{item.retailPricePerSf != null ? `$${item.retailPricePerSf}` : '—'}</span>;
-      case 'cost': return <span className="text-[#b8b6b9]">{item.avgCostPerSf != null ? `$${item.avgCostPerSf}` : '—'}</span>;
+      case 'cost': return <span className="text-[var(--color-text-secondary)]">{item.avgCostPerSf != null ? `$${item.avgCostPerSf}` : '—'}</span>;
       case 'margin': {
         const m = item.avgCostPerSf != null && item.retailPricePerSf ? (((item.retailPricePerSf - item.avgCostPerSf) / item.retailPricePerSf) * 100).toFixed(0) : null;
-        return <span className="text-[#10b981]">{m != null ? `${m}%` : '—'}</span>;
+        return <span className="text-[var(--color-emerald)]">{m != null ? `${m}%` : '—'}</span>;
       }
       default: return null;
     }
@@ -231,30 +251,31 @@ export default function CatalogDashboardClient({
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#2b2a2c]">
-      {/* 1. Header & Controls */}
-      <div className="pt-6 pb-2 px-6 border-b border-[#454446] shrink-0">
+    <div className="h-full w-full flex flex-col bg-[var(--color-basalt-850)]">
+      {/* 1. Header & Controls — DESIGN.md page chrome */}
+      <div className="bp-header-chrome pt-5 pb-2 px-6 shrink-0">
         <div className="flex justify-between items-end mb-4">
           <div>
-            <h1 className="text-[20px] font-medium text-white mb-2">Material Master Catalog</h1>
-            <p className="text-[13px] text-[#b8b6b9]">
+            <p className="bp-eyebrow mb-2">Inventory</p>
+            <h1 className="text-[20px] font-medium text-white mb-1 tracking-tight">Catalog</h1>
+            <p className="text-[13px] text-[var(--color-text-secondary)]">
               {viewMode === 'SALES'
-                ? 'Browse available gallery and yard inventory.'
-                : 'Manage full lifecycle cost, provenance, and inventory metrics.'}
+                ? 'Materials and yard availability.'
+                : 'Cost, provenance, and inventory metrics.'}
             </p>
           </div>
           {canViewCost && (
             <div className="flex items-center gap-3">
-              <div className="bg-[#1c1c1c] p-1 rounded-md border border-[#454446] flex text-[13px] font-medium">
+              <div className="bg-[var(--color-basalt-950)] p-1 rounded-[var(--radius-md)] border border-[var(--color-basalt-500)] flex text-[13px] font-medium">
                 <button
                   onClick={() => setViewMode('SALES')}
-                  className={`px-4 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewMode === 'SALES' ? 'bg-[#333234] text-white shadow-sm' : 'text-[#b8b6b9] hover:text-white'}`}
+                  className={`px-4 py-1.5 rounded-[var(--radius-sm)] transition-colors flex items-center gap-2 ${viewMode === 'SALES' ? 'bg-[var(--color-basalt-700)] text-white shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-white'}`}
                 >
                   <Eye size={14} /> Sales Gallery
                 </button>
                 <button
                   onClick={() => setViewMode('ADMIN')}
-                  className={`px-4 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewMode === 'ADMIN' ? 'bg-[#333234] text-[#e3c16c] shadow-sm' : 'text-[#b8b6b9] hover:text-white'}`}
+                  className={`px-4 py-1.5 rounded-[var(--radius-sm)] transition-colors flex items-center gap-2 ${viewMode === 'ADMIN' ? 'bg-[var(--color-basalt-700)] text-[var(--color-vein)] shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-white'}`}
                 >
                   <TrendingUp size={14} /> Admin / Cost
                 </button>
@@ -266,27 +287,27 @@ export default function CatalogDashboardClient({
         <div className="flex justify-between items-center pb-2">
           <div className="flex gap-4 items-center">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-2 text-[#b8b6b9]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-fog-500)]" />
               <input
-                type="text"
+                type="search"
                 placeholder="Search materials (e.g., Calacatta, Quartzite)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-1.5 bg-[#1c1c1c] border border-[#454446] rounded text-[13px] text-white focus:outline-none focus:border-[#92b0ce] w-80 transition-colors"
+                className="pl-9 pr-4 h-9 bg-[var(--color-basalt-950)] border border-[var(--color-basalt-500)] rounded-[var(--radius-sm)] text-[13px] text-white focus:outline-none focus:border-[var(--color-sodalite)] w-80 transition-colors placeholder-[var(--color-fog-500)]"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showFilters ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
+              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showFilters ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}
             >
               <ListFilter size={14} /> Filters
               {prodFilterCount > 0 && (
-                <span className="bg-[#e3c16c] text-black text-[10px] px-1.5 rounded-sm ml-1 font-medium">{prodFilterCount}</span>
+                <span className="bg-[rgba(227,193,108,0.14)] text-[var(--color-vein)] border border-[rgba(227,193,108,0.3)] text-[10px] px-1.5 rounded-sm ml-1 font-semibold tabular-nums">{prodFilterCount}</span>
               )}
             </button>
             <button
               onClick={() => setShowCatalog(!showCatalog)}
-              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showCatalog ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}
+              className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showCatalog ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}
             >
               <LayoutGrid size={14} /> Catalog
             </button>
@@ -294,17 +315,17 @@ export default function CatalogDashboardClient({
           <div className="flex items-center gap-3">
             {viewLayout === 'LIST' && (
               <div className="relative">
-                <button onClick={() => setShowColPicker(!showColPicker)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showColPicker ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
+                <button onClick={() => setShowColPicker(!showColPicker)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showColPicker ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}>
                   <Columns3 size={14} /> Columns
                 </button>
                 {showColPicker && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowColPicker(false)} />
-                    <div className="absolute right-0 top-9 w-56 max-h-[60vh] overflow-y-auto bg-[#1c1c1c] border border-[#454446] rounded-md shadow-xl z-50 py-2">
-                      <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[#7d7c7f]">Visible columns</p>
+                    <div className="absolute right-0 top-9 w-56 max-h-[60vh] overflow-y-auto bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md shadow-xl z-50 py-2">
+                      <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[var(--color-fog-500)]">Visible columns</p>
                       {PROD_COLUMNS.filter((c) => !c.cost || (canViewCost && viewMode === 'ADMIN')).map((c) => (
-                        <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[#333234] cursor-pointer">
-                          <input type="checkbox" checked={visibleProdCols.has(c.key)} onChange={() => toggleProdCol(c.key)} className="accent-[#e3c16c]" />
+                        <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[var(--color-basalt-700)] cursor-pointer">
+                          <input type="checkbox" checked={visibleProdCols.has(c.key)} onChange={() => toggleProdCol(c.key)} className="accent-[var(--color-vein)]" />
                           {c.label}
                         </label>
                       ))}
@@ -313,9 +334,9 @@ export default function CatalogDashboardClient({
                 )}
               </div>
             )}
-            <div className="bg-[#1c1c1c] p-1 rounded-md border border-[#454446] flex text-[13px] font-medium">
-              <button onClick={() => setViewLayout('GALLERY')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'GALLERY' ? 'bg-[#333234] text-white' : 'text-[#b8b6b9] hover:text-white'}`}><LayoutGrid size={14} /> Gallery</button>
-              <button onClick={() => setViewLayout('LIST')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'LIST' ? 'bg-[#333234] text-white' : 'text-[#b8b6b9] hover:text-white'}`}><Rows3 size={14} /> Master List</button>
+            <div className="bg-[var(--color-basalt-900)] p-1 rounded-md border border-[var(--color-basalt-500)] flex text-[13px] font-medium">
+              <button onClick={() => setViewLayout('GALLERY')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'GALLERY' ? 'bg-[var(--color-basalt-700)] text-white' : 'text-[var(--color-text-secondary)] hover:text-white'}`}><LayoutGrid size={14} /> Gallery</button>
+              <button onClick={() => setViewLayout('LIST')} className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-2 ${viewLayout === 'LIST' ? 'bg-[var(--color-basalt-700)] text-white' : 'text-[var(--color-text-secondary)] hover:text-white'}`}><Rows3 size={14} /> Master List</button>
             </div>
           </div>
         </div>
@@ -323,8 +344,8 @@ export default function CatalogDashboardClient({
 
       {/* Conditional Filter Bar — one dropdown per facet */}
       {showFilters && (
-        <div className="px-6 py-3 bg-[#1c1c1c] border-b border-[#454446] flex items-center gap-3 text-[13px] flex-wrap">
-          <span className="text-[#b8b6b9]">Filter by:</span>
+        <div className="px-6 py-3 bg-[var(--color-basalt-900)] border-b border-[var(--color-basalt-500)] flex items-center gap-3 text-[13px] flex-wrap">
+          <span className="text-[var(--color-text-secondary)]">Filter by:</span>
           {productFacetCards.map((f) => {
             const sel = prodFilters[f.id] ?? [];
             return (
@@ -332,18 +353,18 @@ export default function CatalogDashboardClient({
                 <button
                   onClick={() => setOpenFilterMenu(openFilterMenu === f.id ? null : f.id)}
                   aria-expanded={openFilterMenu === f.id}
-                  className="flex items-center gap-1 text-white hover:text-[#92b0ce] bg-[#333234] px-3 py-1 rounded border border-[#454446]"
+                  className="flex items-center gap-1 text-white hover:text-[var(--color-sodalite)] bg-[var(--color-basalt-700)] px-3 py-1 rounded border border-[var(--color-basalt-500)]"
                 >
-                  {f.label} {sel.length > 0 && <span className="text-[#e3c16c]">({sel.length})</span>} <ChevronDown size={14} />
+                  {f.label} {sel.length > 0 && <span className="text-[var(--color-vein)]">({sel.length})</span>} <ChevronDown size={14} />
                 </button>
                 {openFilterMenu === f.id && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpenFilterMenu(null)} />
-                    <div className="absolute top-full mt-1 left-0 w-56 max-h-64 overflow-y-auto bg-[#1c1c1c] border border-[#454446] rounded shadow-xl z-50 p-2">
+                    <div className="absolute top-full mt-1 left-0 w-56 max-h-64 overflow-y-auto bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded shadow-xl z-50 p-2">
                       {f.entries.map(([val, n]) => (
-                        <label key={val} className="flex items-center justify-between gap-2 p-1.5 hover:bg-[#333234] rounded cursor-pointer text-white">
-                          <span className="flex items-center gap-2"><input type="checkbox" checked={sel.includes(val)} onChange={() => toggleProd(f.id, val)} className="accent-[#e3c16c]" />{val}</span>
-                          <span className="text-[11px] text-[#b8b6b9]">{n}</span>
+                        <label key={val} className="flex items-center justify-between gap-2 p-1.5 hover:bg-[var(--color-basalt-700)] rounded cursor-pointer text-white">
+                          <span className="flex items-center gap-2"><input type="checkbox" checked={sel.includes(val)} onChange={() => toggleProd(f.id, val)} className="accent-[var(--color-vein)]" />{val}</span>
+                          <span className="text-[11px] text-[var(--color-text-secondary)]">{n}</span>
                         </label>
                       ))}
                     </div>
@@ -357,18 +378,18 @@ export default function CatalogDashboardClient({
 
       {/* Active Filters Pill Bar */}
       {prodFilterCount > 0 && (
-        <div className="px-6 py-2 bg-[#2b2a2c] border-b border-[#454446] flex gap-2 flex-wrap items-center">
-          <span className="text-[12px] text-[#b8b6b9] mr-2">Active:</span>
+        <div className="px-6 py-2 bg-[var(--color-basalt-800)] border-b border-[var(--color-basalt-500)] flex gap-2 flex-wrap items-center">
+          <span className="text-[12px] text-[var(--color-text-secondary)] mr-2">Active:</span>
           {Object.entries(prodFilters).flatMap(([facet, vals]) =>
             vals.map((v) => {
               const label = PROD_FACETS.find((f) => f.id === facet)?.label ?? facet;
               return (
-                <span key={`${facet}:${v}`} className="flex items-center gap-1 bg-[#454446] text-white px-2 py-0.5 rounded text-[12px]">
-                  {label}: {v} <X size={12} className="cursor-pointer hover:text-[#e3c16c]" onClick={() => toggleProd(facet, v)} />
+                <span key={`${facet}:${v}`} className="flex items-center gap-1 bg-[var(--color-basalt-500)] text-white px-2 py-0.5 rounded text-[12px]">
+                  {label}: {v} <X size={12} className="cursor-pointer hover:text-[var(--color-vein)]" onClick={() => toggleProd(facet, v)} />
                 </span>
               );
             }))}
-          <button onClick={clearProdFilters} className="text-[12px] text-[#92b0ce] hover:underline ml-2">Clear All</button>
+          <button onClick={clearProdFilters} className="text-[12px] text-[var(--color-sodalite)] hover:underline ml-2">Clear All</button>
         </div>
       )}
 
@@ -377,19 +398,31 @@ export default function CatalogDashboardClient({
         const criticalLow = filteredMaterials.filter((m) => m.slabsInYard <= 5);
         if (criticalLow.length === 0) return null;
         return (
-          <div className="px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/30 flex items-center justify-between gap-3 text-amber-300 shrink-0">
+          <div className="px-6 py-2.5 bg-[rgba(232,149,107,0.08)] border-b border-[rgba(232,149,107,0.28)] flex items-center justify-between gap-3 text-[var(--color-coral)] shrink-0">
             <div className="flex items-center gap-3 text-[13px] min-w-0">
-              <span className="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] rounded-full uppercase tracking-wider shrink-0">ROP Alert</span>
-              <span className="truncate"><strong>Velocity Exception:</strong> {criticalLow.length} line{criticalLow.length === 1 ? '' : 's'} ({criticalLow.map((c) => c.name).slice(0, 2).join(', ')}{criticalLow.length > 2 ? '…' : ''}) below safety reserve (≤ 5 slabs).</span>
+              <span className="px-2 py-0.5 bg-[rgba(232,149,107,0.2)] text-[var(--color-coral)] border border-[rgba(232,149,107,0.35)] font-semibold text-[10px] rounded-full uppercase tracking-[0.1em] shrink-0">
+                Low reserve
+              </span>
+              <span className="truncate text-[var(--color-text-secondary)]">
+                <strong className="text-white font-medium">{criticalLow.length} line{criticalLow.length === 1 ? '' : 's'}</strong>
+                {' '}({criticalLow.map((c) => c.name).slice(0, 2).join(', ')}
+                {criticalLow.length > 2 ? '…' : ''}) below safety (≤ 5 slabs in yard).
+              </span>
             </div>
-            <button onClick={() => router.push('/purchases')} className="text-[12px] bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0">Issue Emergency PO →</button>
+            <button
+              type="button"
+              onClick={() => router.push('/purchases')}
+              className="btn-primary !min-h-8 !px-3 text-[12px] shrink-0"
+            >
+              Issue PO
+            </button>
           </div>
         );
       })()}
 
       {/* Products Master List — faceted count cards (click a value to filter) */}
       {showCatalog && (
-        <div className="px-6 py-4 bg-[#1c1c1c] border-b border-[#454446] shrink-0 max-h-[42vh] overflow-y-auto">
+        <div className="px-6 py-4 bg-[var(--color-basalt-900)] border-b border-[var(--color-basalt-500)] shrink-0 max-h-[42vh] overflow-y-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {productFacetCards.map((f) => (
               <FacetCard key={f.id} title={f.label}>
@@ -407,7 +440,11 @@ export default function CatalogDashboardClient({
         {viewLayout === 'GALLERY' ? (
         <div className="p-6">
         {filteredMaterials.length === 0 ? (
-          <EmptyState icon={Box} title="No materials match" hint="Try clearing your search or filters to see the full catalog." />
+          <EmptyState
+            icon={Box}
+            title="No materials match"
+            hint={searchTerm || prodFilterCount > 0 ? 'Clear search or filters to browse the full catalog.' : 'No products in the catalog yet.'}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredMaterials.map((item) => {
@@ -415,60 +452,114 @@ export default function CatalogDashboardClient({
                 viewMode === 'ADMIN' && item.avgCostPerSf != null && item.retailPricePerSf
                   ? (((item.retailPricePerSf - item.avgCostPerSf) / item.retailPricePerSf) * 100).toFixed(0)
                   : null;
+              const swatch = swatchBaseForMaterial(item.materialType, item.baseColor);
+              const lowYard = item.slabsInYard <= 5;
               return (
                 <div
                   key={item.id}
-                  className="bg-[#1c1c1c] border border-[#454446] rounded-xl overflow-hidden hover:border-[#92b0ce] transition-all duration-200 cursor-pointer group shadow-sm hover:shadow-xl hover:-translate-y-0.5"
+                  className="bp-card-interactive overflow-hidden cursor-pointer group"
                   onClick={() => setSelectedMaterial(item)}
                 >
-                  <div className="h-40 bg-[#333234] flex items-center justify-center relative overflow-hidden group-hover:bg-[#2b2a2c] transition-colors">
-                    <ImageIcon size={32} className="text-[#454446]" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] to-transparent opacity-60"></div>
-                    <div className="absolute bottom-2.5 left-3.5 flex gap-2">
-                      <span className="bg-[#1c1c1c]/80 backdrop-blur text-white px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-[#454446]">{item.materialType}</span>
+                  {/* Material swatch hero — DESIGN.md Phase E */}
+                  <div
+                    className="h-40 relative overflow-hidden"
+                    style={{
+                      background: `
+                        linear-gradient(125deg, transparent 38%, rgba(255,255,255,0.14) 40%, transparent 42%),
+                        linear-gradient(155deg, transparent 58%, rgba(0,0,0,0.28) 60%, transparent 63%),
+                        radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.18), transparent 55%),
+                        radial-gradient(ellipse at 80% 80%, rgba(0,0,0,0.2), transparent 50%),
+                        ${swatch}
+                      `,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-basalt-900)] via-transparent to-transparent opacity-80" />
+                    <div className="absolute top-3 right-3">
+                      <div
+                        className="bp-swatch shadow-lg"
+                        style={{ ['--swatch-base' as string]: swatch, width: 36, height: 36 }}
+                        aria-hidden
+                      />
+                    </div>
+                    <div className="absolute bottom-2.5 left-3.5 flex gap-2 flex-wrap">
+                      <span className="bg-[var(--color-basalt-950)]/75 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-white/10">
+                        {item.materialType}
+                      </span>
                       {item.thickness && (
-                        <span className="bg-[#1c1c1c]/80 backdrop-blur text-[#b8b6b9] px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-[#454446]">{item.thickness}</span>
+                        <span className="bg-[var(--color-basalt-950)]/75 backdrop-blur-sm text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full text-[10px] font-medium border border-white/10">
+                          {item.thickness}
+                        </span>
                       )}
                     </div>
                   </div>
 
                   <div className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-[15px] font-medium text-white group-hover:text-[#92b0ce] transition-colors">{item.name}</h3>
-                        <p className="text-[12px] text-[#b8b6b9] flex items-center gap-1 mt-0.5">
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <div className="min-w-0">
+                        <h3
+                          className="text-[15px] font-medium text-white group-hover:text-[var(--color-sodalite)] transition-colors truncate tracking-tight"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          {item.name}
+                        </h3>
+                        <p className="text-[12px] text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5">
                           <Globe size={12} /> {item.originCountry ?? 'Unknown origin'}
                         </p>
                       </div>
                       {viewMode === 'SALES' || margin == null ? (
-                        <div className="text-right">
-                          <p className="text-[14px] text-white font-medium">${item.retailPricePerSf ?? '—'}/sqft</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-[14px] text-white font-medium tabular-nums">
+                            ${item.retailPricePerSf ?? '—'}
+                            <span className="text-[11px] text-[var(--color-fog-500)] font-normal">/sf</span>
+                          </p>
                         </div>
                       ) : (
-                        <div className="text-right">
-                          <p className="text-[12px] text-[#10b981] font-medium flex items-center justify-end gap-1"><TrendingUp size={10} /> {margin}% Margin</p>
-                          <p className="text-[11px] text-[#b8b6b9] mt-0.5">Cost: ${item.avgCostPerSf}</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-[12px] text-[var(--color-emerald)] font-medium flex items-center justify-end gap-1">
+                            <TrendingUp size={10} /> {margin}% Margin
+                          </p>
+                          <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                            Cost: ${item.avgCostPerSf}
+                          </p>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-3 mt-3 border-t border-[#454446] flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
+                    <div className="pt-3 mt-3 border-t border-[var(--color-basalt-500)] flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-[12px] text-white font-medium flex items-center gap-1">
-                          <Tag size={12} className="text-[#b8b6b9]" />
-                          {item.slabsInYard} <span className="text-[#b8b6b9] font-normal">in Yard</span>
+                          <Tag size={12} className="text-[var(--color-text-secondary)]" />
+                          {item.slabsInYard}{' '}
+                          <span className="text-[var(--color-text-secondary)] font-normal">in yard</span>
                         </span>
-                        {item.slabsOnHold > 0 && (
-                          <span className="text-[11px] text-[#e3c16c] bg-[#e3c16c]/10 px-1.5 py-0.5 rounded">{item.slabsOnHold} On Hold</span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {lowYard && (
+                            <span className="text-[10px] text-[var(--color-coral)] bg-[rgba(232,149,107,0.12)] border border-[rgba(232,149,107,0.28)] px-1.5 py-0.5 rounded">
+                              Low reserve
+                            </span>
+                          )}
+                          {item.slabsOnHold > 0 && (
+                            <span className="text-[11px] text-[var(--color-vein)] bg-[rgba(227,193,108,0.1)] border border-[rgba(227,193,108,0.25)] px-1.5 py-0.5 rounded">
+                              {item.slabsOnHold} hold
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {viewMode === 'ADMIN' && item.slabsInTransit > 0 && (
                         <div className="flex justify-end">
-                          <span className="text-[11px] text-[#92b0ce] flex items-center gap-1 bg-[#92b0ce]/10 px-1.5 py-0.5 rounded">
-                            <Truck size={10} /> +{item.slabsInTransit} In Transit
+                          <span className="text-[11px] text-[var(--color-sodalite)] flex items-center gap-1 bg-[rgba(146,176,206,0.1)] px-1.5 py-0.5 rounded">
+                            <Truck size={10} /> +{item.slabsInTransit} in transit
                           </span>
                         </div>
                       )}
+                      {/* Hover meta — yard path into slabs */}
+                      <div className="flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity pt-0.5">
+                        <span className="text-[11px] text-[var(--color-fog-500)] truncate">
+                          {item.finish}
+                          {item.thickness ? ` · ${item.thickness}` : ''}
+                        </span>
+                        <span className="text-[11px] text-[var(--color-sodalite)] font-medium">Open →</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -478,226 +569,313 @@ export default function CatalogDashboardClient({
         )}
         </div>
         ) : (
-          <table className="w-full text-left text-[13px] text-[#d9d8d9] whitespace-nowrap border-collapse min-w-max">
-            <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
-              <tr>
-                <th className="px-4 py-3 font-medium border-b border-[#454446]">
-                  <button onClick={() => setSort('name')} className="inline-flex items-center gap-1 hover:text-white">Product / SKU <ArrowUpDown size={11} /></button>
-                </th>
-                {visibleProductCols.map((c) => {
-                  const sortable = (['type', 'category', 'yard', 'retail'] as const).includes(c.key as 'type');
-                  return (
-                    <th key={c.key} className={`px-4 py-3 font-medium border-b border-[#454446] ${c.right ? 'text-right' : ''}`}>
-                      {sortable
-                        ? <button onClick={() => setSort(c.key as 'type' | 'category' | 'yard' | 'retail')} className="inline-flex items-center gap-1 hover:text-white">{c.label} <ArrowUpDown size={11} /></button>
-                        : c.label}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#454446]">
-              {sortedMaterials.length === 0 ? (
-                <tr><td colSpan={visibleProductCols.length + 1} className="px-6 py-12 text-center text-[#b8b6b9]">No products match your filters.</td></tr>
-              ) : sortedMaterials.map((item) => (
-                <tr key={item.id} className="hover:bg-[#333234] transition-colors cursor-pointer" onClick={() => setSelectedMaterial(item)}>
-                  <td className="px-4 py-3"><div className="font-medium text-white hover:text-[#92b0ce]">{item.name}</div><div className="text-[11px] text-[#b8b6b9] font-mono">{item.sku}</div></td>
-                  {visibleProductCols.map((c) => <td key={c.key} className={`px-4 py-3 ${c.right ? 'text-right' : ''}`}>{prodCell(c.key, item)}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="p-6">
+            {sortedMaterials.length === 0 ? (
+              <EmptyState
+                icon={Box}
+                title="No products match"
+                hint={searchTerm || prodFilterCount > 0 ? 'Clear search or filters to browse the full catalog.' : 'No products in the catalog yet.'}
+              />
+            ) : (
+              <div className="bp-table-shell overflow-x-auto">
+                <table className="bp-table min-w-max whitespace-nowrap">
+                  <thead>
+                    <tr>
+                      <th>
+                        <button
+                          type="button"
+                          onClick={() => setSort('name')}
+                          className="inline-flex items-center gap-1 hover:text-white"
+                        >
+                          Product / SKU <ArrowUpDown size={11} />
+                        </button>
+                      </th>
+                      {visibleProductCols.map((c) => {
+                        const sortable = (['type', 'category', 'yard', 'retail'] as const).includes(
+                          c.key as 'type',
+                        );
+                        return (
+                          <th key={c.key} className={c.right ? 'text-right' : ''}>
+                            {sortable ? (
+                              <button
+                                type="button"
+                                onClick={() => setSort(c.key as 'type' | 'category' | 'yard' | 'retail')}
+                                className="inline-flex items-center gap-1 hover:text-white"
+                              >
+                                {c.label} <ArrowUpDown size={11} />
+                              </button>
+                            ) : (
+                              c.label
+                            )}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedMaterials.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedMaterial(item)}
+                      >
+                        <td>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className="bp-swatch shrink-0"
+                              style={{
+                                ['--swatch-base' as string]: swatchBaseForMaterial(
+                                  item.materialType,
+                                  item.baseColor,
+                                ),
+                                width: 20,
+                                height: 20,
+                              }}
+                              aria-hidden
+                            />
+                            <div className="min-w-0">
+                              <div
+                                className="font-medium text-white hover:text-[var(--color-sodalite)] truncate"
+                                style={{ fontFamily: 'var(--font-heading)' }}
+                              >
+                                {item.name}
+                              </div>
+                              <div className="text-[11px] text-[var(--color-text-secondary)] bp-mono">
+                                {item.sku}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        {visibleProductCols.map((c) => (
+                          <td key={c.key} className={c.right ? 'text-right' : ''}>
+                            {prodCell(c.key, item)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* 3. Slide-in Details Drawer */}
-      {selectedMaterial && (
-        <>
-          <div className="fixed inset-0 bg-black/60 z-40 transition-opacity" onClick={() => setSelectedMaterial(null)} />
-          <div className="fixed top-0 right-0 h-full w-full max-w-[600px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
-            <div className="px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-start">
-              <div>
-                <h2 className="text-[20px] font-medium text-white flex items-center gap-2">{selectedMaterial.name}</h2>
-                <div className="flex gap-2 mt-2 text-[12px] text-[#b8b6b9] flex-wrap">
-                  <span className="bg-[#e3c16c]/10 text-[#e3c16c] border border-[#e3c16c]/30 px-2 py-0.5 rounded">{selectedMaterial.productType}</span>
-                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.category ?? selectedMaterial.materialType}</span>
-                  {selectedMaterial.productGroup && <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.productGroup}</span>}
-                  {selectedMaterial.originCountry && <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.originCountry}</span>}
-                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded">{selectedMaterial.finish}</span>
-                  <span className="bg-[#333234] border border-[#454446] px-2 py-0.5 rounded font-mono text-[11px]">{selectedMaterial.sku}</span>
-                </div>
-              </div>
-              <button onClick={() => setSelectedMaterial(null)} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
+      {/* 3. Material detail — shared Drawer */}
+      <Drawer
+        open={!!selectedMaterial}
+        onClose={() => setSelectedMaterial(null)}
+        width={600}
+        title={selectedMaterial?.name}
+        subtitle={
+          selectedMaterial ? (
+            <span className="flex gap-2 mt-1 text-[12px] flex-wrap">
+              <span className="bg-[rgba(227,193,108,0.12)] text-[var(--color-vein)] border border-[rgba(227,193,108,0.3)] px-2 py-0.5 rounded">
+                {selectedMaterial.productType}
+              </span>
+              <span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] px-2 py-0.5 rounded">
+                {selectedMaterial.category ?? selectedMaterial.materialType}
+              </span>
+              {selectedMaterial.originCountry && (
+                <span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] px-2 py-0.5 rounded">
+                  {selectedMaterial.originCountry}
+                </span>
+              )}
+              <span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] px-2 py-0.5 rounded bp-mono text-[11px]">
+                {selectedMaterial.sku}
+              </span>
+            </span>
+          ) : undefined
+        }
+      >
+        {selectedMaterial && (
+            <div className="p-6">
               {viewMode === 'ADMIN' && canViewCost ? (
                 <div className="space-y-6">
-                  <div className="bg-[#1c1c1c] border border-[#454446] rounded-md p-5">
-                    <p className="text-[12px] text-[#b8b6b9] uppercase tracking-wider mb-3">Procurement Intelligence</p>
+                  <div className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md p-5">
+                    <p className="text-[12px] text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Procurement Intelligence</p>
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="bg-[#2b2a2c] border border-[#454446] p-3 rounded">
-                        <p className="text-[11px] text-[#b8b6b9]">Landed Cost (Avg)</p>
+                      <div className="bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] p-3 rounded">
+                        <p className="text-[11px] text-[var(--color-text-secondary)]">Landed Cost (Avg)</p>
                         <p className="text-[16px] text-white font-medium">${selectedMaterial.avgCostPerSf ?? '—'}/sqft</p>
                       </div>
-                      <div className="bg-[#2b2a2c] border border-[#454446] p-3 rounded">
-                        <p className="text-[11px] text-[#b8b6b9]">Retail Price</p>
-                        <p className="text-[16px] text-[#92b0ce] font-medium">${selectedMaterial.retailPricePerSf ?? '—'}/sqft</p>
+                      <div className="bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] p-3 rounded">
+                        <p className="text-[11px] text-[var(--color-text-secondary)]">Retail Price</p>
+                        <p className="text-[16px] text-[var(--color-sodalite)] font-medium">${selectedMaterial.retailPricePerSf ?? '—'}/sqft</p>
                       </div>
                     </div>
                     <div>
-                      <p className="text-[11px] text-[#b8b6b9] mb-2">Approved Suppliers</p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)] mb-2">Approved Suppliers</p>
                       {selectedMaterial.approvedSuppliers.length > 0 ? (
                         <div className="flex gap-2 flex-wrap">
                           {selectedMaterial.approvedSuppliers.map((s) => (
-                            <span key={s.id} className="text-[12px] bg-[#333234] border border-[#454446] text-[#d9d8d9] px-2 py-1 rounded flex items-center gap-1">
+                            <span key={s.id} className="text-[12px] bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-[var(--color-text-muted)] px-2 py-1 rounded flex items-center gap-1">
                               <Building2 size={12} /> {s.name}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[12px] text-[#b8b6b9] italic">No active suppliers mapped.</p>
+                        <p className="text-[12px] text-[var(--color-text-secondary)] italic">No active suppliers mapped.</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-[#1c1c1c] border border-[#454446] rounded-md p-5">
-                    <p className="text-[12px] text-[#b8b6b9] uppercase tracking-wider mb-3">Inbound Logistics (POs)</p>
+                  <div className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md p-5">
+                    <p className="text-[12px] text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Inbound Logistics (POs)</p>
                     {selectedMaterial.inboundPOs.length > 0 ? (
                       <div className="space-y-2">
                         {selectedMaterial.inboundPOs.map((po) => (
-                          <div key={po.poNumber} className="border border-[#454446] rounded overflow-hidden">
-                            <div className="bg-[#2b2a2c] px-3 py-2 flex justify-between text-[12px] text-[#b8b6b9] border-b border-[#454446]">
+                          <div key={po.poNumber} className="border border-[var(--color-basalt-500)] rounded overflow-hidden">
+                            <div className="bg-[var(--color-basalt-800)] px-3 py-2 flex justify-between text-[12px] text-[var(--color-text-secondary)] border-b border-[var(--color-basalt-500)]">
                               <span>{po.poNumber}</span>
-                              <span className="text-[#e3c16c]">ETA: {po.eta ?? 'TBD'}</span>
+                              <span className="text-[var(--color-vein)]">ETA: {po.eta ?? 'TBD'}</span>
                             </div>
                             <div className="p-3 text-[13px] text-white flex justify-between">
                               <span>{po.orderedSlabs} Slabs</span>
-                              <span className="text-[#b8b6b9]">Container: {po.containerId ?? 'TBD'}</span>
+                              <span className="text-[var(--color-text-secondary)]">Container: {po.containerId ?? 'TBD'}</span>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[13px] text-[#b8b6b9]">No active purchase orders in transit.</p>
+                      <p className="text-[13px] text-[var(--color-text-secondary)]">No active purchase orders in transit.</p>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-[13px] text-[#b8b6b9] mb-4">Select slabs below to add to a customer quote.</p>
+                  <p className="text-[13px] text-[var(--color-text-secondary)] mb-4">Select slabs below to add to a customer quote.</p>
                   {selectedMaterial.availableSlabs.length === 0 ? (
-                    <p className="text-[13px] text-[#b8b6b9] italic">No slabs currently available in the yard.</p>
+                    <p className="text-[13px] text-[var(--color-text-secondary)] italic">No slabs currently available in the yard.</p>
                   ) : (
                     selectedMaterial.availableSlabs.slice(0, 8).map((slab) => (
-                      <div key={slab.id} className="bg-[#1c1c1c] border border-[#454446] rounded flex items-center p-3 hover:bg-[#333234] cursor-pointer group">
-                        <div className="w-16 h-12 bg-[#2b2a2c] rounded mr-4 flex items-center justify-center">
-                          <ImageIcon size={16} className="text-[#454446]" />
+                      <div key={slab.id} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded flex items-center p-3 hover:bg-[var(--color-basalt-700)] group">
+                        <div className="w-16 h-12 bg-[var(--color-basalt-800)] rounded mr-4 flex items-center justify-center">
+                          <ImageIcon size={16} className="text-[var(--color-basalt-500)]" />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] text-white font-mono truncate">{slab.uniqueSlabId}</p>
+                          <p className="text-[11px] text-[var(--color-text-secondary)]">{slab.totalSf} sqft</p>
                           <a
                             href={`/inventory?slab=${encodeURIComponent(slab.uniqueSlabId)}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[13px] text-white font-mono hover:text-[#e3c16c] hover:underline transition-colors"
-                            title="Open full slab traceability in Inventory"
+                            className="text-[11px] text-[var(--color-sodalite)] hover:text-[var(--color-vein)] hover:underline transition-colors"
+                            title="Open material passport in Slabs"
                           >
-                            {slab.uniqueSlabId}
+                            Open passport →
                           </a>
-                          <p className="text-[11px] text-[#b8b6b9]">{slab.totalSf} sqft</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setQuotingSlab(slab);
                               setQuotePrice(selectedMaterial.retailPricePerSf?.toString() ?? '');
                               setQuoteError('');
                             }}
-                            className="text-[11px] font-medium bg-[#10b981] text-black px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="btn-primary !min-h-7 !px-2.5 text-[11px] opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            Add to Quote
+                            Add to quote
                           </button>
                         </div>
                       </div>
                     ))
                   )}
                   {selectedMaterial.availableSlabs.length > 8 && (
-                    <p className="text-[12px] text-[#b8b6b9] text-center pt-2">…and {selectedMaterial.availableSlabs.length - 8} more slabs available.</p>
+                    <p className="text-[12px] text-[var(--color-text-secondary)] text-center pt-2">
+                      …and {selectedMaterial.availableSlabs.length - 8} more slabs available.{' '}
+                      <a href="/inventory?status=AVAILABLE" className="text-[var(--color-sodalite)] hover:text-[var(--color-vein)] hover:underline">
+                        View in Slabs →
+                      </a>
+                    </p>
                   )}
                 </div>
               )}
             </div>
-          </div>
-        </>
-      )}
+        )}
+      </Drawer>
 
       {/* Quote Creation Modal */}
-      {quotingSlab && selectedMaterial && (
-        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-center">
-              <h3 className="text-white font-medium">Create Sales Quote</h3>
-              <button onClick={() => setQuotingSlab(null)} className="text-[#b8b6b9] hover:text-white transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleQuoteSubmit} className="p-6 space-y-4">
-              <div className="bg-[#1c1c1c] border border-[#454446] p-3 rounded mb-4">
-                <p className="text-[12px] text-[#b8b6b9] mb-1">Selected Material</p>
+      <Modal
+        open={!!quotingSlab && !!selectedMaterial}
+        onClose={() => setQuotingSlab(null)}
+        title="Create Sales Quote"
+        subtitle={
+          quotingSlab && selectedMaterial
+            ? `${selectedMaterial.name} · ${quotingSlab.uniqueSlabId} (${quotingSlab.totalSf} sqft)`
+            : undefined
+        }
+        width={440}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" type="button" onClick={() => setQuotingSlab(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              form="quote-form"
+              disabled={isPending}
+              className="!bg-[var(--color-emerald)] hover:!opacity-90"
+            >
+              {isPending ? 'Saving…' : 'Create Quote'}
+            </Button>
+          </>
+        }
+      >
+        {quotingSlab && selectedMaterial && (
+            <form id="quote-form" onSubmit={handleQuoteSubmit} className="space-y-4">
+              <div className="bp-card p-3">
+                <p className="bp-eyebrow mb-1">Selected material</p>
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-[14px] text-white font-medium">{selectedMaterial.name}</p>
-                    <p className="text-[12px] text-[#92b0ce]">{quotingSlab.uniqueSlabId} ({quotingSlab.totalSf} sqft)</p>
+                    <p className="text-[12px] text-[var(--color-sodalite)] bp-mono">
+                      {quotingSlab.uniqueSlabId} ({quotingSlab.totalSf} sqft)
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] text-[#b8b6b9]">Retail Price</p>
+                    <p className="text-[11px] text-[var(--color-text-secondary)]">Retail</p>
                     <p className="text-[13px] text-white">${selectedMaterial.retailPricePerSf ?? '—'}/sqft</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Customer Name / Project</label>
+                <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Customer Name / Project</label>
                 <input
                   type="text"
                   required
                   value={quoteCustomer}
                   onChange={(e) => setQuoteCustomer(e.target.value)}
-                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]"
+                  className="bp-input"
                   placeholder="e.g. John Smith - Kitchen Remodel"
                 />
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Quoted Price ($/sqft)</label>
+                <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Quoted Price ($/sqft)</label>
                 <input
                   type="number"
                   step="0.01"
                   required
                   value={quotePrice}
                   onChange={(e) => setQuotePrice(e.target.value)}
-                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]"
+                  className="bp-input"
                 />
               </div>
 
               {quoteError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{quoteError}</div>
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded-[var(--radius-sm)]">
+                  {quoteError}
+                </div>
               )}
 
-              <div className="pt-4 mt-2 border-t border-[#454446] flex justify-end gap-3">
-                <button type="button" onClick={() => setQuotingSlab(null)} className="px-4 py-2 text-[13px] text-[#b8b6b9] hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] bg-[#10b981] text-black font-medium rounded hover:bg-[#0ea5e9] transition-colors disabled:opacity-60">
-                  {isPending ? 'Creating…' : 'Confirm Sales Order'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

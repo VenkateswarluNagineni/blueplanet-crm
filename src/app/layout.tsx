@@ -11,8 +11,8 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "BluePlanet CRM | Enterprise Management",
-  description: "Advanced natural stone inventory and CRM pipeline",
+  title: "BluePlanet CRM | Stone Operations",
+  description: "Natural stone inventory, logistics, and sales pipeline — basalt, vein gold, operational clarity.",
 };
 
 export default function RootLayout({
@@ -22,7 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${fraunces.variable} bg-[#2b2a2c] text-[var(--color-text-primary)] antialiased h-screen overflow-hidden`}>
+      <body
+        className={`${inter.variable} ${fraunces.variable} bg-[var(--color-basalt-850)] text-[var(--color-text-primary)] antialiased h-screen overflow-hidden`}
+      >
         {children}
       </body>
     </html>

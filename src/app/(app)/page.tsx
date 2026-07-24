@@ -1,13 +1,13 @@
-import { redirect } from 'next/navigation';
 import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/rbac';
+import { assertPageAccess } from '@/lib/page-access';
 import { getDashboardData } from '@/server/queries/dashboard';
 import { CustomizableDashboard } from '@/components/CustomizableDashboard';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PageShell } from '@/components/ui/PageShell';
 
 export const metadata = { title: 'Dashboard | BluePlanet CRM' };
 
-// Role-appropriate default boards. Cost widgets are sanitized out client-side for
-// viewers who can't see landed cost, so listing them here is harmless.
 const DEFAULT_LAYOUTS: Record<string, string[]> = {
   ADMIN: [
     'kpi:inventoryValue', 'kpi:availableSlabs', 'kpi:inTransitPos',
@@ -21,32 +21,47 @@ const DEFAULT_LAYOUTS: Record<string, string[]> = {
 };
 
 export default async function HomeDashboard() {
-  const ctx = await getSessionContext();
-  const role = ctx?.role ?? 'SALES';
-  // Vendors get their own scoped portal.
-  if (role === 'VENDOR') redirect('/vendor');
+  const ctx = assertPageAccess(await getSessionContext(), 'salesWorkspace');
+  const role = ctx.role;
 
-  const settings = ctx ? await getCompanySettings(ctx.user.companyId) : null;
-  const canViewCost = settings ? canViewLandedCost(role, settings) : false;
+  const settings = await getCompanySettings(ctx.user.companyId);
+  const canViewCost = canViewLandedCost(role, settings);
   const data = await getDashboardData(canViewCost);
 
   const defaultLayout = DEFAULT_LAYOUTS[role] ?? DEFAULT_LAYOUTS.SALES;
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#2b2a2c]">
-      <div className="pt-6 pb-4 px-6 border-b border-[#454446] shrink-0">
-        <h1 className="text-[20px] font-medium text-white mb-1">Operations Dashboard</h1>
-        <p className="text-[13px] text-[#b8b6b9]">Live snapshot of inventory, logistics, pipeline, and sales — tailored to you.</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        <CustomizableDashboard
-          data={data}
-          canViewCost={canViewCost}
-          defaultLayout={defaultLayout}
-          initialLayout={ctx?.dashboardLayout ?? null}
+    <PageShell
+      header={
+        <PageHeader
+          eyebrow="Command center"
+          title="Today’s board"
+          subtitle={
+            role === 'ADMIN'
+              ? 'Inventory, logistics, pipeline, and approvals in one place.'
+              : 'Your slabs, pipeline, and orders.'
+          }
+          meta={[
+            {
+              label: role === 'ADMIN' ? 'Admin' : 'Sales',
+              tone: role === 'ADMIN' ? 'gold' : 'green',
+            },
+            ...(role === 'ADMIN' && data.attention.pendingApprovals > 0
+              ? [{ label: `${data.attention.pendingApprovals} approvals`, tone: 'gold' as const }]
+              : []),
+            ...(role === 'ADMIN' && data.attention.overduePos > 0
+              ? [{ label: `${data.attention.overduePos} overdue`, tone: 'gold' as const }]
+              : []),
+          ]}
         />
-      </div>
-    </div>
+      }
+    >
+      <CustomizableDashboard
+        data={data}
+        canViewCost={canViewCost}
+        defaultLayout={defaultLayout}
+        initialLayout={ctx.dashboardLayout ?? null}
+      />
+    </PageShell>
   );
 }

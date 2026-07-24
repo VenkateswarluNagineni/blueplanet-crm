@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
+/**
+ * BluePlanet Design System tokens — see /DESIGN.md
+ * Basalt · Vein gold · Sodalite
+ */
 @theme {
-  --color-background: #2b2a2c;
+  /* Canvas */
+  --color-background: #242326;
   --color-surface: #333234;
-  --color-surface-hover: #454446;
-  --color-primary: #e3c16c; /* Vein gold */
+  --color-surface-hover: #3f3e41;
+  --color-primary: #e3c16c;
   --color-primary-hover: #d2ac55;
   --color-primary-text: #1a1a1a;
   --color-accent: #92b0ce;
@@ -16,8 +21,35 @@
   --color-sidebar-bg: #1c1c1c;
   --color-sidebar-hover: #2b2a2c;
 
+  /* Extended basalt scale */
+  --color-basalt-950: #121113;
+  --color-basalt-900: #1c1c1c;
+  --color-basalt-850: #242326;
+  --color-basalt-800: #2b2a2c;
+  --color-basalt-700: #333234;
+  --color-basalt-600: #3f3e41;
+  --color-basalt-500: #454446;
+
+  --color-vein: #e3c16c;
+  --color-vein-hover: #d2ac55;
+  --color-sodalite: #92b0ce;
+  --color-emerald: #10b981;
+  --color-coral: #e8956b;
+  --color-ruby: #ef4444;
+  --color-amethyst: #b58cd6;
+  --color-fog-500: #7d7c7f;
+
   --font-heading: var(--font-fraunces), Georgia, "Times New Roman", serif;
   --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-lift-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lift-2: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lift-3: 0 24px 64px rgba(0, 0, 0, 0.55);
 }
 
 body {
@@ -31,11 +63,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Display headings carry the premium-stone personality. */
+/* Display headings — Fraunces for titles only */
 h1,
 h2 {
   font-family: var(--font-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   font-weight: 500;
 }
 h3,
@@ -45,7 +77,7 @@ h6 {
   font-family: var(--font-body);
 }
 
-/* Accessibility floor: a visible, consistent keyboard focus ring. */
+/* Accessibility floor */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -70,18 +102,18 @@ textarea {
   }
 }
 
-/* Signature: a quarried-stone veining wash used behind hero surfaces. */
+/* Signature quarried-stone veining — hero / brand moments only */
 .vein {
   background-color: #1c1b1d;
   background-image:
-    radial-gradient(120% 80% at 12% 0%, rgba(227, 193, 108, 0.10), transparent 55%),
-    radial-gradient(90% 60% at 90% 20%, rgba(146, 176, 206, 0.08), transparent 60%),
-    linear-gradient(115deg, transparent 0%, transparent 38%, rgba(227, 193, 108, 0.06) 39%, transparent 40%),
-    linear-gradient(125deg, transparent 0%, transparent 61%, rgba(255, 255, 255, 0.04) 62%, transparent 63%),
-    linear-gradient(100deg, transparent 0%, transparent 73%, rgba(146, 176, 206, 0.05) 74%, transparent 75%);
+    radial-gradient(120% 80% at 12% 0%, rgba(227, 193, 108, 0.12), transparent 55%),
+    radial-gradient(90% 60% at 90% 20%, rgba(146, 176, 206, 0.09), transparent 60%),
+    linear-gradient(115deg, transparent 0%, transparent 38%, rgba(227, 193, 108, 0.07) 39%, transparent 40%),
+    linear-gradient(125deg, transparent 0%, transparent 61%, rgba(255, 255, 255, 0.045) 62%, transparent 63%),
+    linear-gradient(100deg, transparent 0%, transparent 73%, rgba(146, 176, 206, 0.06) 74%, transparent 75%);
 }
 
-/* Custom scrollbar to match the dark, professional surface. */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -97,46 +129,557 @@ textarea {
   background: var(--color-text-secondary);
 }
 
-/* Shared button primitives (adhering to LangSmith 8px geometry). */
-.btn-primary {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+/* ── Surface primitives (DESIGN.md Phase A) ───────────────── */
+.bp-card {
+  background: linear-gradient(180deg, #353437 0%, var(--color-basalt-700) 48%);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift-1);
 }
-.btn-primary:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-0.5px);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+
+.bp-card-interactive {
+  background: linear-gradient(180deg, #353437 0%, var(--color-basalt-700) 48%);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift-1);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bp-card-interactive:hover {
+  border-color: rgba(227, 193, 108, 0.42);
+  box-shadow: var(--shadow-lift-2);
+}
+.bp-card-interactive:active {
+  border-color: rgba(227, 193, 108, 0.55);
+}
+
+.bp-lift-1 {
+  box-shadow: var(--shadow-lift-1);
+}
+.bp-lift-2 {
+  box-shadow: var(--shadow-lift-2);
+}
+.bp-lift-3 {
+  box-shadow: var(--shadow-lift-3);
+}
+
+.bp-panel {
+  background: var(--color-basalt-900);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-lg);
+}
+
+.bp-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fog-500);
+}
+
+.bp-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-fog-500);
+}
+
+.bp-kpi-value {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.bp-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons — decisive, scarce gold, confident hit targets */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  line-height: 1;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #e8ca78 0%, var(--color-primary) 55%, #d4b35e 100%);
+  color: var(--color-primary-text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(227, 193, 108, 0.18);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #edcf82 0%, var(--color-primary-hover) 55%, #c9a84c 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 6px 16px rgba(227, 193, 108, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset, 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn-secondary {
+  background: color-mix(in srgb, var(--color-basalt-800) 80%, transparent);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-basalt-500);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-basalt-700);
+  border-color: rgba(146, 176, 206, 0.55);
+  color: #fff;
+}
+.btn-secondary:active:not(:disabled) {
+  background: var(--color-basalt-800);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-text-muted);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 400;
+  color: var(--color-text-secondary);
   border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.18s ease;
 }
-.btn-ghost:hover {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-basalt-700);
+  border-color: var(--color-basalt-500);
+  color: #fff;
+}
+
+.btn-lg {
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+/* Form field baseline */
+.bp-input {
+  width: 100%;
+  height: 40px;
+  background: var(--color-basalt-950);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  font-size: 13px;
   color: var(--color-text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bp-input::placeholder {
+  color: var(--color-fog-500);
+}
+.bp-input:focus {
+  outline: none;
+  border-color: var(--color-sodalite);
+  box-shadow: 0 0 0 3px rgba(146, 176, 206, 0.14);
+}
+
+/* Login field shell (icon + input) */
+.bp-field {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  background: var(--color-basalt-950);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bp-field:focus-within {
+  border-color: var(--color-sodalite);
+  box-shadow: 0 0 0 3px rgba(146, 176, 206, 0.14);
+}
+
+/* Login native input — institutional, full-width aligned */
+.bp-login-input {
+  display: block;
+  width: 100%;
+  height: 42px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 42px;
+  color: var(--color-text-primary);
+  background: var(--color-basalt-950);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  caret-color: var(--color-vein);
+}
+.bp-login-input::placeholder {
+  color: var(--color-fog-500);
+}
+.bp-login-input:hover {
+  border-color: var(--color-basalt-600);
+}
+.bp-login-input:focus,
+.bp-login-input:focus-visible {
+  outline: none;
+  border-color: rgba(227, 193, 108, 0.65);
+  box-shadow: 0 0 0 3px rgba(227, 193, 108, 0.12);
+}
+/* Keep dark surface when browser autofills credentials */
+.bp-login-input:-webkit-autofill,
+.bp-login-input:-webkit-autofill:hover,
+.bp-login-input:-webkit-autofill:focus,
+.bp-login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text-primary);
+  caret-color: var(--color-vein);
+  box-shadow: 0 0 0 1000px var(--color-basalt-950) inset;
+  transition: background-color 99999s ease-out 0s;
+  border-color: var(--color-basalt-500);
+}
+.bp-login-input:-webkit-autofill:focus {
+  border-color: rgba(227, 193, 108, 0.65);
+  box-shadow:
+    0 0 0 1000px var(--color-basalt-950) inset,
+    0 0 0 3px rgba(227, 193, 108, 0.12);
+}
+
+/* Deprecated panel — kept for any residual class use */
+.bp-login-panel {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .animate-toast-in {
   animation: toast-in 0.22s ease;
+}
+
+/* Gold hairline under page headers (optional class) */
+.bp-header-chrome {
+  background: linear-gradient(180deg, var(--color-basalt-900) 0%, #1a191b 100%);
+  border-bottom: 1px solid var(--color-basalt-500);
+  box-shadow: 0 1px 0 rgba(227, 193, 108, 0.06);
+}
+
+/* ── Phase B+: shell, tables, data density ────────────────── */
+
+/* Top app bar — glass / denser command strip */
+.bp-glass-bar {
+  background: color-mix(in srgb, var(--color-basalt-900) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-basalt-500);
+  box-shadow: 0 1px 0 rgba(227, 193, 108, 0.05);
+}
+
+/* Dense data table shell */
+.bp-table-shell {
+  background: var(--color-basalt-900);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift-1);
+}
+
+.bp-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.bp-table thead tr {
+  background: var(--color-basalt-700);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bp-table thead th {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-basalt-500);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-basalt-700);
+}
+
+.bp-table tbody {
+  border-top: none;
+}
+
+.bp-table tbody tr {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-basalt-500) 70%, transparent);
+  transition: background 0.12s ease;
+  height: 36px;
+}
+
+.bp-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.bp-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-basalt-800) 85%, transparent);
+}
+
+.bp-table tbody td {
+  padding: 8px 14px;
+  vertical-align: middle;
+}
+
+/* Passport lifecycle nodes — emerald done · gold active · basalt pending */
+.bp-timeline-node {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  position: relative;
+  flex-shrink: 0;
+  border-width: 2px;
+  border-style: solid;
+}
+.bp-timeline-node--done {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: var(--color-emerald);
+}
+.bp-timeline-node--active {
+  background: rgba(227, 193, 108, 0.14);
+  border-color: var(--color-vein);
+  color: var(--color-vein);
+  box-shadow: 0 0 0 3px rgba(227, 193, 108, 0.1);
+}
+.bp-timeline-node--pending {
+  background: var(--color-basalt-900);
+  border-color: var(--color-basalt-500);
+  border-style: dashed;
+  color: var(--color-fog-500);
+}
+.bp-timeline-rail {
+  width: 2px;
+  flex: 1;
+  margin-top: -2px;
+  background: var(--color-basalt-500);
+}
+.bp-timeline-rail--done {
+  background: rgba(16, 185, 129, 0.35);
+}
+
+.bp-table .bp-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+}
+
+.bp-table .bp-money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--color-emerald);
+  text-align: right;
+}
+
+.bp-table-row-hit {
+  background: rgba(227, 193, 108, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(227, 193, 108, 0.35);
+}
+
+/* Reservation ceremony — held row + status (gold scarce, no fill scream) */
+.bp-row-held {
+  box-shadow: inset 3px 0 0 0 rgba(227, 193, 108, 0.75);
+}
+.bp-row-held:hover {
+  background: color-mix(in srgb, var(--color-basalt-800) 70%, rgba(227, 193, 108, 0.06)) !important;
+}
+.bp-status-held {
+  box-shadow: 0 0 0 1px rgba(227, 193, 108, 0.2);
+  letter-spacing: 0.04em;
+}
+
+/* Reserve toast accent (quiet gold edge) */
+.bp-toast-reserve {
+  border-color: rgba(227, 193, 108, 0.45) !important;
+  box-shadow: var(--shadow-lift-2), inset 3px 0 0 0 var(--color-vein);
+}
+
+/* Kanban column shell */
+.bp-kanban-col {
+  background: var(--color-basalt-900);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lift-1);
+  display: flex;
+  flex-direction: column;
+}
+
+.bp-kanban-card {
+  background: var(--color-basalt-800);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.bp-kanban-card:hover {
+  border-color: rgba(146, 176, 206, 0.45);
+  box-shadow: var(--shadow-lift-2);
+  transform: translateY(-1px);
+}
+
+/* Attention strip (command center) — quiet institutional, not marketing */
+.bp-attention {
+  background: var(--color-basalt-900);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift-1);
+}
+
+.bp-attention-header {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-basalt-500);
+  background: rgba(227, 193, 108, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Passport museum-label hero */
+.bp-passport-hero {
+  background: linear-gradient(
+    135deg,
+    var(--color-basalt-900) 0%,
+    #1a191b 55%,
+    color-mix(in srgb, var(--color-basalt-800) 90%, #2a2520) 100%
+  );
+  border-bottom: 1px solid var(--color-basalt-500);
+  box-shadow: 0 1px 0 rgba(227, 193, 108, 0.07);
+}
+
+/* Select / form control token (native select) */
+.bp-select {
+  height: 36px;
+  background: var(--color-basalt-950);
+  border: 1px solid var(--color-basalt-500);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.bp-select:focus {
+  border-color: var(--color-sodalite);
+}
+
+/* Drawer panel motion */
+@keyframes bp-drawer-in {
+  from {
+    opacity: 0.6;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.bp-drawer-panel {
+  animation: bp-drawer-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--shadow-lift-3);
+}
+
+/* Material swatch (catalog / passport accent — CSS only) */
+.bp-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(125deg, transparent 40%, rgba(255, 255, 255, 0.12) 42%, transparent 44%),
+    linear-gradient(155deg, transparent 62%, rgba(0, 0, 0, 0.25) 64%, transparent 66%),
+    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.15), transparent 50%),
+    var(--swatch-base, #5a5650);
+}
+
+/* Packing slip — print-only hygiene (DESIGN.md Phase E) */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .bp-print-slip,
+  .bp-print-slip * {
+    visibility: visible !important;
+  }
+  .bp-print-slip {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: #1a1918 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
 }

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useTransition, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Package,
-  Search,
   Plus,
   Ship,
   Truck,
@@ -18,6 +17,13 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { Term } from '@/components/ui/Tooltip';
+import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PageShell } from '@/components/ui/PageShell';
+import { ListToolbar, FilterChip } from '@/components/ui/ListToolbar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LogisticsStageBar } from '@/components/LogisticsStageBar';
+import { LOGISTICS_STATUS_LABEL } from '@/lib/logistics-stages';
 import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/queries/purchasing';
 import { createPOAction, advancePOAction } from '@/server/actions/purchasing';
 
@@ -30,8 +36,8 @@ const fmtDate = (iso: string | null) =>
 function EtaBadge({ status, days }: { status: EtaStatus; days: number | null }) {
   if (status === 'RECEIVED' || status === 'NONE') return null;
   const map: Record<string, { cls: string; label: string }> = {
-    ON_TRACK: { cls: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20', label: `On track · ${days}d` },
-    DUE_SOON: { cls: 'text-[#e3c16c] bg-[#e3c16c]/10 border-[#e3c16c]/20', label: days === 0 ? 'Due today' : `Due in ${days}d` },
+    ON_TRACK: { cls: 'text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 border-[rgba(16,185,129,0.20)]', label: `On track · ${days}d` },
+    DUE_SOON: { cls: 'text-[var(--color-vein)] bg-[var(--color-vein)]/10 border-[rgba(227,193,108,0.20)]', label: days === 0 ? 'Due today' : `Due in ${days}d` },
     OVERDUE: { cls: 'text-red-400 bg-red-500/10 border-red-500/20', label: `Overdue ${Math.abs(days ?? 0)}d` },
   };
   const m = map[status];
@@ -43,57 +49,7 @@ function EtaBadge({ status, days }: { status: EtaStatus; days: number | null }) 
   );
 }
 
-const STEPS: { key: PoLogisticsStatus; label: string }[] = [
-  { key: 'PRODUCTION', label: 'Supplier (Origin)' },
-  { key: 'ON_WATER', label: 'Ocean Freight' },
-  { key: 'CUSTOMS', label: 'Customs Broker' },
-  { key: 'INLAND_TRANSIT', label: 'Inland Trucking' },
-  { key: 'RECEIVED', label: 'Destination Hub' },
-];
 
-const STATUS_INDEX: Record<PoLogisticsStatus, number> = {
-  PRODUCTION: 0,
-  ON_WATER: 1,
-  CUSTOMS: 2,
-  INLAND_TRANSIT: 3,
-  RECEIVED: 4,
-};
-
-const PipelineVisual = ({ status }: { status: PoLogisticsStatus }) => {
-  const currentIdx = STATUS_INDEX[status];
-  return (
-    <div className="flex items-center w-full max-w-3xl py-4">
-      {STEPS.map((step, idx) => {
-        const stepStatus = idx < currentIdx ? 'COMPLETED' : idx === currentIdx ? 'ACTIVE' : 'PENDING';
-        return (
-          <React.Fragment key={step.key}>
-            <div className="flex flex-col items-center relative z-10">
-              <div
-                className={`w-4 h-4 rounded-full border-4 ${
-                  stepStatus === 'COMPLETED'
-                    ? 'bg-[#10b981] border-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                    : stepStatus === 'ACTIVE'
-                      ? 'bg-[#e3c16c] border-[#e3c16c] shadow-[0_0_8px_rgba(242,247,100,0.6)] animate-pulse'
-                      : 'bg-[#2b2a2c] border-[#454446]'
-                }`}
-              />
-              <span
-                className={`text-[11px] absolute top-6 whitespace-nowrap ${
-                  stepStatus === 'PENDING' ? 'text-[#b8b6b9]' : stepStatus === 'ACTIVE' ? 'text-[#e3c16c] font-medium' : 'text-[#10b981] font-medium'
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-            {idx < STEPS.length - 1 && (
-              <div className={`flex-1 h-1 mx-0 ${stepStatus === 'COMPLETED' ? 'bg-[#10b981]' : 'bg-[#454446]'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-};
 
 export default function PurchasesDashboardClient({
   purchaseOrders,
@@ -105,16 +61,43 @@ export default function PurchasesDashboardClient({
   purchaseOrders: PoRow[];
 } & PurchasingRefData) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<PoLogisticsStatus | 'ALL' | 'ACTIVE'>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [verifyModalOpen, setVerifyModalOpen] = useState<{ isOpen: boolean; poId: string | null }>({ isOpen: false, poId: null });
   const [verifyDocRef, setVerifyDocRef] = useState('');
   const [viewerModalOpen, setViewerModalOpen] = useState<{ isOpen: boolean; poId: string | null }>({ isOpen: false, poId: null });
   const [slipTarget, setSlipTarget] = useState<SlipTarget>('SUPPLIER');
+
+  // Deep-link: /purchases?po=<poNumber|id> opens the packing-slip viewer.
+  // Also honors ?status=ACTIVE|PRODUCTION|… from Logistics.
+  useEffect(() => {
+    const wanted = searchParams.get('po');
+    const status = searchParams.get('status');
+    const t = setTimeout(() => {
+      if (status) {
+        const s = status.toUpperCase();
+        if (s === 'ACTIVE' || s === 'ALL') setStatusFilter(s as 'ACTIVE' | 'ALL');
+        else if (['PRODUCTION', 'ON_WATER', 'CUSTOMS', 'INLAND_TRANSIT', 'RECEIVED'].includes(s)) {
+          setStatusFilter(s as PoLogisticsStatus);
+        }
+      }
+      if (!wanted) return;
+      const match = purchaseOrders.find(
+        (p) => p.id === wanted || p.poNumber.toLowerCase() === wanted.toLowerCase(),
+      );
+      if (!match) return;
+      setSearchTerm(match.poNumber);
+      setSlipTarget('SUPPLIER');
+      setViewerModalOpen({ isOpen: true, poId: match.id });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParams, purchaseOrders]);
 
   // New PO form state
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
@@ -171,12 +154,27 @@ export default function PurchasesDashboardClient({
     }
   };
 
-  const filteredPOs = purchaseOrders.filter(
-    (po) =>
-      po.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      po.materialName.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const q = searchTerm.trim().toLowerCase();
+  const filteredPOs = purchaseOrders.filter((po) => {
+    const matchSearch =
+      !q ||
+      po.poNumber.toLowerCase().includes(q) ||
+      po.supplierName.toLowerCase().includes(q) ||
+      po.materialName.toLowerCase().includes(q);
+    const matchStatus =
+      statusFilter === 'ALL'
+        ? true
+        : statusFilter === 'ACTIVE'
+          ? po.status !== 'RECEIVED'
+          : po.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const countBy = (pred: (p: PoRow) => boolean) => purchaseOrders.filter(pred).length;
+  const clearPoFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('ALL');
+  };
 
   const handleCreatePO = (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,63 +273,96 @@ export default function PurchasesDashboardClient({
   }
   const slip = viewerPo ? buildSlip(viewerPo, activeTarget) : null;
 
+  const activeCount = countBy((p) => p.status !== 'RECEIVED');
+
   return (
-    <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
-      <div className="pt-6 pb-4 px-6 border-b border-[#454446] shrink-0 bg-[#1c1c1c]">
-        <div className="flex justify-between items-end mb-4">
-          <div>
-            <h1 className="text-[20px] font-medium text-white mb-2">Purchase Orders & Logistics</h1>
-            <p className="text-[13px] text-[#b8b6b9]">
-              Track inbound shipments, manage supplier POs, and receive containers to restock inventory.
-            </p>
-          </div>
-          <button
-            onClick={() => { setIsCreateModalOpen(true); setFormError(''); }}
-            className="px-4 py-2 bg-[#e3c16c] text-black font-medium text-[13px] rounded hover:bg-[#d2ac55] transition-colors flex items-center gap-2"
-          >
-            <Plus size={16} /> Create PO
-          </button>
-        </div>
-
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-2.5 text-[#b8b6b9]" />
-          <input
-            type="text"
-            placeholder="Search POs, suppliers, or materials..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-4 py-1.5 bg-[#2b2a2c] border border-[#454446] rounded text-[13px] text-white focus:outline-none focus:border-[#92b0ce] w-80 transition-colors"
+    <PageShell
+      flush
+      header={
+        <PageHeader
+          eyebrow="Inventory"
+          title="Purchasing"
+          subtitle="Track inbound shipments, manage supplier POs, and receive containers to restock inventory."
+          meta={[
+            { label: `${purchaseOrders.length} POs`, tone: 'neutral' },
+            { label: `${activeCount} in transit`, tone: activeCount > 0 ? 'gold' : 'green' },
+          ]}
+          actions={
+            <div className="flex items-center gap-2">
+              <Link
+                href="/logistics"
+                className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text-secondary)] hover:text-white border border-[var(--color-basalt-500)] rounded-lg px-2.5 py-1.5 transition-colors"
+              >
+                <Truck size={13} /> Logistics tracker
+              </Link>
+              <button
+                type="button"
+                onClick={() => { setIsCreateModalOpen(true); setFormError(''); }}
+                className="btn-primary"
+              >
+                <Plus size={16} /> Create PO
+              </button>
+            </div>
+          }
+        >
+          <ListToolbar
+            search={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Search POs, suppliers, or materials…"
+            resultCount={filteredPOs.length}
+            totalCount={purchaseOrders.length}
+            onClear={searchTerm || statusFilter !== 'ALL' ? clearPoFilters : undefined}
+            clearLabel="Reset filters"
+            filters={
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <FilterChip active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} count={purchaseOrders.length}>
+                  All
+                </FilterChip>
+                <FilterChip active={statusFilter === 'ACTIVE'} onClick={() => setStatusFilter('ACTIVE')} count={activeCount}>
+                  In transit
+                </FilterChip>
+                <FilterChip active={statusFilter === 'PRODUCTION'} onClick={() => setStatusFilter('PRODUCTION')} count={countBy((p) => p.status === 'PRODUCTION')}>
+                  Production
+                </FilterChip>
+                <FilterChip active={statusFilter === 'ON_WATER'} onClick={() => setStatusFilter('ON_WATER')} count={countBy((p) => p.status === 'ON_WATER')}>
+                  Ocean
+                </FilterChip>
+                <FilterChip active={statusFilter === 'RECEIVED'} onClick={() => setStatusFilter('RECEIVED')} count={countBy((p) => p.status === 'RECEIVED')}>
+                  Received
+                </FilterChip>
+              </div>
+            }
           />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="bg-[#1c1c1c] border border-[#454446] rounded-lg overflow-hidden">
-          <table className="w-full text-left border-collapse">
+        </PageHeader>
+      }
+    >
+      <div className="p-6">
+        <div className="bp-table-shell">
+          <table className="bp-table">
             <thead>
-              <tr className="bg-[#333234] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
-                <th className="p-3 font-medium border-b border-[#454446]">PO Number</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Supplier</th>
-                <th className="p-3 font-medium border-b border-[#454446]">Material</th>
-                <th className="p-3 font-medium border-b border-[#454446] text-right">Quantity</th>
-                <th className="p-3 font-medium border-b border-[#454446] text-right">Unit Cost</th>
-                <th className="p-3 font-medium border-b border-[#454446]"><Term k="eta">Est. Delivery</Term> / <Term k="container">Container</Term></th>
-                <th className="p-3 font-medium border-b border-[#454446]">Status</th>
-                <th className="p-3 font-medium border-b border-[#454446] text-center">Logistics Action</th>
+              <tr>
+                <th>PO Number</th>
+                <th>Supplier</th>
+                <th>Material</th>
+                <th className="text-right">Quantity</th>
+                <th className="text-right">Unit Cost</th>
+                <th><Term k="eta">Est. Delivery</Term> / <Term k="container">Container</Term></th>
+                <th>Status</th>
+                <th className="text-center">Logistics Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#454446] text-[13px]">
+            <tbody>
               {filteredPOs.map((po) => {
                 const totalValue = po.orderedSlabs * po.unitCost;
                 return (
                   <React.Fragment key={po.id}>
-                    <tr className="hover:bg-[#2b2a2c] transition-colors border-b-0">
-                      <td className="p-3 font-mono text-white">
+                    <tr>
+                      <td>
                         <div className="flex items-center gap-2 mb-1">
-                          <FileText size={14} className="text-[#b8b6b9]" />
+                          <FileText size={14} className="text-[var(--color-text-secondary)]" />
                           <button
                             onClick={() => { setSlipTarget('SUPPLIER'); setViewerModalOpen({ isOpen: true, poId: po.id }); }}
-                            className="hover:text-[#92b0ce] hover:underline transition-colors cursor-pointer"
+                            className="bp-id hover:text-[var(--color-sodalite)] hover:underline transition-colors cursor-pointer"
                           >
                             {po.poNumber}
                           </button>
@@ -339,7 +370,7 @@ export default function PurchasesDashboardClient({
                         {po.documentRefs.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {po.documentRefs.map((doc, i) => (
-                              <span key={i} className="text-[9px] bg-[#92b0ce]/10 text-[#92b0ce] border border-[#92b0ce]/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <span key={i} className="text-[9px] bg-[rgba(146,176,206,0.10)] text-[var(--color-sodalite)] border border-[rgba(146,176,206,0.20)] px-1.5 py-0.5 rounded flex items-center gap-1">
                                 📎 {doc}
                               </span>
                             ))}
@@ -350,52 +381,51 @@ export default function PurchasesDashboardClient({
                       <td className="p-3">{po.materialName}</td>
                       <td className="p-3 text-right text-white font-medium">{po.orderedSlabs} slabs</td>
                       <td className="p-3 text-right">
-                        <span className="text-[#e3c16c]">${po.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        <div className="text-[11px] text-[#b8b6b9]">Total: ${totalValue.toLocaleString()}</div>
+                        <span className="text-[var(--color-vein)]">${po.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <div className="text-[11px] text-[var(--color-text-secondary)]">Total: ${totalValue.toLocaleString()}</div>
                       </td>
                       <td className="p-3">
                         <div className="text-white">{fmtDate(po.estimatedDelivery) ?? po.eta ?? 'TBD'}</div>
-                        {po.containerId && <div className="text-[11px] font-mono text-[#92b0ce]">{po.containerId}</div>}
+                        {po.containerId && <div className="text-[11px] font-mono text-[var(--color-sodalite)]">{po.containerId}</div>}
                         <div><EtaBadge status={po.etaStatus} days={po.daysToEta} /></div>
                         {po.status === 'RECEIVED' && po.receiptNumber && (
-                          <div className="text-[10px] text-[#10b981] mt-1 flex items-center gap-1">
+                          <div className="text-[10px] text-[var(--color-emerald)] mt-1 flex items-center gap-1">
                             <Term k="receipt">Receipt</Term>: <span className="font-mono">{po.receiptNumber}</span>
                           </div>
                         )}
                       </td>
                       <td className="p-3">
-                        {po.status === 'PRODUCTION' && (
-                          <span className="inline-flex items-center gap-1 text-[#b8b6b9] bg-[#454446] px-2 py-1 rounded text-[11px] font-medium"><Clock size={12} /> In Production</span>
-                        )}
-                        {po.status === 'ON_WATER' && (
-                          <span className="inline-flex items-center gap-1 text-[#92b0ce] bg-[#92b0ce]/10 px-2 py-1 rounded text-[11px] font-medium border border-[#92b0ce]/20"><Ship size={12} /> On Water</span>
-                        )}
-                        {po.status === 'CUSTOMS' && (
-                          <span className="inline-flex items-center gap-1 text-orange-400 bg-orange-400/10 px-2 py-1 rounded text-[11px] font-medium border border-orange-400/20"><Package size={12} /> Clearing Customs</span>
-                        )}
-                        {po.status === 'INLAND_TRANSIT' && (
-                          <span className="inline-flex items-center gap-1 text-purple-400 bg-purple-400/10 px-2 py-1 rounded text-[11px] font-medium border border-purple-400/20"><Truck size={12} /> Inland Transit</span>
-                        )}
-                        {po.status === 'RECEIVED' && (
-                          <span className="inline-flex items-center gap-1 text-[#10b981] bg-[#10b981]/10 px-2 py-1 rounded text-[11px] font-medium border border-[#10b981]/20"><CheckCircle2 size={12} /> Restocked</span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-[var(--color-basalt-500)] bg-[var(--color-basalt-800)] text-[var(--color-text-muted)]">
+                          {LOGISTICS_STATUS_LABEL[po.status]}
+                        </span>
                       </td>
                       <td className="p-3 text-center">
-                        {po.status !== 'RECEIVED' ? (
-                          <button
-                            onClick={() => { setVerifyModalOpen({ isOpen: true, poId: po.id }); setFormError(''); }}
-                            className="text-[11px] text-black bg-[#e3c16c] hover:bg-[#d2ac55] font-medium px-3 py-1.5 rounded transition-colors flex items-center justify-center gap-1 mx-auto"
-                          >
-                            Verify Step
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-[#b8b6b9] italic">Completed</span>
-                        )}
+                        <div className="flex flex-col items-center gap-1.5">
+                          {po.status !== 'RECEIVED' ? (
+                            <button
+                              type="button"
+                              onClick={() => { setVerifyModalOpen({ isOpen: true, poId: po.id }); setFormError(''); }}
+                              className="btn-primary !min-h-7 !px-2.5 text-[11px]"
+                            >
+                              Verify step
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-[var(--color-text-secondary)] italic">Completed</span>
+                          )}
+                          {po.status !== 'RECEIVED' && (
+                            <Link
+                              href={`/logistics#${encodeURIComponent(po.poNumber)}`}
+                              className="text-[10px] text-[var(--color-sodalite)] hover:text-white transition-colors"
+                            >
+                              Open in tracker →
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                    <tr className="border-b border-[#454446] bg-[#222123]">
-                      <td colSpan={8} className="px-8 pt-2 pb-10">
-                        <PipelineVisual status={po.status} />
+                    <tr className="border-b border-[var(--color-basalt-500)] bg-[#222123]">
+                      <td colSpan={8} className="px-6 pt-1 pb-4">
+                        <LogisticsStageBar status={po.status} variant="full" />
                       </td>
                     </tr>
                   </React.Fragment>
@@ -403,7 +433,33 @@ export default function PurchasesDashboardClient({
               })}
               {filteredPOs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-[#b8b6b9]">No purchase orders match your search.</td>
+                  <td colSpan={8} className="p-4">
+                    <EmptyState
+                      icon={Package}
+                      title={purchaseOrders.length === 0 ? 'No purchase orders yet' : 'No POs match your filters'}
+                      hint={
+                        purchaseOrders.length === 0
+                          ? 'Create a PO to start tracking slabs from quarry to warehouse.'
+                          : 'Try another status chip or clear search.'
+                      }
+                      action={
+                        purchaseOrders.length === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => { setIsCreateModalOpen(true); setFormError(''); }}
+                            className="btn-primary inline-flex items-center gap-1.5"
+                          >
+                            <Plus size={14} /> Create PO
+                          </button>
+                        ) : (
+                          <button type="button" onClick={clearPoFilters} className="btn-ghost text-[13px]">
+                            Reset filters
+                          </button>
+                        )
+                      }
+                      className="py-10"
+                    />
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -414,25 +470,25 @@ export default function PurchasesDashboardClient({
       {/* Create PO Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-center">
+          <div className="bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] rounded-lg w-full max-w-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)] flex justify-between items-center">
               <div>
                 <h3 className="text-white font-medium">Create Purchase Order</h3>
-                <p className="text-[11px] text-[#b8b6b9] mt-0.5">
+                <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
                   Will be issued as{' '}
-                  <span className="font-mono text-[#e3c16c]">{nextPoNumber}</span>
+                  <span className="font-mono text-[var(--color-vein)]">{nextPoNumber}</span>
                   {' '}— <Term k="poNumber">standard PO-[Year]-[Sequence]</Term>
                 </p>
               </div>
-              <button onClick={() => { setIsCreateModalOpen(false); resetForm(); }} className="text-[#b8b6b9] hover:text-white transition-colors">
+              <button onClick={() => { setIsCreateModalOpen(false); resetForm(); }} className="text-[var(--color-text-secondary)] hover:text-white transition-colors">
                 <XCircle size={18} />
               </button>
             </div>
             <form onSubmit={handleCreatePO} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Supplier</label>
-                  <select required value={selectedSupplierId} onChange={(e) => handleSupplierChange(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]">
+                  <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Supplier</label>
+                  <select required value={selectedSupplierId} onChange={(e) => handleSupplierChange(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]">
                     <option value="" disabled>Select supplier...</option>
                     {suppliers.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}{s.incoterms ? ` (${s.incoterms})` : ''}</option>
@@ -440,8 +496,8 @@ export default function PurchasesDashboardClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Material to Order</label>
-                  <select required value={selectedMaterialId} onChange={(e) => setSelectedMaterialId(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]">
+                  <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Material to Order</label>
+                  <select required value={selectedMaterialId} onChange={(e) => setSelectedMaterialId(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]">
                     <option value="" disabled>Select material...</option>
                     {materials.map((m) => (
                       <option key={m.id} value={m.id}>{m.name} ({m.type})</option>
@@ -453,38 +509,38 @@ export default function PurchasesDashboardClient({
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-[12px] text-[#b8b6b9] font-medium whitespace-nowrap">Ocean Freight Line</label>
-                    <label className="flex items-center gap-1.5 text-[11px] text-[#92b0ce] cursor-pointer hover:text-white transition-colors">
+                    <label className="block text-[12px] text-[var(--color-text-secondary)] font-medium whitespace-nowrap">Ocean Freight Line</label>
+                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--color-sodalite)] cursor-pointer hover:text-white transition-colors">
                       <input type="checkbox" checked={isOceanCovered} onChange={(e) => { setIsOceanCovered(e.target.checked); setSelectedOceanId(e.target.checked ? 'SUPPLIER_COVERED' : ''); }} className="accent-[#92b0ce]" />
                       Supplier Covers
                     </label>
                   </div>
-                  <select required disabled={isOceanCovered} value={selectedOceanId} onChange={(e) => setSelectedOceanId(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce] disabled:opacity-50">
+                  <select required disabled={isOceanCovered} value={selectedOceanId} onChange={(e) => setSelectedOceanId(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)] disabled:opacity-50">
                     {isOceanCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select shipping line...</option>}
                     {vendors.filter((v) => v.service === 'Ocean Freight').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
                   {isOceanCovered ? (
-                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                    <p className="text-[11px] text-[var(--color-text-secondary)] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
                   ) : (
-                    <input type="number" required min="0.01" step="0.01" value={oceanCost} onChange={(e) => setOceanCost(e.target.value)} placeholder="Ocean freight price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                    <input type="number" required min="0.01" step="0.01" value={oceanCost} onChange={(e) => setOceanCost(e.target.value)} placeholder="Ocean freight price (total $)" className="mt-2 w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" />
                   )}
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-[12px] text-[#b8b6b9] font-medium whitespace-nowrap">Customs Broker</label>
-                    <label className="flex items-center gap-1.5 text-[11px] text-[#92b0ce] cursor-pointer hover:text-white transition-colors">
+                    <label className="block text-[12px] text-[var(--color-text-secondary)] font-medium whitespace-nowrap">Customs Broker</label>
+                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--color-sodalite)] cursor-pointer hover:text-white transition-colors">
                       <input type="checkbox" checked={isCustomsCovered} onChange={(e) => { setIsCustomsCovered(e.target.checked); setSelectedCustomsId(e.target.checked ? 'SUPPLIER_COVERED' : ''); }} className="accent-[#92b0ce]" />
                       Supplier Covers
                     </label>
                   </div>
-                  <select required disabled={isCustomsCovered} value={selectedCustomsId} onChange={(e) => setSelectedCustomsId(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce] disabled:opacity-50">
+                  <select required disabled={isCustomsCovered} value={selectedCustomsId} onChange={(e) => setSelectedCustomsId(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)] disabled:opacity-50">
                     {isCustomsCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select broker...</option>}
                     {vendors.filter((v) => v.service === 'Customs & Tariffs').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
                   {isCustomsCovered ? (
-                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                    <p className="text-[11px] text-[var(--color-text-secondary)] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
                   ) : (
-                    <input type="number" required min="0.01" step="0.01" value={customsCost} onChange={(e) => setCustomsCost(e.target.value)} placeholder="Customs brokerage price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                    <input type="number" required min="0.01" step="0.01" value={customsCost} onChange={(e) => setCustomsCost(e.target.value)} placeholder="Customs brokerage price (total $)" className="mt-2 w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" />
                   )}
                 </div>
               </div>
@@ -492,25 +548,25 @@ export default function PurchasesDashboardClient({
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-[12px] text-[#b8b6b9] font-medium whitespace-nowrap">Inland Trucking</label>
-                    <label className="flex items-center gap-1.5 text-[11px] text-[#92b0ce] cursor-pointer hover:text-white transition-colors">
+                    <label className="block text-[12px] text-[var(--color-text-secondary)] font-medium whitespace-nowrap">Inland Trucking</label>
+                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--color-sodalite)] cursor-pointer hover:text-white transition-colors">
                       <input type="checkbox" checked={isInlandCovered} onChange={(e) => { setIsInlandCovered(e.target.checked); setSelectedInlandId(e.target.checked ? 'SUPPLIER_COVERED' : ''); }} className="accent-[#92b0ce]" />
                       Supplier Covers
                     </label>
                   </div>
-                  <select required disabled={isInlandCovered} value={selectedInlandId} onChange={(e) => setSelectedInlandId(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce] disabled:opacity-50">
+                  <select required disabled={isInlandCovered} value={selectedInlandId} onChange={(e) => setSelectedInlandId(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)] disabled:opacity-50">
                     {isInlandCovered ? <option value="SUPPLIER_COVERED">Handled by Supplier</option> : <option value="" disabled>Select trucking co...</option>}
                     {vendors.filter((v) => v.service === 'Inland Logistics').map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                   </select>
                   {isInlandCovered ? (
-                    <p className="text-[11px] text-[#b8b6b9] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
+                    <p className="text-[11px] text-[var(--color-text-secondary)] mt-1.5">Cost rolled into the supplier&apos;s price.</p>
                   ) : (
-                    <input type="number" required min="0.01" step="0.01" value={inlandCost} onChange={(e) => setInlandCost(e.target.value)} placeholder="Inland trucking price (total $)" className="mt-2 w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" />
+                    <input type="number" required min="0.01" step="0.01" value={inlandCost} onChange={(e) => setInlandCost(e.target.value)} placeholder="Inland trucking price (total $)" className="mt-2 w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" />
                   )}
                 </div>
                 <div>
-                  <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">Destination Hub</label>
-                  <select required value={selectedDestination} onChange={(e) => setSelectedDestination(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]">
+                  <label className="block text-[12px] text-[var(--color-text-secondary)] mb-2 font-medium">Destination Hub</label>
+                  <select required value={selectedDestination} onChange={(e) => setSelectedDestination(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]">
                     <option value="" disabled>Select hub...</option>
                     <option value="Maryland Hub">Maryland Hub (HQ)</option>
                     <option value="Boston HQ">Boston Branch</option>
@@ -521,12 +577,12 @@ export default function PurchasesDashboardClient({
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">Slabs Quantity</label>
-                  <input type="number" required min="1" value={orderedSlabs} onChange={(e) => setOrderedSlabs(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" placeholder="e.g. 80" />
+                  <label className="block text-[12px] text-[var(--color-text-secondary)] mb-2 font-medium">Slabs Quantity</label>
+                  <input type="number" required min="1" value={orderedSlabs} onChange={(e) => setOrderedSlabs(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" placeholder="e.g. 80" />
                 </div>
                 <div>
-                  <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">Negotiated Cost ($/sqft)</label>
-                  <input type="number" required step="0.01" min="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" placeholder="e.g. 45.00" />
+                  <label className="block text-[12px] text-[var(--color-text-secondary)] mb-2 font-medium">Negotiated Cost ($/sqft)</label>
+                  <input type="number" required step="0.01" min="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" placeholder="e.g. 45.00" />
                 </div>
               </div>
 
@@ -540,22 +596,22 @@ export default function PurchasesDashboardClient({
                 const landed = material + freight;
                 const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 return (
-                  <div className="bg-[#1c1c1c] border border-[#454446] rounded p-3 text-[12px]">
-                    <p className="text-[11px] text-[#b8b6b9] uppercase tracking-wider font-bold mb-2">Cost roll-up (≈{estSf.toLocaleString()} sf)</p>
+                  <div className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded p-3 text-[12px]">
+                    <p className="text-[11px] text-[var(--color-text-secondary)] uppercase tracking-wider font-bold mb-2">Cost roll-up (≈{estSf.toLocaleString()} sf)</p>
                     <div className="grid grid-cols-2 gap-y-1">
-                      <span className="text-[#b8b6b9]"><Term k="fob">Material (FOB)</Term></span><span className="text-right text-white">{fmt(material)}</span>
-                      <span className="text-[#b8b6b9]">Ocean freight</span><span className="text-right text-white">{fmt(parseFloat(oceanCost || '0') || 0)}</span>
-                      <span className="text-[#b8b6b9]">Customs</span><span className="text-right text-white">{fmt(parseFloat(customsCost || '0') || 0)}</span>
-                      <span className="text-[#b8b6b9]">Inland</span><span className="text-right text-white">{fmt(parseFloat(inlandCost || '0') || 0)}</span>
-                      <span className="text-white font-medium border-t border-[#454446] pt-1 mt-1"><Term k="landedCost">Est. Landed</Term></span>
-                      <span className="text-right text-[#e3c16c] font-medium border-t border-[#454446] pt-1 mt-1">{fmt(landed)} <span className="text-[#b8b6b9] font-normal">({fmt(landed / estSf)}/sf)</span></span>
+                      <span className="text-[var(--color-text-secondary)]"><Term k="fob">Material (FOB)</Term></span><span className="text-right text-white">{fmt(material)}</span>
+                      <span className="text-[var(--color-text-secondary)]">Ocean freight</span><span className="text-right text-white">{fmt(parseFloat(oceanCost || '0') || 0)}</span>
+                      <span className="text-[var(--color-text-secondary)]">Customs</span><span className="text-right text-white">{fmt(parseFloat(customsCost || '0') || 0)}</span>
+                      <span className="text-[var(--color-text-secondary)]">Inland</span><span className="text-right text-white">{fmt(parseFloat(inlandCost || '0') || 0)}</span>
+                      <span className="text-white font-medium border-t border-[var(--color-basalt-500)] pt-1 mt-1"><Term k="landedCost">Est. Landed</Term></span>
+                      <span className="text-right text-[var(--color-vein)] font-medium border-t border-[var(--color-basalt-500)] pt-1 mt-1">{fmt(landed)} <span className="text-[var(--color-text-secondary)] font-normal">({fmt(landed / estSf)}/sf)</span></span>
                     </div>
                   </div>
                 );
               })()}
 
-              <div className="border-t border-[#454446] pt-4">
-                <label className="block text-[12px] text-[#b8b6b9] mb-2 font-medium">
+              <div className="border-t border-[var(--color-basalt-500)] pt-4">
+                <label className="block text-[12px] text-[var(--color-text-secondary)] mb-2 font-medium">
                   <Term k="eta">Estimated Delivery Date</Term> — when do you expect this at the hub?
                 </label>
                 <input
@@ -563,9 +619,9 @@ export default function PurchasesDashboardClient({
                   required
                   value={estimatedDelivery}
                   onChange={(e) => setEstimatedDelivery(e.target.value)}
-                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce] [color-scheme:dark]"
+                  className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)] [color-scheme:dark]"
                 />
-                <p className="text-[11px] text-[#b8b6b9] mt-1.5">
+                <p className="text-[11px] text-[var(--color-text-secondary)] mt-1.5">
                   The dashboard tracks each PO against this date — flagging it on track, due soon, or overdue.
                 </p>
               </div>
@@ -574,9 +630,9 @@ export default function PurchasesDashboardClient({
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{formError}</div>
               )}
 
-              <div className="pt-4 mt-2 border-t border-[#454446] flex justify-end gap-3">
-                <button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} className="px-4 py-2 text-[13px] text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
-                <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] bg-[#e3c16c] text-black font-medium rounded hover:bg-[#d2ac55] transition-colors disabled:opacity-60">{isPending ? 'Issuing…' : 'Issue PO'}</button>
+              <div className="pt-4 mt-2 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
+                <button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} className="btn-ghost text-[13px]">Cancel</button>
+                <button type="submit" disabled={isPending} className="btn-primary text-[13px] disabled:opacity-60">{isPending ? 'Issuing…' : 'Issue PO'}</button>
               </div>
             </form>
           </div>
@@ -586,10 +642,10 @@ export default function PurchasesDashboardClient({
       {/* Verify Step Modal */}
       {verifyModalOpen.isOpen && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-center">
+          <div className="bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] rounded-lg w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)] flex justify-between items-center">
               <h3 className="text-white font-medium">Verify Logistics Step</h3>
-              <button onClick={() => setVerifyModalOpen({ isOpen: false, poId: null })} className="text-[#b8b6b9] hover:text-white transition-colors"><XCircle size={18} /></button>
+              <button onClick={() => setVerifyModalOpen({ isOpen: false, poId: null })} className="text-[var(--color-text-secondary)] hover:text-white transition-colors"><XCircle size={18} /></button>
             </div>
             <form onSubmit={handleVerifyStep} className="p-6 space-y-4">
               {(() => {
@@ -605,19 +661,19 @@ export default function PurchasesDashboardClient({
                 const isFinal = po.status === 'INLAND_TRANSIT';
                 return (
                   <div>
-                    <div className="bg-[#1c1c1c] border border-[#92b0ce]/30 p-3 rounded mb-4">
-                      <p className="text-[12px] text-[#92b0ce] mb-1 uppercase tracking-wider font-bold">Current Verification Target</p>
-                      <p className="text-[14px] text-white">Verifying <span className="font-bold">{currentLeg}</span> completion by <span className="text-[#e3c16c]">{vendorName}</span>.</p>
+                    <div className="bg-[var(--color-basalt-900)] border border-[rgba(146,176,206,0.30)] p-3 rounded mb-4">
+                      <p className="text-[12px] text-[var(--color-sodalite)] mb-1 uppercase tracking-wider font-bold">Current Verification Target</p>
+                      <p className="text-[14px] text-white">Verifying <span className="font-bold">{currentLeg}</span> completion by <span className="text-[var(--color-vein)]">{vendorName}</span>.</p>
                     </div>
-                    <p className="text-[13px] text-[#b8b6b9] mb-4">
+                    <p className="text-[13px] text-[var(--color-text-secondary)] mb-4">
                       Advance this PO to the next stage. {isFinal ? 'Receiving this container will restock the ordered slabs into inventory.' : 'You can optionally attach a reference number.'}
                     </p>
-                    <label className="block text-[12px] text-[#b8b6b9] mb-1.5">
+                    <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">
                       {isFinal ? <><Term k="receipt">Goods Receipt Number</Term> (stored for future lookup)</> : `${docType} Number (Optional)`}
                     </label>
-                    <input type="text" value={verifyDocRef} onChange={(e) => setVerifyDocRef(e.target.value)} className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]" placeholder={`e.g. ${docType.split(' ')[0].toUpperCase()}-884920`} />
+                    <input type="text" value={verifyDocRef} onChange={(e) => setVerifyDocRef(e.target.value)} className="w-full bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[var(--color-sodalite)]" placeholder={`e.g. ${docType.split(' ')[0].toUpperCase()}-884920`} />
                     {isFinal && (
-                      <p className="text-[11px] text-[#b8b6b9] mt-1.5">Paperwork stays offline — only this reference number is saved, so the shipment can be searched later.</p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)] mt-1.5">Paperwork stays offline — only this reference number is saved, so the shipment can be searched later.</p>
                     )}
                   </div>
                 );
@@ -627,144 +683,222 @@ export default function PurchasesDashboardClient({
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{formError}</div>
               )}
 
-              <div className="pt-4 mt-2 border-t border-[#454446] flex justify-end gap-3">
-                <button type="button" onClick={() => setVerifyModalOpen({ isOpen: false, poId: null })} className="px-4 py-2 text-[13px] text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
-                <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] bg-[#10b981] text-white font-medium rounded hover:bg-[#059669] transition-colors disabled:opacity-60">{isPending ? 'Advancing…' : 'Verify & Advance'}</button>
+              <div className="pt-4 mt-2 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
+                <button type="button" onClick={() => setVerifyModalOpen({ isOpen: false, poId: null })} className="px-4 py-2 text-[13px] text-[var(--color-text-secondary)] hover:text-white transition-colors">Cancel</button>
+                <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] bg-[var(--color-emerald)] text-white font-medium rounded hover:bg-[color-mix(in_srgb,var(--color-emerald)_85%,black)] transition-colors disabled:opacity-60">{isPending ? 'Advancing…' : 'Verify & Advance'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* PO Viewer Modal */}
+      {/* PO packing slip — light paper document for print (DESIGN.md Phase E) */}
       {viewerModalOpen.isOpen && viewerPo && slip && (
-        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
-          <div className="bg-[#fdfdfd] text-black border border-[#d1d5db] w-full max-w-3xl h-[85vh] shadow-2xl flex flex-col relative font-sans overflow-hidden">
-            <button onClick={() => setViewerModalOpen({ isOpen: false, poId: null })} className="absolute top-4 right-4 text-gray-500 hover:text-black transition-colors print:hidden"><XCircle size={24} /></button>
+        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+          <div className="bp-print-slip bg-[#faf9f7] text-[#1a1918] border border-[#d4d0c8] w-full max-w-3xl h-[85vh] shadow-2xl flex flex-col relative overflow-hidden print:h-auto print:max-w-none print:border-0 print:shadow-none">
+            <button
+              onClick={() => setViewerModalOpen({ isOpen: false, poId: null })}
+              className="absolute top-4 right-4 text-[#7a7874] hover:text-[#1a1918] transition-colors print:hidden z-10"
+              aria-label="Close slip"
+            >
+              <XCircle size={22} />
+            </button>
 
-            {/* Party selector — one slip per counterparty in the pipeline */}
-            <div className="bg-gray-50 border-b border-gray-200 px-6 py-3 flex items-center gap-2 print:hidden">
-              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-1">Generate slip for:</span>
+            <div className="bg-[#f0eeea] border-b border-[#d4d0c8] px-6 py-3 flex items-center gap-2 print:hidden">
+              <span className="text-[10px] font-semibold text-[#7a7874] uppercase tracking-[0.12em] mr-1">
+                Generate slip for
+              </span>
               {slipTargets.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setSlipTarget(t.key)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${activeTarget === t.key ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                  className={`text-[11px] font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                    activeTarget === t.key
+                      ? 'bg-[#1a1918] text-white border-[#1a1918]'
+                      : 'bg-white text-[#5a5650] border-[#d4d0c8] hover:bg-[#f0eeea]'
+                  }`}
                 >
                   {t.tab}
                 </button>
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-10">
-              <div className="border-b-2 border-gray-800 pb-6 mb-8 flex justify-between items-end">
+            <div className="flex-1 overflow-y-auto p-10 print:p-8">
+              <div className="border-b border-[#1a1918] pb-6 mb-8 flex justify-between items-end gap-6">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">{slip.title}</h1>
-                  <p className="text-sm text-gray-500 font-mono">DOC NO: <span className="font-bold text-gray-800">{viewerPo.poNumber}-{slip.suffix}</span></p>
-                  <p className="text-sm text-gray-500 font-mono">ISSUED: <span className="font-bold text-gray-800">{viewerPo.issuedAt ? new Date(viewerPo.issuedAt).toLocaleString() : 'Just now'}</span></p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a7a50] mb-2">
+                    BluePlanet · Procurement
+                  </p>
+                  <h1
+                    className="text-[28px] font-medium tracking-tight text-[#1a1918] mb-2 leading-tight"
+                    style={{ fontFamily: 'var(--font-heading), Georgia, serif' }}
+                  >
+                    {slip.title}
+                  </h1>
+                  <p className="text-[12px] text-[#5a5650] font-mono">
+                    DOC NO:{' '}
+                    <span className="font-semibold text-[#1a1918]">
+                      {viewerPo.poNumber}-{slip.suffix}
+                    </span>
+                  </p>
+                  <p className="text-[12px] text-[#5a5650] font-mono mt-0.5">
+                    ISSUED:{' '}
+                    <span className="font-semibold text-[#1a1918]">
+                      {viewerPo.issuedAt
+                        ? new Date(viewerPo.issuedAt).toLocaleString()
+                        : 'Just now'}
+                    </span>
+                  </p>
                 </div>
-                <div className="text-right">
-                  <h2 className="text-xl font-bold text-gray-800">BluePlanet CRM Ledger</h2>
-                  <p className="text-sm text-gray-500">123 Corporate Blvd, Maryland</p>
-                  <p className="text-sm text-gray-500">procurement@blueplanet.com</p>
+                <div className="text-right shrink-0">
+                  <h2
+                    className="text-[18px] font-medium text-[#1a1918]"
+                    style={{ fontFamily: 'var(--font-heading), Georgia, serif' }}
+                  >
+                    BluePlanet CRM
+                  </h2>
+                  <p className="text-[12px] text-[#5a5650] mt-1">123 Corporate Blvd, Maryland</p>
+                  <p className="text-[12px] text-[#5a5650]">procurement@blueplanet.com</p>
                 </div>
               </div>
 
-              <div className="bg-gray-100 border border-gray-300 p-4 mb-8 flex items-start gap-3">
-                <div className="text-blue-600 mt-0.5"><CheckCircle2 size={18} /></div>
+              <div className="bg-[#f0eeea] border border-[#d4d0c8] p-4 mb-8 flex items-start gap-3">
+                <div className="text-[#5a7a9a] mt-0.5">
+                  <CheckCircle2 size={18} />
+                </div>
                 <div>
-                  <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">State-Driven Immutable Record</h4>
-                  <p className="text-xs text-gray-600 font-mono break-all leading-relaxed">LEDGER HASH: {viewerPo.ledgerHash ?? 'PENDING'} · {slip.suffix}</p>
-                  <p className="text-xs text-gray-500 mt-1 italic">Derived from PO {viewerPo.poNumber}. Modifications to the source ledger invalidate this slip&apos;s hash.</p>
+                  <h4 className="text-[10px] font-semibold text-[#1a1918] uppercase tracking-[0.1em] mb-1">
+                    Immutable ledger record
+                  </h4>
+                  <p className="text-[11px] text-[#5a5650] font-mono break-all leading-relaxed">
+                    LEDGER HASH: {viewerPo.ledgerHash ?? 'PENDING'} · {slip.suffix}
+                  </p>
+                  <p className="text-[11px] text-[#7a7874] mt-1">
+                    Derived from PO {viewerPo.poNumber}. Source ledger changes invalidate this slip&apos;s
+                    hash.
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-8 mb-8">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider border-b border-gray-300 pb-2 mb-4">Dispatch To — {slip.role}</h3>
-                  <p className="text-sm font-medium text-gray-900">{slip.name}</p>
-                  <p className="text-sm text-gray-600 mt-1">Party ID: {slip.id}</p>
+                  <h3 className="text-[11px] font-semibold text-[#1a1918] uppercase tracking-[0.1em] border-b border-[#d4d0c8] pb-2 mb-3">
+                    Dispatch to — {slip.role}
+                  </h3>
+                  <p className="text-[13px] font-medium text-[#1a1918]">{slip.name}</p>
+                  <p className="text-[12px] text-[#5a5650] mt-1 font-mono">Party ID: {slip.id}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider border-b border-gray-300 pb-2 mb-4">Reference & Logistics</h3>
-                  <div className="grid grid-cols-2 gap-y-2">
-                    <p className="text-sm text-gray-500">Source PO:</p>
-                    <p className="text-sm font-medium text-gray-900 text-right">{viewerPo.poNumber}</p>
-                    <p className="text-sm text-gray-500">Est. Delivery:</p>
-                    <p className="text-sm font-medium text-gray-900 text-right">{fmtDate(viewerPo.estimatedDelivery) ?? viewerPo.eta ?? 'TBD'}</p>
-                    <p className="text-sm text-gray-500">Container:</p>
-                    <p className="text-sm font-medium text-gray-900 text-right">{viewerPo.containerId ?? 'Pending Allocation'}</p>
+                  <h3 className="text-[11px] font-semibold text-[#1a1918] uppercase tracking-[0.1em] border-b border-[#d4d0c8] pb-2 mb-3">
+                    Reference & logistics
+                  </h3>
+                  <div className="grid grid-cols-2 gap-y-2 text-[12px]">
+                    <p className="text-[#7a7874]">Source PO</p>
+                    <p className="font-medium text-[#1a1918] text-right font-mono">{viewerPo.poNumber}</p>
+                    <p className="text-[#7a7874]">Est. delivery</p>
+                    <p className="font-medium text-[#1a1918] text-right">
+                      {fmtDate(viewerPo.estimatedDelivery) ?? viewerPo.eta ?? 'TBD'}
+                    </p>
+                    <p className="text-[#7a7874]">Container</p>
+                    <p className="font-medium text-[#1a1918] text-right font-mono">
+                      {viewerPo.containerId ?? 'Pending'}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <table className="w-full mb-6">
+              <table className="w-full mb-6 text-[13px]">
                 <thead>
-                  <tr className="border-b border-gray-300 bg-gray-50">
-                    <th className="text-left p-3 text-xs font-bold text-gray-600 uppercase tracking-wider">Scope of Work</th>
-                    <th className="text-right p-3 text-xs font-bold text-gray-600 uppercase tracking-wider">Quantity</th>
-                    <th className="text-right p-3 text-xs font-bold text-gray-600 uppercase tracking-wider">Detail</th>
-                    <th className="text-right p-3 text-xs font-bold text-gray-600 uppercase tracking-wider">Value</th>
+                  <tr className="border-b border-[#d4d0c8] bg-[#f0eeea]">
+                    <th className="text-left p-3 text-[10px] font-semibold text-[#5a5650] uppercase tracking-[0.08em]">
+                      Scope of work
+                    </th>
+                    <th className="text-right p-3 text-[10px] font-semibold text-[#5a5650] uppercase tracking-[0.08em]">
+                      Qty
+                    </th>
+                    <th className="text-right p-3 text-[10px] font-semibold text-[#5a5650] uppercase tracking-[0.08em]">
+                      Detail
+                    </th>
+                    <th className="text-right p-3 text-[10px] font-semibold text-[#5a5650] uppercase tracking-[0.08em]">
+                      Value
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {slip.rows.map((r, i) => (
-                    <tr key={i} className="border-b border-gray-200">
-                      <td className="p-3 text-sm font-medium text-gray-900">{r.item}</td>
-                      <td className="p-3 text-sm text-gray-600 text-right">{r.qty}</td>
-                      <td className="p-3 text-sm text-gray-600 text-right">{r.unit}</td>
-                      <td className="p-3 text-sm font-bold text-gray-900 text-right">{r.value == null ? 'Per contract' : `$${r.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</td>
+                    <tr key={i} className="border-b border-[#e8e4dc]">
+                      <td className="p-3 font-medium text-[#1a1918]">{r.item}</td>
+                      <td className="p-3 text-[#5a5650] text-right tabular-nums">{r.qty}</td>
+                      <td className="p-3 text-[#5a5650] text-right">{r.unit}</td>
+                      <td className="p-3 font-semibold text-[#1a1918] text-right tabular-nums">
+                        {r.value == null
+                          ? 'Per contract'
+                          : `$${r.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-8">
-                <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Instructions</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">{slip.note}</p>
+              <div className="bg-[#f0eeea] border border-[#d4d0c8] rounded p-4 mb-8">
+                <h4 className="text-[10px] font-semibold text-[#5a5650] uppercase tracking-[0.1em] mb-1">
+                  Instructions
+                </h4>
+                <p className="text-[13px] text-[#3a3836] leading-relaxed">{slip.note}</p>
               </div>
 
               <div className="mb-4">
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider border-b border-gray-300 pb-2 mb-3">Pipeline Route — this slip covers <span className="text-gray-900">{slip.leg}</span></h3>
-                <div className="bg-gray-900 p-4 rounded text-white mt-4">
-                  <PipelineVisual status={viewerPo.status} />
+                <h3 className="text-[11px] font-semibold text-[#1a1918] uppercase tracking-[0.1em] border-b border-[#d4d0c8] pb-2 mb-3">
+                  Pipeline route — this slip covers{' '}
+                  <span className="text-[#1a1918] normal-case tracking-normal font-medium">
+                    {slip.leg}
+                  </span>
+                </h3>
+                <div className="bg-[var(--color-basalt-900)] p-4 rounded text-white mt-4 print:bg-[var(--color-basalt-900)]">
+                  <LogisticsStageBar status={viewerPo.status} variant="full" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gray-100 border-t border-gray-300 px-6 py-3 flex items-center justify-between print:hidden">
-              <span className="text-[11px] text-gray-500">{slipTargets.length} slip{slipTargets.length === 1 ? '' : 's'} available for this PO</span>
+            <div className="bg-[#f0eeea] border-t border-[#d4d0c8] px-6 py-3 flex items-center justify-between print:hidden">
+              <span className="text-[11px] text-[#7a7874]">
+                {slipTargets.length} slip{slipTargets.length === 1 ? '' : 's'} available for this PO
+              </span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#1a1918] bg-white border border-[#d4d0c8] rounded hover:bg-[#faf9f7] transition-colors font-medium"
                 >
                   <Printer size={13} /> Print {slip.suffix} slip
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(viewerPo, null, 2));
+                    const dataStr =
+                      'data:text/json;charset=utf-8,' +
+                      encodeURIComponent(JSON.stringify(viewerPo, null, 2));
                     const downloadAnchor = document.createElement('a');
-                    downloadAnchor.setAttribute("href", dataStr);
-                    downloadAnchor.setAttribute("download", `${viewerPo.poNumber}_ledger_snapshot.json`);
+                    downloadAnchor.setAttribute('href', dataStr);
+                    downloadAnchor.setAttribute('download', `${viewerPo.poNumber}_ledger_snapshot.json`);
                     document.body.appendChild(downloadAnchor);
                     downloadAnchor.click();
                     downloadAnchor.remove();
                     toast(`Cryptographic ledger JSON for ${viewerPo.poNumber} exported`);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-amber-300 bg-amber-950 border border-amber-700/50 rounded hover:bg-amber-900 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#8a7a50] bg-[#2a2520] border border-[#5a4a30] rounded hover:bg-[#3a3028] transition-colors cursor-pointer"
                 >
                   <Download size={13} /> Export JSON
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(`${window.location.origin}/purchases#${viewerPo.poNumber}-${slip.suffix}`);
+                    navigator.clipboard?.writeText(
+                      `${window.location.origin}/purchases#${viewerPo.poNumber}-${slip.suffix}`,
+                    );
                     toast(`${slip.role} slip link for ${viewerPo.poNumber} copied`);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-white bg-gray-800 rounded hover:bg-gray-700 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-white bg-[#1a1918] rounded hover:bg-[#2a2826] transition-colors"
                 >
                   <LinkIcon size={13} /> Copy link
                 </button>
@@ -773,6 +907,6 @@ export default function PurchasesDashboardClient({
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

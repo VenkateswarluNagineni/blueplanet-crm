@@ -10,6 +10,15 @@ export type DashboardData = {
     ytdSales: number;
     pendingApprovals: number;
   };
+  /** Counts used by the Home “Needs attention” strip. */
+  attention: {
+    openPipelineCount: number;
+    overduePos: number;
+    pendingApprovals: number;
+    availableSlabs: number;
+    /** Slabs currently ON_HOLD (reservation ceremony). */
+    onHoldSlabs: number;
+  };
   inventoryByLocation: { name: string; value: number }[];
   pipelineByStage: { name: string; value: number }[];
   poByStatus: { name: string; value: number }[];
@@ -25,23 +34,32 @@ const PO_LABEL: Record<string, string> = {
 };
 
 export async function getDashboardData(canViewCost: boolean): Promise<DashboardData> {
-  const [available, locations, pos, opps, completedSales, pendingApprovals] = await Promise.all([
-    db.inventoryItem.findMany({
-      where: { deletedAt: null, status: 'AVAILABLE' },
-      select: { costLanded: true, presentLocationId: true },
-    }),
-    db.location.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
-    db.purchaseOrder.findMany({ where: { deletedAt: null }, select: { logisticsStatus: true } }),
-    db.opportunity.findMany({
-      where: { deletedAt: null, status: { notIn: ['CLOSED_WON', 'CLOSED_LOST'] } },
-      select: { status: true, amount: true },
-    }),
-    db.salesOrder.findMany({
-      where: { deletedAt: null, status: 'COMPLETED' },
-      include: { associate: { select: { name: true } }, soLineItems: { include: { inventoryItem: { select: { totalSf: true } } } } },
-    }),
-    db.eventOutbox.count({ where: { status: 'PENDING' } }),
-  ]);
+  const now = new Date();
+  const [available, onHoldSlabs, locations, pos, opps, completedSales, pendingApprovals] =
+    await Promise.all([
+      db.inventoryItem.findMany({
+        where: { deletedAt: null, status: 'AVAILABLE' },
+        select: { costLanded: true, presentLocationId: true },
+      }),
+      db.inventoryItem.count({ where: { deletedAt: null, status: 'ON_HOLD' } }),
+      db.location.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
+      db.purchaseOrder.findMany({
+        where: { deletedAt: null },
+        select: { logisticsStatus: true, estimatedDelivery: true },
+      }),
+      db.opportunity.findMany({
+        where: { deletedAt: null, status: { notIn: ['CLOSED_WON', 'CLOSED_LOST'] } },
+        select: { status: true, amount: true },
+      }),
+      db.salesOrder.findMany({
+        where: { deletedAt: null, status: 'COMPLETED' },
+        include: {
+          associate: { select: { name: true } },
+          soLineItems: { include: { inventoryItem: { select: { totalSf: true } } } },
+        },
+      }),
+      db.eventOutbox.count({ where: { status: 'PENDING' } }),
+    ]);
 
   const locName = new Map(locations.map((l) => [l.id, l.name]));
   const inventoryValue = available.reduce((s, i) => s + (i.costLanded ?? 0), 0);
@@ -61,20 +79,35 @@ export async function getDashboardData(canViewCost: boolean): Promise<DashboardD
   const bySales = new Map<string, number>();
   let ytdSales = 0;
   for (const s of completedSales) {
-    const val = s.soLineItems.reduce((sum, li) => sum + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0);
+    const val = s.soLineItems.reduce(
+      (sum, li) => sum + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0),
+      0,
+    );
     ytdSales += val;
     const name = s.associate?.name ?? 'Unassigned';
     bySales.set(name, (bySales.get(name) ?? 0) + val);
   }
 
+  const inTransit = pos.filter((p) => p.logisticsStatus !== 'RECEIVED');
+  const overduePos = inTransit.filter(
+    (p) => p.estimatedDelivery != null && p.estimatedDelivery < now,
+  ).length;
+
   return {
     kpis: {
       inventoryValue: canViewCost ? Math.round(inventoryValue) : 0,
       availableSlabs: available.length,
-      inTransitPos: pos.filter((p) => p.logisticsStatus !== 'RECEIVED').length,
+      inTransitPos: inTransit.length,
       openPipelineValue: opps.reduce((s, o) => s + o.amount, 0),
       ytdSales: Math.round(ytdSales),
       pendingApprovals,
+    },
+    attention: {
+      openPipelineCount: opps.length,
+      overduePos,
+      pendingApprovals,
+      availableSlabs: available.length,
+      onHoldSlabs,
     },
     inventoryByLocation: canViewCost
       ? Array.from(byLoc, ([name, value]) => ({ name, value: Math.round(value) }))

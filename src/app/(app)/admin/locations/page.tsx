@@ -1,14 +1,12 @@
-import { redirect } from 'next/navigation';
-import { getEffectiveRole } from '@/lib/auth';
+import { getSessionContext } from '@/lib/auth';
+import { assertPageAccess } from '@/lib/page-access';
 import { getLocationsAdmin } from '@/server/queries/locations';
 import { LocationsClient } from '@/components/LocationsClient';
 
 export const metadata = { title: 'Locations | BluePlanet' };
 
 export default async function LocationsPage() {
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  if (role !== 'ADMIN') redirect('/');
-
+  assertPageAccess(await getSessionContext(), 'admin');
   const locations = await getLocationsAdmin();
   return <LocationsClient locations={locations} />;
 }

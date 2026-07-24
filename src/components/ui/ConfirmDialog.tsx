@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 type ConfirmOpts = {
   title: string;
@@ -12,60 +14,73 @@ type ConfirmOpts = {
 };
 
 /**
- * Promise-based confirm modal — a drop-in replacement for native `confirm()` that
- * matches the app theme. Usage:
+ * Promise-based confirm — themed Modal + Button.
  *   const { confirm, confirmDialog } = useConfirm();
- *   ... if (await confirm({ title: 'Delete?', tone: 'danger' })) { ... }
- *   return (<>{confirmDialog}{rest}</>);
+ *   if (await confirm({ title: 'Delete?', tone: 'danger' })) { ... }
  */
 export function useConfirm() {
-  const [state, setState] = useState<{ open: boolean; opts: ConfirmOpts; resolve?: (v: boolean) => void }>({
-    open: false, opts: { title: '' },
-  });
+  const [state, setState] = useState<{
+    open: boolean;
+    opts: ConfirmOpts;
+    resolve?: (v: boolean) => void;
+  }>({ open: false, opts: { title: '' } });
 
   const confirm = useCallback(
-    (opts: ConfirmOpts) => new Promise<boolean>((resolve) => setState({ open: true, opts, resolve })),
+    (opts: ConfirmOpts) =>
+      new Promise<boolean>((resolve) => setState({ open: true, opts, resolve })),
     [],
   );
 
   const settle = useCallback((v: boolean) => {
-    setState((s) => { s.resolve?.(v); return { ...s, open: false }; });
+    setState((s) => {
+      s.resolve?.(v);
+      return { ...s, open: false };
+    });
   }, []);
 
-  const confirmDialog = state.open ? (
-    <ConfirmModal opts={state.opts} onCancel={() => settle(false)} onConfirm={() => settle(true)} />
-  ) : null;
+  const danger = state.opts.tone === 'danger';
+
+  const confirmDialog = (
+    <Modal
+      open={state.open}
+      onClose={() => settle(false)}
+      title={
+        <span className="flex items-center gap-2">
+          {danger && (
+            <span className="p-1 rounded-md bg-[rgba(239,68,68,0.12)] text-[var(--color-ruby)]">
+              <AlertTriangle size={16} />
+            </span>
+          )}
+          {state.opts.title}
+        </span>
+      }
+      width={420}
+      zIndex={80}
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={() => settle(false)}>
+            {state.opts.cancelLabel ?? 'Cancel'}
+          </Button>
+          <Button
+            variant={danger ? 'danger' : 'primary'}
+            size="sm"
+            autoFocus
+            onClick={() => settle(true)}
+          >
+            {state.opts.confirmLabel ?? 'Confirm'}
+          </Button>
+        </>
+      }
+    >
+      {state.opts.message ? (
+        <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">
+          {state.opts.message}
+        </p>
+      ) : (
+        <p className="text-[13px] text-[var(--color-fog-500)]">This action cannot be undone lightly.</p>
+      )}
+    </Modal>
+  );
 
   return { confirm, confirmDialog };
-}
-
-function ConfirmModal({ opts, onCancel, onConfirm }: { opts: ConfirmOpts; onCancel: () => void; onConfirm: () => void }) {
-  const danger = opts.tone === 'danger';
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-      if (e.key === 'Enter') onConfirm();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel, onConfirm]);
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/70 z-[80]" onClick={onCancel} />
-      <div role="alertdialog" aria-modal="true" className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(92vw,420px)] bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-2xl z-[81] p-6">
-        <div className="flex items-start gap-3 mb-4">
-          {danger && <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400 shrink-0"><AlertTriangle size={18} /></div>}
-          <div>
-            <h3 className="text-[15px] font-medium text-white">{opts.title}</h3>
-            {opts.message && <p className="text-[13px] text-[#b8b6b9] mt-1.5">{opts.message}</p>}
-          </div>
-        </div>
-        <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-[13px] font-medium text-[#b8b6b9] hover:text-white transition-colors">{opts.cancelLabel ?? 'Cancel'}</button>
-          <button onClick={onConfirm} autoFocus className={`px-4 py-2 text-[13px] font-medium rounded-md transition-colors ${danger ? 'bg-red-500 hover:bg-red-400 text-white' : 'bg-[#e3c16c] hover:bg-[#d2ac55] text-black'}`}>{opts.confirmLabel ?? 'Confirm'}</button>
-        </div>
-      </div>
-    </>
-  );
 }

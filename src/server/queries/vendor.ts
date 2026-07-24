@@ -1,17 +1,18 @@
 import 'server-only';
 import { db } from '@/lib/db';
-
-const PO_LABEL: Record<string, string> = {
-  PRODUCTION: 'In Production',
-  ON_WATER: 'On Water',
-  CUSTOMS: 'Clearing Customs',
-  INLAND_TRANSIT: 'Inland Transit',
-  RECEIVED: 'Delivered',
-};
+import { LOGISTICS_STATUS_LABEL, type PoLogisticsStatus } from '@/lib/logistics-stages';
 
 export type VendorOrder = {
-  poNumber: string; supplierName: string; materialName: string; status: string;
-  eta: string | null; containerId: string | null; leg: string;
+  poNumber: string;
+  supplierName: string;
+  materialName: string;
+  /** Display label aligned with admin logistics language. */
+  status: string;
+  /** Raw stage for progress bars. */
+  logisticsStatus: PoLogisticsStatus;
+  eta: string | null;
+  containerId: string | null;
+  leg: string;
 };
 export type VendorInvoiceRow = {
   invoiceNum: string; status: string; amount: number; dueDate: string | null; serviceDetails: string | null;
@@ -49,15 +50,19 @@ export async function getVendorPortal(vendorSystemId: string): Promise<VendorPor
     vendorName: vendor.name,
     serviceType: vendor.serviceType ?? 'Logistics',
     balanceDue: vendor.balanceDue,
-    orders: pos.map((po) => ({
-      poNumber: po.poNumber,
-      supplierName: po.supplier?.name ?? '—',
-      materialName: po.product?.name ?? '—',
-      status: PO_LABEL[po.logisticsStatus] ?? po.logisticsStatus,
-      eta: po.eta,
-      containerId: po.containerId,
-      leg: legOf(po),
-    })),
+    orders: pos.map((po) => {
+      const logisticsStatus = (po.logisticsStatus as PoLogisticsStatus) ?? 'PRODUCTION';
+      return {
+        poNumber: po.poNumber,
+        supplierName: po.supplier?.name ?? '—',
+        materialName: po.product?.name ?? '—',
+        status: LOGISTICS_STATUS_LABEL[logisticsStatus] ?? po.logisticsStatus,
+        logisticsStatus,
+        eta: po.eta,
+        containerId: po.containerId,
+        leg: legOf(po),
+      };
+    }),
     invoices: invoices.map((inv) => ({
       invoiceNum: inv.invoiceNum,
       status: inv.status,

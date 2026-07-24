@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
 import PurchasesDashboardClient from '@/components/PurchasesDashboardClient';
-import { getEffectiveRole } from '@/lib/auth';
+import { getSessionContext } from '@/lib/auth';
+import { assertPageAccess } from '@/lib/page-access';
 import { getPurchaseOrders, getPurchasingRefData } from '@/server/queries/purchasing';
 
 export const metadata = {
@@ -8,9 +8,7 @@ export const metadata = {
 };
 
 export default async function PurchasesPage() {
-  // Purchasing is an admin function.
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  if (role !== 'ADMIN') redirect('/catalog');
+  assertPageAccess(await getSessionContext(), 'admin');
 
   const [purchaseOrders, ref] = await Promise.all([getPurchaseOrders(), getPurchasingRefData()]);
 

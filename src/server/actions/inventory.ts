@@ -10,6 +10,10 @@ export type BulkResult = { ok: true; affected: number; skipped: number } | { ok:
 
 // Statuses that may never be operated on by a bulk action.
 const LOCKED_STATUSES = ['SOLD', 'WRITTEN_OFF'];
+/** Cap bulk selection size (DoS / accidental mass ops). */
+const MAX_BULK_IDS = 100;
+/** Hold reason max length (XSS-safe plain text storage). */
+const MAX_REASON_LEN = 200;
 
 /**
  * A re-measure is not applied directly — it is queued to the EventOutbox as a
@@ -45,15 +49,26 @@ export async function submitMeasurementOverrideAction(
   return { ok: true };
 }
 
-/** Common preamble for the bulk operational actions: auth, role gate, and slab fetch. */
-async function loadForBulk(slabIds: string[]) {
+type BulkRole = 'ADMIN' | 'SALES';
+
+/** Common preamble for bulk ops: auth, role gate, and slab fetch. */
+async function loadForBulk(slabIds: string[], roles: BulkRole[] = ['ADMIN']) {
   const ctx = await getSessionContext();
   if (!ctx) return { ok: false as const, error: 'Not authenticated.' };
-  requireRole(ctx.role, ['ADMIN', 'MANAGER']);
+  if (!roles.includes(ctx.role as BulkRole)) {
+    return { ok: false as const, error: 'Forbidden: insufficient permissions.' };
+  }
   const ids = Array.from(new Set(slabIds)).filter(Boolean);
   if (ids.length === 0) return { ok: false as const, error: 'No slabs selected.' };
+  if (ids.length > MAX_BULK_IDS) {
+    return { ok: false as const, error: `Select at most ${MAX_BULK_IDS} slabs at a time.` };
+  }
   const slabs = await db.inventoryItem.findMany({ where: { id: { in: ids }, deletedAt: null } });
   return { ok: true as const, ctx, slabs };
+}
+
+function cleanReason(reason: string): string {
+  return reason.trim().replace(/\s+/g, ' ').slice(0, MAX_REASON_LEN);
 }
 
 /** Move eligible slabs (not SOLD/WRITTEN_OFF) to another location, with an audit row each. */
@@ -78,29 +93,39 @@ export async function transferSlabsAction(slabIds: string[], toLocationId: strin
   return { ok: true, affected: eligible.length, skipped: slabs.length - eligible.length };
 }
 
-/** Place AVAILABLE slabs ON_HOLD with a reason, with an audit row each. */
+/**
+ * Place AVAILABLE slabs ON_HOLD with a reason + audit row.
+ * Admin and Sales (reservation ceremony for walk-ins / quotes).
+ */
 export async function holdSlabsAction(slabIds: string[], reason: string): Promise<BulkResult> {
-  const loaded = await loadForBulk(slabIds);
+  const loaded = await loadForBulk(slabIds, ['ADMIN', 'SALES']);
   if (!loaded.ok) return { ok: false, error: loaded.error };
   const { ctx, slabs } = loaded;
-  if (!reason?.trim()) return { ok: false, error: 'A hold reason is required.' };
+  const heldFor = cleanReason(reason ?? '');
+  if (!heldFor) return { ok: false, error: 'A hold reason is required (customer, quote, or project).' };
 
   const eligible = slabs.filter((s) => s.status === 'AVAILABLE');
   const ops = eligible.flatMap((s) => [
-    db.inventoryItem.update({ where: { id: s.id }, data: { status: 'ON_HOLD', holdReason: reason.trim() } }),
+    db.inventoryItem.update({ where: { id: s.id }, data: { status: 'ON_HOLD', holdReason: heldFor } }),
     db.stockMovement.create({ data: {
       inventoryItemId: s.id, type: 'HOLD', fromStatus: s.status, toStatus: 'ON_HOLD',
-      reason: reason.trim(), byUserId: ctx.user.id, byRole: ctx.role,
+      reason: heldFor, byUserId: ctx.user.id, byRole: ctx.role,
     } }),
   ]);
   if (ops.length) await db.$transaction(ops);
   revalidatePath('/inventory');
+  revalidatePath('/inventory/overview');
+  revalidatePath('/catalog');
+  revalidatePath('/');
   return { ok: true, affected: eligible.length, skipped: slabs.length - eligible.length };
 }
 
-/** Release ON_HOLD slabs back to AVAILABLE, clearing the hold reason, with an audit row each. */
+/**
+ * Release ON_HOLD slabs back to AVAILABLE, clearing hold reason + audit.
+ * Admin and Sales.
+ */
 export async function releaseSlabsAction(slabIds: string[]): Promise<BulkResult> {
-  const loaded = await loadForBulk(slabIds);
+  const loaded = await loadForBulk(slabIds, ['ADMIN', 'SALES']);
   if (!loaded.ok) return { ok: false, error: loaded.error };
   const { ctx, slabs } = loaded;
 
@@ -114,6 +139,9 @@ export async function releaseSlabsAction(slabIds: string[]): Promise<BulkResult>
   ]);
   if (ops.length) await db.$transaction(ops);
   revalidatePath('/inventory');
+  revalidatePath('/inventory/overview');
+  revalidatePath('/catalog');
+  revalidatePath('/');
   return { ok: true, affected: eligible.length, skipped: slabs.length - eligible.length };
 }
 
@@ -122,14 +150,15 @@ export async function writeOffSlabsAction(slabIds: string[], reason: string): Pr
   const loaded = await loadForBulk(slabIds);
   if (!loaded.ok) return { ok: false, error: loaded.error };
   const { ctx, slabs } = loaded;
-  if (!reason?.trim()) return { ok: false, error: 'A write-off reason is required.' };
+  const why = cleanReason(reason ?? '');
+  if (!why) return { ok: false, error: 'A write-off reason is required.' };
 
   const eligible = slabs.filter((s) => !LOCKED_STATUSES.includes(s.status));
   const ops = eligible.flatMap((s) => [
     db.inventoryItem.update({ where: { id: s.id }, data: { status: 'WRITTEN_OFF', holdReason: null } }),
     db.stockMovement.create({ data: {
       inventoryItemId: s.id, type: 'WRITE_OFF', fromStatus: s.status, toStatus: 'WRITTEN_OFF',
-      reason: reason.trim(), byUserId: ctx.user.id, byRole: ctx.role,
+      reason: why, byUserId: ctx.user.id, byRole: ctx.role,
     } }),
   ]);
   if (ops.length) await db.$transaction(ops);

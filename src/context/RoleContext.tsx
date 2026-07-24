@@ -5,7 +5,7 @@ import { impersonateAction, updateSettingAction } from '@/server/session-actions
 
 type Role = 'ADMIN' | 'SALES' | 'VENDOR';
 
-interface VisibilitySettings {
+export interface VisibilitySettings {
   salesCanViewLandedCost: boolean;
   salesCanViewAllPipeline: boolean;
   vendorCanViewFullInventory: boolean;

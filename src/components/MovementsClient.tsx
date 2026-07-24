@@ -3,12 +3,14 @@
 import React, { useState, useMemo } from 'react';
 import { Search, LayoutGrid, ArrowRight, History } from 'lucide-react';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PageShell } from '@/components/ui/PageShell';
 import type { MovementLogRow } from '@/server/queries/movements';
 
 const TYPE_TONE: Record<string, string> = {
-  TRANSFER: 'text-[#92b0ce] border-[#92b0ce]/30 bg-[#92b0ce]/10',
-  HOLD: 'text-[#e3c16c] border-[#e3c16c]/30 bg-[#e3c16c]/10',
-  RELEASE: 'text-[#10b981] border-[#10b981]/30 bg-[#10b981]/10',
+  TRANSFER: 'text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)] bg-[rgba(146,176,206,0.10)]',
+  HOLD: 'text-[var(--color-vein)] border-[rgba(227,193,108,0.30)] bg-[var(--color-vein)]/10',
+  RELEASE: 'text-[var(--color-emerald)] border-[rgba(16,185,129,0.30)] bg-[var(--color-emerald)]/10',
   WRITE_OFF: 'text-red-400 border-red-500/30 bg-red-500/10',
 };
 
@@ -54,27 +56,38 @@ export function MovementsClient({ movements }: { movements: MovementLogRow[] }) 
   }, [movements, searchTerm, filters]);
 
   return (
-    <div className="flex flex-col h-full bg-[#2b2a2c] text-[#d9d8d9] overflow-hidden">
-      {/* Header */}
-      <div className="pt-6 px-6 pb-4 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
-        <h1 className="text-[20px] font-medium text-white mb-1">Stock Movements</h1>
-        <p className="text-[13px] text-[#b8b6b9]">Audit log of every transfer, hold, release, and write-off across the warehouses.</p>
-        <div className="flex items-center gap-3 mt-4">
-          <div className="flex items-center bg-[#2b2a2c] border border-[#454446] rounded-md px-3 py-1.5 focus-within:border-[#92b0ce] transition-colors w-80">
-            <Search size={14} className="text-[#b8b6b9] mr-2 shrink-0" />
-            <input type="text" placeholder="Search slab, product, reason, user…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-[#b8b6b9]" />
+    <PageShell
+      flush
+      header={
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Supply', href: '/logistics' },
+            { label: 'Movements' },
+          ]}
+          title="Movements"
+          subtitle="Audit log of every transfer, hold, release, and write-off."
+          meta={[
+            { label: `${movements.length} events`, tone: 'neutral' },
+            { label: `${filtered.length} shown`, tone: 'blue' },
+          ]}
+        >
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] rounded-md px-3 py-1.5 focus-within:border-[var(--color-sodalite)] transition-colors w-80">
+              <Search size={14} className="text-[var(--color-text-secondary)] mr-2 shrink-0" />
+              <input type="text" placeholder="Search slab, product, reason, user…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-[var(--color-fog-500)]" />
+            </div>
+            <button onClick={() => setShowOverview(!showOverview)} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-colors text-[13px] ${showOverview ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}>
+              <LayoutGrid size={14} /> Overview
+            </button>
+            {filterCount > 0 && <button onClick={() => setFilters({})} className="text-[12px] text-[var(--color-sodalite)] hover:underline">Clear filters ({filterCount})</button>}
           </div>
-          <button onClick={() => setShowOverview(!showOverview)} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-colors text-[13px] ${showOverview ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
-            <LayoutGrid size={14} /> Overview
-          </button>
-          {filterCount > 0 && <button onClick={() => setFilters({})} className="text-[12px] text-[#92b0ce] hover:underline">Clear filters ({filterCount})</button>}
-          <span className="ml-auto text-[13px] text-[#b8b6b9]">Showing <strong className="text-white">{filtered.length}</strong> of {movements.length}</span>
-        </div>
-      </div>
+        </PageHeader>
+      }
+    >
 
       {/* Overview cards */}
       {showOverview && movements.length > 0 && (
-        <div className="px-6 py-4 bg-[#1c1c1c] border-b border-[#454446] shrink-0">
+        <div className="px-6 py-4 bg-[var(--color-basalt-900)] border-b border-[var(--color-basalt-500)] shrink-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {cards.map((f) => (
               <FacetCard key={f.id} title={f.label}>
@@ -86,46 +99,48 @@ export function MovementsClient({ movements }: { movements: MovementLogRow[] }) 
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-4">
         {movements.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-[#b8b6b9] gap-2">
-            <History size={28} className="text-[#454446]" />
+          <div className="h-full flex flex-col items-center justify-center text-[var(--color-text-secondary)] gap-2">
+            <History size={28} className="text-[var(--color-basalt-500)]" />
             <p className="text-[13px]">No stock movements recorded yet.</p>
-            <p className="text-[12px] text-[#7d7c7f]">Transfers, holds, and write-offs from the Inventory page will appear here.</p>
+            <p className="text-[12px] text-[var(--color-fog-500)]">Transfers, holds, and write-offs from the Inventory page will appear here.</p>
           </div>
         ) : (
-          <table className="w-full text-left text-[13px] text-[#d9d8d9] whitespace-nowrap border-collapse min-w-max">
-            <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
+          <div className="bp-table-shell overflow-x-auto">
+          <table className="bp-table min-w-max whitespace-nowrap">
+            <thead>
               <tr>
                 <Th>Date</Th><Th>Type</Th><Th>Slab</Th><Th>Product</Th><Th>Change</Th><Th>Reason / Note</Th><Th>By</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#454446]">
+            <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-[#b8b6b9]">No movements match your filters.</td></tr>
+                <tr><td colSpan={7} className="!py-12 text-center text-[var(--color-text-secondary)]">No movements match your filters.</td></tr>
               ) : filtered.map((m) => (
-                <tr key={m.id} className="hover:bg-[#333234] transition-colors">
-                  <td className="px-4 py-3 text-[#b8b6b9]">{fmt(m.createdAt)}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${TYPE_TONE[m.type] ?? 'text-[#b8b6b9] border-[#454446]'}`}>{m.type.replace('_', '-')}</span></td>
-                  <td className="px-4 py-3 font-mono text-white">{m.slabId ?? '—'}</td>
-                  <td className="px-4 py-3">{m.productName ?? '—'}</td>
-                  <td className="px-4 py-3 text-[#d9d8d9]">
+                <tr key={m.id}>
+                  <td className="text-[var(--color-text-secondary)]">{fmt(m.createdAt)}</td>
+                  <td><span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${TYPE_TONE[m.type] ?? 'text-[var(--color-text-secondary)] border-[var(--color-basalt-500)]'}`}>{m.type.replace('_', '-')}</span></td>
+                  <td className="bp-id">{m.slabId ?? '—'}</td>
+                  <td>{m.productName ?? '—'}</td>
+                  <td className="text-[var(--color-text-muted)]">
                     {m.type === 'TRANSFER'
-                      ? <span className="flex items-center gap-1.5">{m.fromLocation ?? '—'} <ArrowRight size={12} className="text-[#7d7c7f]" /> {m.toLocation ?? '—'}</span>
-                      : <span className="flex items-center gap-1.5">{m.fromStatus ?? '—'} <ArrowRight size={12} className="text-[#7d7c7f]" /> {m.toStatus ?? '—'}</span>}
+                      ? <span className="flex items-center gap-1.5">{m.fromLocation ?? '—'} <ArrowRight size={12} className="text-[var(--color-fog-500)]" /> {m.toLocation ?? '—'}</span>
+                      : <span className="flex items-center gap-1.5">{m.fromStatus ?? '—'} <ArrowRight size={12} className="text-[var(--color-fog-500)]" /> {m.toStatus ?? '—'}</span>}
                   </td>
-                  <td className="px-4 py-3 text-[#b8b6b9] max-w-[280px] truncate" title={m.reason ?? m.note ?? ''}>{m.reason ?? m.note ?? '—'}</td>
-                  <td className="px-4 py-3 text-[#b8b6b9]">{m.byUser ?? (m.byRole ? `(${m.byRole})` : '—')}</td>
+                  <td className="text-[var(--color-text-secondary)] max-w-[280px] truncate" title={m.reason ?? m.note ?? ''}>{m.reason ?? m.note ?? '—'}</td>
+                  <td className="text-[var(--color-text-secondary)]">{m.byUser ?? (m.byRole ? `(${m.byRole})` : '—')}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 font-medium border-b border-[#454446]">{children}</th>;
+  return <th>{children}</th>;
 }

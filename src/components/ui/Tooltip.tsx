@@ -49,7 +49,7 @@ export function Tooltip({
               top: coords.y,
               transform: `translate(-50%, ${coords.side === 'top' ? 'calc(-100% - 0px)' : '0'})`,
             }}
-            className="z-[100] pointer-events-none block max-w-[270px] rounded-md border border-[#454446] bg-[#1c1c1c] px-3 py-2 text-[12px] leading-snug text-[#d9d8d9] shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+            className="z-[100] pointer-events-none block max-w-[270px] rounded-md border border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)] px-3 py-2 text-[12px] leading-snug text-[#d9d8d9] shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
           >
             {content}
           </span>,

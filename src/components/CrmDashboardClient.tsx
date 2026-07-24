@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Building2, Truck, Users, UserSquare2, Search, Plus, Mail, Phone, MoreHorizontal, DollarSign,
-  TrendingUp, Globe, X, MapPin, FileText, Target, ListFilter, Edit2, KeyRound, Copy,
+  TrendingUp, Globe, X, MapPin, FileText, Target, ListFilter, Edit2, KeyRound, Copy, Briefcase,
   LayoutGrid, Columns3, AlertTriangle, Lock,
 } from 'lucide-react';
 import type { CrmData, CrmCustomer } from '@/server/queries/crm';
@@ -22,6 +22,10 @@ import {
   CUSTOMER_PRICE_TIERS, ASSOCIATE_ROLES, LOGIN_ROLES,
   TAX_EXEMPT_REASONS, DOC_DELIVERY_METHODS, FULFILLMENT_METHODS,
 } from '@/lib/reference';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Drawer } from '@/components/ui/Drawer';
 
 type TabType = 'SUPPLIERS' | 'VENDORS' | 'CUSTOMERS' | 'ASSOCIATES';
 type EntityType = 'SUPPLIER' | 'VENDOR' | 'CUSTOMER' | 'ASSOCIATE';
@@ -33,7 +37,8 @@ const TYPE_LABEL: Record<EntityType, string> = {
   SUPPLIER: 'Supplier', VENDOR: 'Vendor', CUSTOMER: 'Customer', ASSOCIATE: 'Associate',
 };
 
-const EMPTY = 'text-center py-12 text-[#b8b6b9] bg-[#1c1c1c] border border-[#454446] border-dashed rounded-md';
+const EMPTY =
+  'text-center py-12 text-[var(--color-text-secondary)] bp-panel border-dashed rounded-[var(--radius-md)]';
 
 // ---- Customer Catalog: banding helpers + facet/column config ----
 
@@ -120,6 +125,7 @@ const CUST_COLS_LS_KEY = 'bp.crm.custCols.v1';
 
 export function CrmDashboardClient({ data, canManage }: { data: CrmData; canManage: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const { confirm, confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
@@ -144,6 +150,26 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const [viewing, setViewing] = useState<{ id: string; type: EntityType } | null>(null);
   const [drawerTab, setDrawerTab] = useState<'ACTIVE' | 'HISTORY'>('ACTIVE');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  // Deep-link: /crm?party=<id> opens the matching party drawer and switches tab.
+  useEffect(() => {
+    const partyId = searchParams.get('party');
+    if (!partyId) return;
+    const match =
+      (customers.find((c) => c.id === partyId) && ({ id: partyId, type: 'CUSTOMER' as EntityType, tab: 'CUSTOMERS' as TabType })) ||
+      (suppliers.find((s) => s.id === partyId) && ({ id: partyId, type: 'SUPPLIER' as EntityType, tab: 'SUPPLIERS' as TabType })) ||
+      (vendors.find((v) => v.id === partyId) && ({ id: partyId, type: 'VENDOR' as EntityType, tab: 'VENDORS' as TabType })) ||
+      (associates.find((a) => a.id === partyId) && ({ id: partyId, type: 'ASSOCIATE' as EntityType, tab: 'ASSOCIATES' as TabType })) ||
+      null;
+    if (!match) return;
+    const t = setTimeout(() => {
+      setActiveTab(match.tab);
+      setViewing({ id: match.id, type: match.type });
+      setDrawerTab('ACTIVE');
+      setIsEditingProfile(false);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParams, customers, suppliers, vendors, associates]);
 
   // Add drawer
   const [addOpen, setAddOpen] = useState(false);
@@ -423,18 +449,19 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   };
 
   const rowMenu = (id: string, type: EntityType) => (
-    <td className="px-6 py-3 text-right relative">
+    <td className="text-right relative">
       <button
-        className="text-[#b8b6b9] hover:text-white p-1 rounded hover:bg-[#454446]"
+        type="button"
+        className="text-[var(--color-text-secondary)] hover:text-white p-1 rounded hover:bg-[var(--color-basalt-500)]"
         onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === id ? null : id); }}
       >
         <MoreHorizontal size={16} />
       </button>
       {openMenuId === id && (
-        <div className="absolute right-8 top-8 w-40 bg-[#1c1c1c] border border-[#454446] rounded-md shadow-lg z-50 py-1 text-left" onClick={(e) => e.stopPropagation()}>
-          <button className="w-full text-left px-4 py-2 text-[13px] text-white hover:bg-[#333234]" onClick={() => { setOpenMenuId(null); setViewing({ id, type }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>View Profile</button>
-          {canManage && type !== 'CUSTOMER' && <button className="w-full text-left px-4 py-2 text-[13px] text-white hover:bg-[#333234]" onClick={() => { setOpenMenuId(null); setViewing({ id, type }); setDrawerTab('ACTIVE'); setIsEditingProfile(true); }}>Edit Details</button>}
-          {canManage && <><div className="h-px bg-[#454446] my-1" /><button className="w-full text-left px-4 py-2 text-[13px] text-red-400 hover:bg-[#333234]" onClick={() => doDelete(id)}>Delete Entity</button></>}
+        <div className="absolute right-2 top-8 w-40 bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md shadow-lg z-50 py-1 text-left" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="w-full text-left px-4 py-2 text-[13px] text-white hover:bg-[var(--color-basalt-700)]" onClick={() => { setOpenMenuId(null); setViewing({ id, type }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>View Profile</button>
+          {canManage && type !== 'CUSTOMER' && <button type="button" className="w-full text-left px-4 py-2 text-[13px] text-white hover:bg-[var(--color-basalt-700)]" onClick={() => { setOpenMenuId(null); setViewing({ id, type }); setDrawerTab('ACTIVE'); setIsEditingProfile(true); }}>Edit Details</button>}
+          {canManage && <><div className="h-px bg-[var(--color-basalt-500)] my-1" /><button type="button" className="w-full text-left px-4 py-2 text-[13px] text-[var(--color-ruby)] hover:bg-[var(--color-basalt-700)]" onClick={() => doDelete(id)}>Delete Entity</button></>}
         </div>
       )}
     </td>
@@ -442,36 +469,44 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
 
   // Render a single customer table cell's inner content for a given column key.
   const yesNo = (b: boolean) => b
-    ? <span className="bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-1.5 py-0.5 rounded text-[10px] font-medium">Yes</span>
-    : <span className="text-[#7d7c7f]">—</span>;
+    ? <span className="bg-[var(--color-emerald)]/10 text-[var(--color-emerald)] border border-[rgba(16,185,129,0.20)] px-1.5 py-0.5 rounded text-[10px] font-medium">Yes</span>
+    : <span className="text-[var(--color-fog-500)]">—</span>;
   const custCell = (key: CustColKey, item: CrmCustomer): React.ReactNode => {
     switch (key) {
       case 'type': return <Badge>{item.subType}</Badge>;
       case 'contact': return <span className="text-white">{item.contact}</span>;
-      case 'terms': return <span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span>;
-      case 'rep': return <span className="text-[#b8b6b9]">{item.rep}</span>;
+      case 'terms': return <span className="bg-[var(--color-basalt-500)] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span>;
+      case 'rep': return <span className="text-[var(--color-text-secondary)]">{item.rep}</span>;
       case 'creditLimit': return <span className="text-white font-medium">${item.creditLimit.toLocaleString()}</span>;
-      case 'since': return <span className="text-[#b8b6b9]">{item.customerSince ?? '—'}</span>;
+      case 'since': return <span className="text-[var(--color-text-secondary)]">{item.customerSince ?? '—'}</span>;
       case 'openDeals': return <span className="text-white font-medium">{item.openDeals}</span>;
       case 'ltv': return <span className="text-white font-medium">${item.lifetimeValue.toLocaleString()}</span>;
-      case 'dba': return <span className="text-[#b8b6b9]">{item.dba ?? '—'}</span>;
-      case 'parent': return <span className="text-[#b8b6b9]">{item.parentCustomerName ?? '—'}</span>;
-      case 'state': return <span className="text-[#b8b6b9]">{item.state ?? '—'}</span>;
+      case 'dba': return <span className="text-[var(--color-text-secondary)]">{item.dba ?? '—'}</span>;
+      case 'parent': return <span className="text-[var(--color-text-secondary)]">{item.parentCustomerName ?? '—'}</span>;
+      case 'state': return <span className="text-[var(--color-text-secondary)]">{item.state ?? '—'}</span>;
       case 'status': return <StatusPill status={item.status} />;
       case 'multiLoc': return yesNo(item.multiLocation);
       case 'poReq': return yesNo(item.poRequired);
       case 'taxExempt': return yesNo(item.taxExempt);
-      case 'fulfillment': return <span className="text-[#b8b6b9]">{item.defaultFulfillment ?? '—'}</span>;
-      case 'acctEmail': return <span className="text-[#92b0ce]">{item.accountingEmail ?? '—'}</span>;
+      case 'fulfillment': return <span className="text-[var(--color-text-secondary)]">{item.defaultFulfillment ?? '—'}</span>;
+      case 'acctEmail': return <span className="text-[var(--color-sodalite)]">{item.accountingEmail ?? '—'}</span>;
       default: return null;
     }
   };
   const visibleCustCols = CUST_COLUMNS.filter((c) => visibleCols.has(c.key));
   // A sortable customer column header.
   const custTh = (key: string, label: string, right?: boolean) => (
-    <th className={`px-4 py-3 font-medium border-b border-[#454446] ${right ? 'text-right' : ''}`}>
-      <button onClick={() => toggleCustSort(key)} className={`inline-flex items-center gap-1 hover:text-white transition-colors ${right ? 'flex-row-reverse' : ''} ${custSort.key === key ? 'text-white' : ''}`}>
-        {label} <ArrowUpDown size={11} className={custSort.key === key ? 'text-[#e3c16c]' : 'text-[#7d7c7f]'} />
+    <th className={right ? 'text-right' : undefined}>
+      <button
+        type="button"
+        onClick={() => toggleCustSort(key)}
+        className={`inline-flex items-center gap-1 hover:text-white transition-colors ${right ? 'flex-row-reverse' : ''} ${custSort.key === key ? 'text-white' : ''}`}
+      >
+        {label}{' '}
+        <ArrowUpDown
+          size={11}
+          className={custSort.key === key ? 'text-[var(--color-vein)]' : 'text-[var(--color-fog-500)]'}
+        />
       </button>
     </th>
   );
@@ -480,63 +515,77 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
   const viewingVendor = viewing?.type === 'VENDOR' ? vendors.find((v) => v.id === viewing.id) : null;
   const viewingAssociate = viewing?.type === 'ASSOCIATE' ? associates.find((a) => a.id === viewing.id) : null;
   const viewingCustomer = viewing?.type === 'CUSTOMER' ? customers.find((c) => c.id === viewing.id) : null;
-  const inputCls = 'w-full bg-[#333234] border border-[#454446] rounded px-2 py-1.5 text-white text-[12px] outline-none focus:border-[#92b0ce]';
-  const addInputCls = 'w-full bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2 text-white focus:border-[#92b0ce] outline-none transition-colors';
+  const inputCls = 'bp-input !h-8 text-[12px]';
+  const addInputCls = 'bp-input';
+  const addSelectCls = 'bp-select w-full h-10 text-[13px]';
 
   return (
-    <div className="flex flex-col h-full bg-[#2b2a2c] text-[#d9d8d9] overflow-hidden relative">
+    <div className="flex flex-col h-full bg-[var(--color-basalt-850)] text-[var(--color-text-muted)] overflow-hidden relative">
       {confirmDialog}
       {/* Header & Tabs */}
-      <div className="pt-6 px-6 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-[20px] font-medium text-white mb-1">People & Companies</h1>
-            <p className="text-[13px] text-[#b8b6b9]">Manage your external supply chain and internal sales roster.</p>
-          </div>
-          {canManage && (
-            <button onClick={() => { setAddOpen(true); setActionError(''); setProvisionLogin(false); }} className="flex items-center gap-2 bg-[#e3c16c] text-black px-3 py-1.5 rounded-md text-[13px] font-medium hover:bg-[#d2ac55] transition-colors">
-              <Plus size={14} /> Add New {TYPE_LABEL[TAB_TO_TYPE[activeTab]]}
+      <PageHeader
+        eyebrow="Sales"
+        title="People"
+        subtitle="Suppliers, logistics vendors, customers, and sales associates."
+        meta={[
+          { label: `${customers.length} customers`, tone: 'blue' },
+          { label: `${associates.length} reps`, tone: 'green' },
+        ]}
+        actions={
+          canManage ? (
+            <button
+              type="button"
+              onClick={() => { setAddOpen(true); setActionError(''); setProvisionLogin(false); }}
+              className="btn-primary !min-h-8 !px-3 text-[12px]"
+            >
+              <Plus size={14} /> Add {TYPE_LABEL[TAB_TO_TYPE[activeTab]]}
             </button>
-          )}
-        </div>
+          ) : undefined
+        }
+        className="pb-0"
+      >
         <div className="flex items-center gap-6">
           {([['SUPPLIERS', Building2, '#e3c16c', 'Suppliers'], ['VENDORS', Truck, '#92b0ce', 'Vendors (Logistics)'], ['CUSTOMERS', UserSquare2, '#e8956b', 'Customers'], ['ASSOCIATES', Users, '#10b981', 'Associates / Sales']] as const).map(([tab, Icon, color, label]) => (
-            <button key={tab} onClick={() => { setActiveTab(tab); clearAllFilters(); }} className={`flex items-center gap-2 pb-3 text-[13px] font-medium border-b-2 transition-colors ${activeTab === tab ? 'text-white' : 'border-transparent text-[#b8b6b9] hover:text-white'}`} style={activeTab === tab ? { borderColor: color } : undefined}>
+            <button key={tab} onClick={() => { setActiveTab(tab); clearAllFilters(); }} className={`flex items-center gap-2 pb-3 text-[13px] font-medium border-b-2 transition-colors ${activeTab === tab ? 'text-white' : 'border-transparent text-[var(--color-text-secondary)] hover:text-white'}`} style={activeTab === tab ? { borderColor: color } : undefined}>
               <Icon size={16} style={activeTab === tab ? { color } : undefined} /> {label}
             </button>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Action bar */}
-      <div className="px-6 py-3 flex items-center justify-between border-b border-[#454446] shrink-0">
+      <div className="px-6 py-3 flex items-center justify-between border-b border-[var(--color-basalt-500)] shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex items-center bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-1.5 focus-within:border-[#92b0ce] transition-colors w-80">
-            <Search size={14} className="text-[#b8b6b9] mr-2 shrink-0" />
-            <input type="text" placeholder={`Search ${activeTab.toLowerCase()}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-[#b8b6b9]" />
+          <div className="flex items-center bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md px-3 py-1.5 focus-within:border-[var(--color-sodalite)] transition-colors w-80">
+            <Search size={14} className="text-[var(--color-text-secondary)] mr-2 shrink-0" />
+            <input type="text" placeholder={`Search ${activeTab.toLowerCase()}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder-[var(--color-fog-500)]" />
           </div>
-          <div className="w-px h-4 bg-[#454446]" />
-          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showFilters ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
+          <div className="w-px h-4 bg-[var(--color-basalt-500)]" />
+          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showFilters ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}>
             <ListFilter size={14} /> {showFilters ? 'Hide Filters' : 'Filters'}
-            {activeFiltersCount > 0 && <span className="bg-[#e3c16c] text-black text-[10px] px-1.5 rounded-sm ml-1 font-medium">{activeFiltersCount}</span>}
+            {activeFiltersCount > 0 && (
+              <span className="bg-[rgba(227,193,108,0.14)] text-[var(--color-vein)] border border-[rgba(227,193,108,0.3)] text-[10px] px-1.5 rounded-sm ml-1 font-semibold tabular-nums">
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
           {activeTab === 'CUSTOMERS' && (
             <>
-              <button onClick={() => setCustomerView(customerView === 'CATALOG' ? 'LIST' : 'CATALOG')} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${customerView === 'CATALOG' ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
+              <button onClick={() => setCustomerView(customerView === 'CATALOG' ? 'LIST' : 'CATALOG')} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${customerView === 'CATALOG' ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}>
                 <LayoutGrid size={14} /> Catalog
               </button>
               <div className="relative">
-                <button onClick={() => setShowColPicker(!showColPicker)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showColPicker ? 'bg-[#333234] text-white' : 'hover:bg-[#333234] text-[#b8b6b9]'}`}>
+                <button onClick={() => setShowColPicker(!showColPicker)} className={`flex items-center gap-2 px-2 py-1 rounded transition-colors text-[13px] ${showColPicker ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}>
                   <Columns3 size={14} /> Columns
                 </button>
                 {showColPicker && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowColPicker(false)} />
-                    <div className="absolute left-0 top-9 w-56 max-h-[60vh] overflow-y-auto bg-[#1c1c1c] border border-[#454446] rounded-md shadow-xl z-50 py-2">
-                      <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[#7d7c7f]">Visible columns</p>
+                    <div className="absolute left-0 top-9 w-56 max-h-[60vh] overflow-y-auto bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md shadow-xl z-50 py-2">
+                      <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[var(--color-fog-500)]">Visible columns</p>
                       {CUST_COLUMNS.map((c) => (
-                        <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[#333234] cursor-pointer">
-                          <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="accent-[#e3c16c]" />
+                        <label key={c.key} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[var(--color-basalt-700)] cursor-pointer">
+                          <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="accent-[var(--color-vein)]" />
                           {c.label}
                         </label>
                       ))}
@@ -547,46 +596,46 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
             </>
           )}
         </div>
-        <div className="text-[13px] text-[#b8b6b9]">Total Records: <strong className="text-white">{totalRecords}</strong></div>
+        <div className="text-[13px] text-[var(--color-text-secondary)]">Total Records: <strong className="text-white">{totalRecords}</strong></div>
       </div>
 
       {/* Filter dropdowns */}
       {showFilters && (
-        <div className="px-6 py-3 bg-[#1c1c1c] border-b border-[#454446] flex items-center gap-4 text-[13px]">
-          <span className="text-[#b8b6b9]">Filter by:</span>
+        <div className="px-6 py-3 bg-[var(--color-basalt-900)] border-b border-[var(--color-basalt-500)] flex items-center gap-4 text-[13px]">
+          <span className="text-[var(--color-text-secondary)]">Filter by:</span>
           {activeTab === 'SUPPLIERS' && (
             <>
-              <select value="" onChange={(e) => addUnique(setSelectedOrigins, e.target.value)} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]"><option value="">+ Add Origin</option>{originOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-              <select value="" onChange={(e) => addUnique(setSelectedTerms, e.target.value)} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]"><option value="">+ Add Terms</option>{termOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <select value="" onChange={(e) => addUnique(setSelectedOrigins, e.target.value)} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]"><option value="">+ Add Origin</option>{originOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <select value="" onChange={(e) => addUnique(setSelectedTerms, e.target.value)} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]"><option value="">+ Add Terms</option>{termOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
             </>
           )}
           {activeTab === 'VENDORS' && (
-            <select value="" onChange={(e) => addUnique(setSelectedServices, e.target.value)} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]"><option value="">+ Add Service Type</option>{serviceOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+            <select value="" onChange={(e) => addUnique(setSelectedServices, e.target.value)} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]"><option value="">+ Add Service Type</option>{serviceOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
           )}
           {activeTab === 'ASSOCIATES' && (
             <>
-              <select value="" onChange={(e) => addUnique(setSelectedRoles, e.target.value)} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]"><option value="">+ Add Role</option>{roleOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-              <select value="" onChange={(e) => addUnique(setSelectedLocations, e.target.value)} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]"><option value="">+ Add Hub Location</option>{locationOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <select value="" onChange={(e) => addUnique(setSelectedRoles, e.target.value)} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]"><option value="">+ Add Role</option>{roleOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <select value="" onChange={(e) => addUnique(setSelectedLocations, e.target.value)} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]"><option value="">+ Add Hub Location</option>{locationOptions.map((o) => <option key={o} value={o}>{o}</option>)}</select>
             </>
           )}
           {activeTab === 'CUSTOMERS' && (
             <div className="flex items-center gap-3 flex-wrap">
               {customerFacetCards.filter((f) => ['type', 'price', 'rep', 'state', 'status'].includes(f.id)).map((f) => (
-                <select key={f.id} value="" onChange={(e) => { if (e.target.value) toggleCustFilter(f.id, e.target.value); }} className="bg-[#333234] border border-[#454446] text-white rounded px-2 py-1 outline-none focus:border-[#92b0ce]">
+                <select key={f.id} value="" onChange={(e) => { if (e.target.value) toggleCustFilter(f.id, e.target.value); }} className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white rounded px-2 py-1 outline-none focus:border-[var(--color-sodalite)]">
                   <option value="">+ {f.label}</option>
                   {f.entries.filter(([val]) => !(custFilters[f.id] ?? []).includes(val)).map(([val, n]) => <option key={val} value={val}>{val} ({n})</option>)}
                 </select>
               ))}
             </div>
           )}
-          {activeFiltersCount > 0 && <button onClick={clearAllFilters} className="text-[#92b0ce] hover:underline">Clear All</button>}
+          {activeFiltersCount > 0 && <button onClick={clearAllFilters} className="text-[var(--color-sodalite)] hover:underline">Clear All</button>}
         </div>
       )}
 
       {/* Active filter pills */}
       {activeFiltersCount > 0 && (
-        <div className="px-6 py-2 bg-[#2b2a2c] border-b border-[#454446] flex items-center gap-2 flex-wrap">
-          <span className="text-[#b8b6b9] text-[11px] uppercase tracking-wider mr-2">Active Filters:</span>
+        <div className="px-6 py-2 bg-[var(--color-basalt-800)] border-b border-[var(--color-basalt-500)] flex items-center gap-2 flex-wrap">
+          <span className="text-[var(--color-text-secondary)] text-[11px] uppercase tracking-wider mr-2">Active Filters:</span>
           {selectedOrigins.map((v) => <Pill key={v} label={`Origin: ${v}`} onRemove={() => removeFilter(setSelectedOrigins, v)} />)}
           {selectedTerms.map((v) => <Pill key={v} label={`Terms: ${v}`} onRemove={() => removeFilter(setSelectedTerms, v)} />)}
           {selectedServices.map((v) => <Pill key={v} label={`Service: ${v}`} onRemove={() => removeFilter(setSelectedServices, v)} />)}
@@ -604,16 +653,16 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
 
       {/* Customer Catalog — faceted count cards (click a value to filter the table) */}
       {activeTab === 'CUSTOMERS' && customerView === 'CATALOG' && (
-        <div className="px-6 py-4 bg-[#1c1c1c] border-b border-[#454446] shrink-0 max-h-[42vh] overflow-y-auto">
+        <div className="px-6 py-4 bg-[var(--color-basalt-900)] border-b border-[var(--color-basalt-500)] shrink-0 max-h-[42vh] overflow-y-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {customerFacetCards.map((f) => (
               <FacetCard key={f.id} title={f.label}>
                 {f.entries.map(([val, n]) => {
                   const active = (custFilters[f.id] ?? []).includes(val);
                   return (
-                    <button key={val} onClick={() => toggleCustFilter(f.id, val)} className={`w-full flex items-center justify-between px-2 py-1 rounded text-[12px] transition-colors ${active ? 'bg-[#e3c16c]/15 text-[#e3c16c]' : 'text-[#d9d8d9] hover:bg-[#333234]'}`}>
+                    <button key={val} onClick={() => toggleCustFilter(f.id, val)} className={`w-full flex items-center justify-between px-2 py-1 rounded text-[12px] transition-colors ${active ? 'bg-[var(--color-vein)]/15 text-[var(--color-vein)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-basalt-700)]'}`}>
                       <span className="truncate mr-2">{val}</span>
-                      <span className={`tabular-nums ${active ? 'text-[#e3c16c]' : 'text-[#b8b6b9]'}`}>{n}</span>
+                      <span className={`tabular-nums ${active ? 'text-[var(--color-vein)]' : 'text-[var(--color-text-secondary)]'}`}>{n}</span>
                     </button>
                   );
                 })}
@@ -623,9 +672,9 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {acctFlagCounts.map(({ label, count }) => {
                 const active = (custFilters['acct'] ?? []).includes(label);
                 return (
-                  <button key={label} onClick={() => toggleCustFilter('acct', label)} className={`w-full flex items-center justify-between px-2 py-1 rounded text-[12px] transition-colors ${active ? 'bg-[#e3c16c]/15 text-[#e3c16c]' : 'text-[#d9d8d9] hover:bg-[#333234]'}`}>
+                  <button key={label} onClick={() => toggleCustFilter('acct', label)} className={`w-full flex items-center justify-between px-2 py-1 rounded text-[12px] transition-colors ${active ? 'bg-[var(--color-vein)]/15 text-[var(--color-vein)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-basalt-700)]'}`}>
                     <span className="truncate mr-2">{label}</span>
-                    <span className={`tabular-nums ${active ? 'text-[#e3c16c]' : 'text-[#b8b6b9]'}`}>{count}</span>
+                    <span className={`tabular-nums ${active ? 'text-[var(--color-vein)]' : 'text-[var(--color-text-secondary)]'}`}>{count}</span>
                   </button>
                 );
               })}
@@ -634,12 +683,13 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         </div>
       )}
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto bg-[#2b2a2c]">
-        <table className="w-full text-left text-[13px] text-[#d9d8d9] whitespace-nowrap border-collapse min-w-max">
-          <thead className="sticky top-0 bg-[#2b2a2c] z-10 shadow-[0_1px_0_#454446]">
+      {/* Table — shared dense table language */}
+      <div className="flex-1 overflow-auto p-4 bg-[var(--color-basalt-850)]">
+        <div className="bp-table-shell overflow-x-auto">
+        <table className="bp-table min-w-max whitespace-nowrap">
+          <thead>
             <tr>
-              <th className="px-6 py-3 font-medium border-b border-[#454446] w-10"></th>
+              <th className="w-10"></th>
               {activeTab === 'SUPPLIERS' && <>
                 <Th>Supplier Name</Th><Th>Origin</Th><Th>Primary Contact</Th><Th>Terms</Th><Th right>Active POs</Th><Th right>YTD Spend</Th>
               </>}
@@ -653,99 +703,112 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {activeTab === 'ASSOCIATES' && <>
                 <Th>Associate Name</Th><Th>Sales Number</Th><Th>Role &amp; Location</Th><Th>Commission</Th><Th right>Active Pipeline</Th><Th right>YTD Sales</Th>
               </>}
-              <th className="px-6 py-3 border-b border-[#454446]"></th>
+              <th></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#454446]">
+          <tbody>
             {activeTab === 'SUPPLIERS' && (filteredSuppliers.length === 0 ? <EmptyRow cols={8} /> : filteredSuppliers.map((item) => (
-              <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
-                <td className="px-6 py-3" />
-                <td className="px-4 py-3 font-medium text-white"><button className="hover:underline hover:text-[#e3c16c]" onClick={() => { setViewing({ id: item.id, type: 'SUPPLIER' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
-                <td className="px-4 py-3 text-[#b8b6b9]"><span className="flex items-center gap-1.5"><Globe size={12} /> {item.origin}</span></td>
-                <td className="px-4 py-3 text-white">{item.contact}</td>
-                <td className="px-4 py-3"><span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span></td>
-                <td className="px-4 py-3 text-right font-medium text-white">{item.activePos}</td>
-                <td className="px-4 py-3 text-right text-white font-medium">${item.ytdSpend.toLocaleString()}</td>
+              <tr key={item.id} className="group">
+                <td />
+                <td className="font-medium text-white"><button type="button" className="hover:underline hover:text-[var(--color-vein)]" onClick={() => { setViewing({ id: item.id, type: 'SUPPLIER' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
+                <td className="text-[var(--color-text-secondary)]"><span className="flex items-center gap-1.5"><Globe size={12} /> {item.origin}</span></td>
+                <td className="text-white">{item.contact}</td>
+                <td><span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-white px-2 py-0.5 rounded text-[11px]">{item.terms}</span></td>
+                <td className="text-right font-medium text-white tabular-nums">{item.activePos}</td>
+                <td className="text-right text-white font-medium tabular-nums">${item.ytdSpend.toLocaleString()}</td>
                 {rowMenu(item.id, 'SUPPLIER')}
               </tr>
             )))}
             {activeTab === 'VENDORS' && (filteredVendors.length === 0 ? <EmptyRow cols={7} /> : filteredVendors.map((item) => (
-              <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
-                <td className="px-6 py-3" />
-                <td className="px-4 py-3 font-medium text-white"><button className="hover:underline hover:text-[#92b0ce]" onClick={() => { setViewing({ id: item.id, type: 'VENDOR' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
-                <td className="px-4 py-3"><span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{item.service}</span></td>
-                <td className="px-4 py-3 text-white">{item.contact}</td>
-                <td className="px-4 py-3 text-right font-medium text-white">{item.activeInvoices}</td>
-                <td className="px-4 py-3 text-right text-white font-medium flex items-center justify-end gap-1"><DollarSign size={12} className="text-[#e3c16c]" /> {item.balance.toLocaleString()}</td>
+              <tr key={item.id} className="group">
+                <td />
+                <td className="font-medium text-white"><button type="button" className="hover:underline hover:text-[var(--color-sodalite)]" onClick={() => { setViewing({ id: item.id, type: 'VENDOR' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
+                <td><span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded text-[11px]">{item.service}</span></td>
+                <td className="text-white">{item.contact}</td>
+                <td className="text-right font-medium text-white tabular-nums">{item.activeInvoices}</td>
+                <td className="text-right text-white font-medium tabular-nums"><span className="inline-flex items-center justify-end gap-1"><DollarSign size={12} className="text-[var(--color-vein)]" /> {item.balance.toLocaleString()}</span></td>
                 {rowMenu(item.id, 'VENDOR')}
               </tr>
             )))}
             {activeTab === 'CUSTOMERS' && (sortedCustomers.length === 0 ? (
-              <tr><td colSpan={visibleCustCols.length + 2}><EmptyState icon={UserSquare2} title="No customers match" hint={searchTerm || activeFiltersCount > 0 ? 'Try clearing your search or filters.' : 'Add your first customer to get started.'} /></td></tr>
+              <tr><td colSpan={visibleCustCols.length + 2} className="!p-4"><EmptyState icon={UserSquare2} title="No customers match" hint={searchTerm || activeFiltersCount > 0 ? 'Try clearing your search or filters.' : 'Add your first customer to get started.'} className="py-10" /></td></tr>
             ) : sortedCustomers.map((item) => (
-              <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
-                <td className="px-6 py-3" />
-                <td className="px-4 py-3 font-medium text-white">
-                  <button className="hover:underline hover:text-[#e8956b]" onClick={() => { setViewing({ id: item.id, type: 'CUSTOMER' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button>
-                  {item.salesLockNote && <Lock size={11} className="inline ml-1.5 text-red-400" aria-label="Sales lock" />}
+              <tr key={item.id} className="group">
+                <td />
+                <td className="font-medium text-white">
+                  <button type="button" className="hover:underline hover:text-[var(--color-coral)]" onClick={() => { setViewing({ id: item.id, type: 'CUSTOMER' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button>
+                  {item.salesLockNote && <Lock size={11} className="inline ml-1.5 text-[var(--color-ruby)]" aria-label="Sales lock" />}
                 </td>
-                {visibleCustCols.map((c) => <td key={c.key} className={`px-4 py-3 ${c.right ? 'text-right' : ''}`}>{custCell(c.key, item)}</td>)}
+                {visibleCustCols.map((c) => <td key={c.key} className={c.right ? 'text-right' : ''}>{custCell(c.key, item)}</td>)}
                 {rowMenu(item.id, 'CUSTOMER')}
               </tr>
             )))}
             {activeTab === 'ASSOCIATES' && (filteredAssociates.length === 0 ? <EmptyRow cols={8} /> : filteredAssociates.map((item) => (
-              <tr key={item.id} className="hover:bg-[#333234] transition-colors group">
-                <td className="px-6 py-3" />
-                <td className="px-4 py-3 font-medium text-white"><button className="hover:underline hover:text-[#10b981]" onClick={() => { setViewing({ id: item.id, type: 'ASSOCIATE' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
-                <td className="px-4 py-3 text-white"><span className="bg-[#454446] border border-[#5d5c5f] px-2 py-0.5 rounded text-[11px] font-mono tracking-wider">{item.salesNumber}</span></td>
-                <td className="px-4 py-3"><div className="flex flex-col"><span className="text-white">{item.role}</span><span className="text-[11px] text-[#b8b6b9] flex items-center gap-1 mt-0.5"><MapPin size={10} /> {item.location}</span></div></td>
-                <td className="px-4 py-3 text-[#b8b6b9]">{item.commissionRate}</td>
-                <td className="px-4 py-3 text-right font-medium text-white">${item.activeOppValue.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right"><span className="font-medium text-[#10b981] flex items-center justify-end gap-1"><TrendingUp size={12} /> ${item.ytdSales.toLocaleString()}</span></td>
+              <tr key={item.id} className="group">
+                <td />
+                <td className="font-medium text-white"><button type="button" className="hover:underline hover:text-[var(--color-emerald)]" onClick={() => { setViewing({ id: item.id, type: 'ASSOCIATE' }); setDrawerTab('ACTIVE'); setIsEditingProfile(false); }}>{item.name}</button></td>
+                <td className="text-white"><span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] px-2 py-0.5 rounded text-[11px] bp-mono tracking-wider">{item.salesNumber}</span></td>
+                <td><div className="flex flex-col"><span className="text-white">{item.role}</span><span className="text-[11px] text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5"><MapPin size={10} /> {item.location}</span></div></td>
+                <td className="text-[var(--color-text-secondary)]">{item.commissionRate}</td>
+                <td className="text-right font-medium text-white tabular-nums">${item.activeOppValue.toLocaleString()}</td>
+                <td className="text-right"><span className="font-medium text-[var(--color-emerald)] inline-flex items-center justify-end gap-1 tabular-nums"><TrendingUp size={12} /> ${item.ytdSales.toLocaleString()}</span></td>
                 {rowMenu(item.id, 'ASSOCIATE')}
               </tr>
             )))}
           </tbody>
         </table>
+        </div>
       </div>
 
-      {/* Drill-down drawer */}
-      {viewing && (
-        <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => { setViewing(null); setIsEditingProfile(false); }} />
-          <div className="fixed top-0 right-0 h-full w-full max-w-[700px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
-              <div>
-                <h2 className="text-[18px] font-medium text-white flex items-center gap-2">
-                  {viewing.type === 'SUPPLIER' && <Building2 size={18} className="text-[#e3c16c]" />}
-                  {viewing.type === 'VENDOR' && <Truck size={18} className="text-[#92b0ce]" />}
-                  {viewing.type === 'CUSTOMER' && <UserSquare2 size={18} className="text-[#e8956b]" />}
-                  {viewing.type === 'ASSOCIATE' && <Target size={18} className="text-[#10b981]" />}
-                  {viewingSupplier?.name ?? viewingVendor?.name ?? viewingCustomer?.name ?? viewingAssociate?.name}
-                  <span className="text-[#b8b6b9] font-normal text-[14px]"> {TYPE_LABEL[viewing.type]} Account</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-3">
-                {canManage && !isEditingProfile && viewing.type !== 'CUSTOMER' && <button onClick={() => setIsEditingProfile(true)} className="flex items-center gap-2 bg-[#333234] text-[#92b0ce] hover:text-white px-3 py-1.5 rounded text-[13px] font-medium border border-[#454446] hover:border-[#92b0ce] transition-colors"><Edit2 size={14} /> Edit Profile</button>}
-                <button onClick={() => { setViewing(null); setIsEditingProfile(false); }} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors"><X size={20} /></button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {/* Drill-down — shared Drawer */}
+      <Drawer
+        open={!!viewing}
+        onClose={() => { setViewing(null); setIsEditingProfile(false); }}
+        width={700}
+        title={
+          viewing ? (
+            <span className="flex items-center gap-2 min-w-0">
+              {viewing.type === 'SUPPLIER' && <Building2 size={18} className="text-[var(--color-vein)] shrink-0" />}
+              {viewing.type === 'VENDOR' && <Truck size={18} className="text-[var(--color-sodalite)] shrink-0" />}
+              {viewing.type === 'CUSTOMER' && <UserSquare2 size={18} className="text-[var(--color-coral)] shrink-0" />}
+              {viewing.type === 'ASSOCIATE' && <Target size={18} className="text-[var(--color-emerald)] shrink-0" />}
+              <span className="truncate">
+                {viewingSupplier?.name ?? viewingVendor?.name ?? viewingCustomer?.name ?? viewingAssociate?.name}
+              </span>
+              <span className="text-[var(--color-text-secondary)] font-normal text-[13px] shrink-0">
+                {TYPE_LABEL[viewing.type]}
+              </span>
+            </span>
+          ) : undefined
+        }
+        headerExtra={
+          viewing && canManage && !isEditingProfile && viewing.type !== 'CUSTOMER' ? (
+            <button
+              type="button"
+              onClick={() => setIsEditingProfile(true)}
+              className="btn-secondary !min-h-8 !px-2.5 text-[12px]"
+            >
+              <Edit2 size={14} /> Edit
+            </button>
+          ) : undefined
+        }
+      >
+        {viewing && (
+          <div className="p-6 space-y-4">
               {/* Profile card */}
-              <form onSubmit={handleInlineSave} className="bg-[#1c1c1c] border border-[#454446] rounded-md p-5 mb-2">
+              <form onSubmit={handleInlineSave} className="bp-card p-5 mb-2">
                 {viewingSupplier && (
                   <div className="grid grid-cols-3 gap-6">
                     <Field label="Contact Information">
                       {isEditingProfile ? <div className="space-y-2"><input name="contact" defaultValue={viewingSupplier.contact} className={inputCls} /><input name="email" defaultValue={viewingSupplier.email} className={inputCls} /><input name="phone" defaultValue={viewingSupplier.phone} className={inputCls} /></div>
-                        : <><p className="text-[13px] text-white font-medium">{viewingSupplier.contact}</p><p className="text-[12px] text-[#92b0ce] flex items-center gap-1 mt-1"><Mail size={12} /> {viewingSupplier.email}</p><p className="text-[12px] text-[#b8b6b9] flex items-center gap-1 mt-0.5"><Phone size={12} /> {viewingSupplier.phone}</p></>}
+                        : <><p className="text-[13px] text-white font-medium">{viewingSupplier.contact}</p><p className="text-[12px] text-[var(--color-sodalite)] flex items-center gap-1 mt-1"><Mail size={12} /> {viewingSupplier.email}</p><p className="text-[12px] text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5"><Phone size={12} /> {viewingSupplier.phone}</p></>}
                     </Field>
                     <Field label="Location & Origin">
-                      {isEditingProfile ? <input name="origin" defaultValue={viewingSupplier.origin} className={inputCls} /> : <p className="text-[13px] text-white flex items-center gap-1"><Globe size={12} className="text-[#b8b6b9]" /> {viewingSupplier.origin}</p>}
+                      {isEditingProfile ? <input name="origin" defaultValue={viewingSupplier.origin} className={inputCls} /> : <p className="text-[13px] text-white flex items-center gap-1"><Globe size={12} className="text-[var(--color-text-secondary)]" /> {viewingSupplier.origin}</p>}
                     </Field>
                     <Field label="Financial Terms & Credit">
                       {isEditingProfile ? <div className="space-y-2"><input name="terms" defaultValue={viewingSupplier.terms} className={inputCls} placeholder="Payment Terms" /><input name="incoterms" defaultValue={viewingSupplier.incoterms} className={inputCls} placeholder="Incoterms" /><input name="creditLimit" type="number" defaultValue={viewingSupplier.creditLimit} className={inputCls} placeholder="Credit Limit" /></div>
-                        : <><div className="flex items-center gap-2 mb-1"><span className="bg-[#454446] text-white px-2 py-0.5 rounded text-[11px] font-medium">{viewingSupplier.terms}</span><span className="bg-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px] font-medium border border-[#5d5c5f]">{viewingSupplier.incoterms}</span></div>{viewingSupplier.creditLimit > 0 ? <p className="text-[12px] text-[#10b981] font-medium">Limit: ${viewingSupplier.creditLimit.toLocaleString()} {viewingSupplier.currency}</p> : <p className="text-[12px] text-[#e3c16c] font-medium">Cash in Advance / No Credit</p>}</>}
+                        : <><div className="flex items-center gap-2 mb-1"><span className="bg-[var(--color-basalt-500)] text-white px-2 py-0.5 rounded text-[11px] font-medium">{viewingSupplier.terms}</span><span className="bg-[var(--color-basalt-500)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded text-[11px] font-medium border border-[var(--color-basalt-500)]">{viewingSupplier.incoterms}</span></div>{viewingSupplier.creditLimit > 0 ? <p className="text-[12px] text-[var(--color-emerald)] font-medium">Limit: ${viewingSupplier.creditLimit.toLocaleString()} {viewingSupplier.currency}</p> : <p className="text-[12px] text-[var(--color-vein)] font-medium">Cash in Advance / No Credit</p>}</>}
                     </Field>
                   </div>
                 )}
@@ -753,31 +816,28 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <div className="grid grid-cols-3 gap-6">
                     <Field label="Contact Information">
                       {isEditingProfile ? <div className="space-y-2"><input name="contact" defaultValue={viewingVendor.contact} className={inputCls} /><input name="email" defaultValue={viewingVendor.email} className={inputCls} /><input name="phone" defaultValue={viewingVendor.phone} className={inputCls} /></div>
-                        : <><p className="text-[13px] text-white font-medium">{viewingVendor.contact}</p><p className="text-[12px] text-[#92b0ce] flex items-center gap-1 mt-1"><Mail size={12} /> {viewingVendor.email}</p><p className="text-[12px] text-[#b8b6b9] flex items-center gap-1 mt-0.5"><Phone size={12} /> {viewingVendor.phone}</p></>}
+                        : <><p className="text-[13px] text-white font-medium">{viewingVendor.contact}</p><p className="text-[12px] text-[var(--color-sodalite)] flex items-center gap-1 mt-1"><Mail size={12} /> {viewingVendor.email}</p><p className="text-[12px] text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5"><Phone size={12} /> {viewingVendor.phone}</p></>}
                     </Field>
                     <Field label="Service Type">
-                      {isEditingProfile ? <input name="service" defaultValue={viewingVendor.service} className={inputCls} /> : <span className="bg-[#333234] border border-[#454446] text-[#b8b6b9] px-2 py-0.5 rounded text-[11px]">{viewingVendor.service}</span>}
+                      {isEditingProfile ? <input name="service" defaultValue={viewingVendor.service} className={inputCls} /> : <span className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded text-[11px]">{viewingVendor.service}</span>}
                     </Field>
-                    <Field label="Active Balance & Rating">
-                      <p className="text-[14px] text-[#e3c16c] font-medium flex items-center gap-1 mb-1"><DollarSign size={14} /> {viewingVendor.balance.toLocaleString()}</p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                          98.4% On-Time SLA
-                        </span>
-                        <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded text-[10px]">
-                          Low Hold Risk
-                        </span>
-                      </div>
+                    <Field label="Open balance">
+                      <p className="text-[14px] text-[var(--color-vein)] font-medium flex items-center gap-1 mb-1" style={{ fontFamily: 'var(--font-heading)' }}>
+                        <DollarSign size={14} /> {viewingVendor.balance.toLocaleString()}
+                      </p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)]">
+                        {viewingVendor.service || 'Logistics vendor'}
+                      </p>
                     </Field>
                   </div>
                 )}
                 {viewingAssociate && (
                   <div className="grid grid-cols-3 gap-6">
                     <Field label="Role & ID">
-                      {isEditingProfile ? <input name="role" defaultValue={viewingAssociate.role} className={inputCls} /> : <><p className="text-[13px] text-white font-medium mb-1">{viewingAssociate.role}</p><span className="bg-[#454446] border border-[#5d5c5f] px-2 py-0.5 rounded text-[11px] font-mono tracking-wider text-white">{viewingAssociate.salesNumber}</span></>}
+                      {isEditingProfile ? <input name="role" defaultValue={viewingAssociate.role} className={inputCls} /> : <><p className="text-[13px] text-white font-medium mb-1">{viewingAssociate.role}</p><span className="bg-[var(--color-basalt-500)] border border-[var(--color-basalt-500)] px-2 py-0.5 rounded text-[11px] font-mono tracking-wider text-white">{viewingAssociate.salesNumber}</span></>}
                     </Field>
                     <Field label="Location">
-                      {isEditingProfile ? <input name="location" defaultValue={viewingAssociate.location} className={inputCls} /> : <p className="text-[13px] text-white flex items-center gap-1"><MapPin size={12} className="text-[#b8b6b9]" /> {viewingAssociate.location}</p>}
+                      {isEditingProfile ? <input name="location" defaultValue={viewingAssociate.location} className={inputCls} /> : <p className="text-[13px] text-white flex items-center gap-1"><MapPin size={12} className="text-[var(--color-text-secondary)]" /> {viewingAssociate.location}</p>}
                     </Field>
                     <Field label="Commission &amp; Annual Target">
                       {isEditingProfile ? (
@@ -788,7 +848,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                       ) : (
                         <>
                           <p className="text-[13px] text-white font-medium">{viewingAssociate.commissionRate}</p>
-                          <p className="text-[12px] text-[#e3c16c] mt-1">
+                          <p className="text-[12px] text-[var(--color-vein)] mt-1">
                             Target: {viewingAssociate.salesTargetAnnual > 0 ? `$${viewingAssociate.salesTargetAnnual.toLocaleString()}` : 'Not set'}
                           </p>
                         </>
@@ -810,9 +870,30 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     {(c.salesAlertNote || c.salesLockNote) && (
                       <div className="space-y-2">
                         {c.salesLockNote && <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-300 text-[12px] px-3 py-2 rounded"><Lock size={14} className="mt-0.5 shrink-0" /><span><strong className="text-red-200">Sales Lock:</strong> {c.salesLockNote}</span></div>}
-                        {c.salesAlertNote && <div className="flex items-start gap-2 bg-[#e3c16c]/10 border border-[#e3c16c]/30 text-[#e3c16c] text-[12px] px-3 py-2 rounded"><AlertTriangle size={14} className="mt-0.5 shrink-0" /><span><strong>Sales Alert:</strong> {c.salesAlertNote}</span></div>}
+                        {c.salesAlertNote && <div className="flex items-start gap-2 bg-[var(--color-vein)]/10 border border-[rgba(227,193,108,0.30)] text-[var(--color-vein)] text-[12px] px-3 py-2 rounded"><AlertTriangle size={14} className="mt-0.5 shrink-0" /><span><strong>Sales Alert:</strong> {c.salesAlertNote}</span></div>}
                       </div>
                     )}
+                    {/* Cross-module shortcuts — commercial flow */}
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href="/pipeline"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-amethyst)] bg-[rgba(181,140,214,0.10)] border border-[rgba(181,140,214,0.3)] rounded-md px-3 py-1.5 hover:bg-[rgba(181,140,214,0.20)] transition-colors"
+                      >
+                        <Briefcase size={13} /> Open pipeline
+                      </a>
+                      <a
+                        href="/orders"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 border border-[rgba(16,185,129,0.30)] rounded-md px-3 py-1.5 hover:bg-[var(--color-emerald)]/20 transition-colors"
+                      >
+                        <FileText size={13} /> Sales orders
+                      </a>
+                      {(c.openDeals > 0 || c.lifetimeValue > 0) && (
+                        <span className="inline-flex items-center text-[11px] text-[var(--color-text-secondary)] px-2">
+                          {c.openDeals > 0 ? `${c.openDeals} open deal${c.openDeals === 1 ? '' : 's'} · ` : ''}
+                          ${c.lifetimeValue.toLocaleString()} LTV
+                        </span>
+                      )}
+                    </div>
                     <DrawerSection title="Identity & Classification">
                       <Field label="Customer ID"><span className="text-[13px] text-white font-mono">{c.systemId}</span></Field>
                       <Field label="Type"><span className="text-[13px] text-white">{val(c.subType)}</span></Field>
@@ -828,8 +909,8 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                       <Field label="Secondary Phone"><span className="text-[13px] text-white">{val(c.secondaryPhone)}</span></Field>
                       <Field label="Mobile"><span className="text-[13px] text-white">{val(c.mobilePhone)}</span></Field>
                       <Field label="Fax"><span className="text-[13px] text-white">{val(c.fax)}</span></Field>
-                      <Field label="Email"><span className="text-[13px] text-[#92b0ce]">{val(c.email)}</span></Field>
-                      <Field label="Accounting Email"><span className="text-[13px] text-[#92b0ce]">{val(c.accountingEmail)}</span></Field>
+                      <Field label="Email"><span className="text-[13px] text-[var(--color-sodalite)]">{val(c.email)}</span></Field>
+                      <Field label="Accounting Email"><span className="text-[13px] text-[var(--color-sodalite)]">{val(c.accountingEmail)}</span></Field>
                       <Field label="Website"><span className="text-[13px] text-white">{val(c.website)}</span></Field>
                     </DrawerSection>
                     <DrawerSection title="Addresses" cols={1}>
@@ -838,14 +919,14 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     </DrawerSection>
                     <DrawerSection title="Sales & Pricing">
                       <Field label="Assigned Rep"><span className="text-[13px] text-white">{val(c.rep)}</span></Field>
-                      <Field label="Price Tier"><span className="text-[13px] text-[#e3c16c]">{val(c.priceTier)}</span></Field>
+                      <Field label="Price Tier"><span className="text-[13px] text-[var(--color-vein)]">{val(c.priceTier)}</span></Field>
                       <Field label="Payment Terms"><span className="text-[13px] text-white">{val(c.terms)}</span></Field>
                       <Field label="Currency"><span className="text-[13px] text-white">{c.currency}</span></Field>
                       <Field label="Default Fulfillment"><span className="text-[13px] text-white">{val(c.defaultFulfillment)}</span></Field>
                       <Field label="Source"><span className="text-[13px] text-white">{val(c.source)}</span></Field>
                       <Field label="Customer Since"><span className="text-[13px] text-white">{val(c.customerSince)}</span></Field>
                       <Field label="Open Deals"><span className="text-[13px] text-white">{c.openDeals}</span></Field>
-                      <Field label="Lifetime Value"><span className="text-[13px] text-[#10b981]">${c.lifetimeValue.toLocaleString()}</span></Field>
+                      <Field label="Lifetime Value"><span className="text-[13px] text-[var(--color-emerald)]">${c.lifetimeValue.toLocaleString()}</span></Field>
                     </DrawerSection>
                     <DrawerSection title="Tax & Compliance">
                       <Field label="Tax ID / EIN"><span className="text-[13px] text-white">{val(c.taxId)}</span></Field>
@@ -871,27 +952,27 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                         {c.deliveryInstructions && <Field label="Delivery Instructions"><span className="text-[13px] text-white">{c.deliveryInstructions}</span></Field>}
                         {c.collectionNotes && <Field label="Collection Notes"><span className="text-[13px] text-white">{c.collectionNotes}</span></Field>}
                         {c.notes && <Field label="Internal Notes"><span className="text-[13px] text-white">{c.notes}</span></Field>}
-                        {c.copyNotesToOrders && <p className="text-[11px] text-[#7d7c7f]">Notes are copied to all orders.</p>}
+                        {c.copyNotesToOrders && <p className="text-[11px] text-[var(--color-fog-500)]">Notes are copied to all orders.</p>}
                       </DrawerSection>
                     )}
                   </div>
                   );
                 })()}
                 {isEditingProfile && (
-                  <div className="mt-6 pt-4 border-t border-[#454446] flex justify-end gap-3">
-                    <button type="button" onClick={() => setIsEditingProfile(false)} className="px-4 py-2 text-[12px] font-medium text-[#b8b6b9] hover:text-white transition-colors">Cancel</button>
-                    <button type="submit" disabled={isPending} className="px-4 py-2 text-[12px] font-medium bg-[#e3c16c] text-black rounded hover:bg-[#d2ac55] transition-colors disabled:opacity-60">{isPending ? 'Saving…' : 'Save Changes'}</button>
+                  <div className="mt-6 pt-4 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
+                    <button type="button" onClick={() => setIsEditingProfile(false)} className="btn-ghost text-[12px]">Cancel</button>
+                    <button type="submit" disabled={isPending} className="btn-primary text-[12px] disabled:opacity-60">{isPending ? 'Saving…' : 'Save changes'}</button>
                   </div>
                 )}
               </form>
 
               {/* Inner tabs (activity drill-down) — not shown for customers */}
               {viewing.type !== 'CUSTOMER' && (
-              <div className="flex border-b border-[#454446] mb-4 gap-6">
-                <button onClick={() => setDrawerTab('ACTIVE')} className={`pb-2 text-[13px] font-medium border-b-2 ${drawerTab === 'ACTIVE' ? 'border-[#e3c16c] text-white' : 'border-transparent text-[#b8b6b9] hover:text-white'}`}>
+              <div className="flex border-b border-[var(--color-basalt-500)] mb-4 gap-6">
+                <button onClick={() => setDrawerTab('ACTIVE')} className={`pb-2 text-[13px] font-medium border-b-2 ${drawerTab === 'ACTIVE' ? 'border-[var(--color-vein)] text-white' : 'border-transparent text-[var(--color-text-secondary)] hover:text-white'}`}>
                   {viewing.type === 'SUPPLIER' ? 'Ongoing Purchase Orders' : viewing.type === 'VENDOR' ? 'Pending Invoices' : 'Active Pipeline'}
                 </button>
-                <button onClick={() => setDrawerTab('HISTORY')} className={`pb-2 text-[13px] font-medium border-b-2 ${drawerTab === 'HISTORY' ? 'border-[#e3c16c] text-white' : 'border-transparent text-[#b8b6b9] hover:text-white'}`}>
+                <button onClick={() => setDrawerTab('HISTORY')} className={`pb-2 text-[13px] font-medium border-b-2 ${drawerTab === 'HISTORY' ? 'border-[var(--color-vein)] text-white' : 'border-transparent text-[var(--color-text-secondary)] hover:text-white'}`}>
                   {viewing.type === 'SUPPLIER' ? 'Historical Business' : viewing.type === 'VENDOR' ? 'Payment History' : 'Closed Sales'}
                 </button>
               </div>
@@ -902,15 +983,15 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 const list = drawerTab === 'ACTIVE' ? activePos[viewing.id] : historyPos[viewing.id];
                 if (!list || list.length === 0) return <div className={EMPTY}>{drawerTab === 'ACTIVE' ? 'No ongoing Purchase Orders.' : 'No historical POs found.'}</div>;
                 return <div className="space-y-4">{list.map((po) => (
-                  <div key={po.poNumber} className="bg-[#1c1c1c] border border-[#454446] rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between p-4 border-b border-[#454446] bg-[#333234]/30">
-                      <div className="flex items-center gap-3"><span className="font-mono text-white font-medium">{po.poNumber}</span><span className="px-2 py-0.5 rounded text-[11px] font-medium border bg-[#92b0ce]/10 text-[#92b0ce] border-[#92b0ce]/30">{po.status}</span></div>
-                      <span className="text-[14px] font-medium text-[#10b981]">${po.amount.toLocaleString()}</span>
+                  <div key={po.poNumber} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md overflow-hidden">
+                    <div className="flex items-center justify-between p-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]/30">
+                      <div className="flex items-center gap-3"><span className="font-mono text-white font-medium">{po.poNumber}</span><span className="px-2 py-0.5 rounded text-[11px] font-medium border bg-[rgba(146,176,206,0.10)] text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)]">{po.status}</span></div>
+                      <span className="text-[14px] font-medium text-[var(--color-emerald)]">${po.amount.toLocaleString()}</span>
                     </div>
                     <div className="p-4 grid grid-cols-3 gap-4 text-[13px]">
-                      <div><p className="text-[#b8b6b9] mb-1">ETA</p><p className="text-white font-medium">{po.eta}</p></div>
-                      <div><p className="text-[#b8b6b9] mb-1">Container</p><p className="text-white font-mono">{po.container}</p></div>
-                      <div><p className="text-[#b8b6b9] mb-1">Slabs</p><p className="text-white">{po.slabs} Units</p></div>
+                      <div><p className="text-[var(--color-text-secondary)] mb-1">ETA</p><p className="text-white font-medium">{po.eta}</p></div>
+                      <div><p className="text-[var(--color-text-secondary)] mb-1">Container</p><p className="text-white font-mono">{po.container}</p></div>
+                      <div><p className="text-[var(--color-text-secondary)] mb-1">Slabs</p><p className="text-white">{po.slabs} Units</p></div>
                     </div>
                   </div>
                 ))}</div>;
@@ -921,12 +1002,12 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 const list = drawerTab === 'ACTIVE' ? vendorInvoices[viewing.id] : historyInvoices[viewing.id];
                 if (!list || list.length === 0) return <div className={EMPTY}>{drawerTab === 'ACTIVE' ? 'No pending invoices found.' : 'No payment history found.'}</div>;
                 return <div className="space-y-4">{list.map((inv) => (
-                  <div key={inv.invoiceNum} className="bg-[#1c1c1c] border border-[#454446] rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between p-4 border-b border-[#454446] bg-[#333234]/30">
-                      <div className="flex items-center gap-3"><FileText size={14} className="text-[#92b0ce]" /><span className="font-mono text-white font-medium">{inv.invoiceNum}</span><span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${inv.status === 'Overdue' ? 'bg-red-500/10 text-red-400 border-red-500/30' : inv.status === 'In Dispute' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-[#e3c16c]/10 text-[#e3c16c] border-[#e3c16c]/30'}`}>{inv.status}</span></div>
-                      <span className="text-[14px] font-medium text-[#e3c16c]">${inv.amount.toLocaleString()}</span>
+                  <div key={inv.invoiceNum} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md overflow-hidden">
+                    <div className="flex items-center justify-between p-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]/30">
+                      <div className="flex items-center gap-3"><FileText size={14} className="text-[var(--color-sodalite)]" /><span className="font-mono text-white font-medium">{inv.invoiceNum}</span><span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${inv.status === 'Overdue' ? 'bg-red-500/10 text-red-400 border-red-500/30' : inv.status === 'In Dispute' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-[var(--color-vein)]/10 text-[var(--color-vein)] border-[rgba(227,193,108,0.30)]'}`}>{inv.status}</span></div>
+                      <span className="text-[14px] font-medium text-[var(--color-vein)]">${inv.amount.toLocaleString()}</span>
                     </div>
-                    <div className="p-4 text-[13px]"><p className="text-[#b8b6b9] mb-1">Service Provided</p><p className="text-white mb-4">{inv.serviceDetails}</p><p className="text-[#b8b6b9] mb-1">Due Date</p><p className="text-white font-medium">{inv.dueDate}</p></div>
+                    <div className="p-4 text-[13px]"><p className="text-[var(--color-text-secondary)] mb-1">Service Provided</p><p className="text-white mb-4">{inv.serviceDetails}</p><p className="text-[var(--color-text-secondary)] mb-1">Due Date</p><p className="text-white font-medium">{inv.dueDate}</p></div>
                   </div>
                 ))}</div>;
               })()}
@@ -946,9 +1027,9 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     const list = associatePipeline[viewing.id];
                     if (!list || list.length === 0) return <div className={EMPTY}>No active opportunities in pipeline.</div>;
                     return <div className="space-y-4">{list.map((opp, idx) => (
-                      <div key={idx} className="bg-[#1c1c1c] border border-[#454446] rounded-md overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-[#454446] bg-[#333234]/30"><div className="flex items-center gap-3"><Target size={14} className="text-[#b8b6b9]" /><span className="text-white font-medium">{opp.oppName}</span><span className="px-2 py-0.5 rounded text-[11px] font-medium border bg-[#92b0ce]/10 text-[#92b0ce] border-[#92b0ce]/30">{opp.status}</span></div><span className="text-[14px] font-medium text-white">${opp.amount.toLocaleString()}</span></div>
-                        <div className="p-4 grid grid-cols-2 gap-4 text-[13px]"><div><p className="text-[#b8b6b9] mb-1">Expected Close</p><p className="text-white font-medium">{opp.expectedClose}</p></div><div><p className="text-[#b8b6b9] mb-1">Probability</p><div className="flex items-center gap-2"><div className="h-1.5 flex-1 bg-[#333234] rounded-full overflow-hidden"><div className="h-full bg-[#10b981]" style={{ width: opp.probability }} /></div><span className="text-white">{opp.probability}</span></div></div></div>
+                      <div key={idx} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md overflow-hidden">
+                        <div className="flex items-center justify-between p-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]/30"><div className="flex items-center gap-3"><Target size={14} className="text-[var(--color-text-secondary)]" /><span className="text-white font-medium">{opp.oppName}</span><span className="px-2 py-0.5 rounded text-[11px] font-medium border bg-[rgba(146,176,206,0.10)] text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)]">{opp.status}</span></div><span className="text-[14px] font-medium text-white">${opp.amount.toLocaleString()}</span></div>
+                        <div className="p-4 grid grid-cols-2 gap-4 text-[13px]"><div><p className="text-[var(--color-text-secondary)] mb-1">Expected Close</p><p className="text-white font-medium">{opp.expectedClose}</p></div><div><p className="text-[var(--color-text-secondary)] mb-1">Probability</p><div className="flex items-center gap-2"><div className="h-1.5 flex-1 bg-[var(--color-basalt-700)] rounded-full overflow-hidden"><div className="h-full bg-[var(--color-emerald)]" style={{ width: opp.probability }} /></div><span className="text-white">{opp.probability}</span></div></div></div>
                       </div>
                     ))}</div>;
                   })()}
@@ -956,36 +1037,46 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     const list = associateSales[viewing.id];
                     if (!list || list.length === 0) return <div className={EMPTY}>No recent closed sales found.</div>;
                     return <div className="space-y-4">{list.map((sale, idx) => (
-                      <div key={idx} className="bg-[#1c1c1c] border border-[#10b981]/30 rounded-md overflow-hidden relative"><div className="absolute top-0 left-0 w-1 h-full bg-[#10b981]" />
-                        <div className="flex items-center justify-between p-4 border-b border-[#454446] bg-[#333234]/30 pl-5"><div className="flex items-center gap-3"><FileText size={14} className="text-[#10b981]" /><span className="font-mono text-white font-medium">{sale.soNumber}</span><span className="bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/30 px-2 py-0.5 rounded text-[11px] font-medium">Closed Won</span></div><span className="text-[14px] font-medium text-[#10b981]">+${sale.amount.toLocaleString()}</span></div>
-                        <div className="p-4 grid grid-cols-3 gap-4 text-[13px] pl-5"><div><p className="text-[#b8b6b9] mb-1">Customer</p><p className="text-white font-medium">{sale.customer}</p></div><div><p className="text-[#b8b6b9] mb-1">Close Date</p><p className="text-white">{sale.closeDate}</p></div><div><p className="text-[#b8b6b9] mb-1">Items</p><p className="text-white">{sale.items} Units</p></div></div>
+                      <div key={idx} className="bg-[var(--color-basalt-900)] border border-[rgba(16,185,129,0.30)] rounded-md overflow-hidden relative"><div className="absolute top-0 left-0 w-1 h-full bg-[var(--color-emerald)]" />
+                        <div className="flex items-center justify-between p-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]/30 pl-5"><div className="flex items-center gap-3"><FileText size={14} className="text-[var(--color-emerald)]" /><span className="font-mono text-white font-medium">{sale.soNumber}</span><span className="bg-[var(--color-emerald)]/10 text-[var(--color-emerald)] border border-[rgba(16,185,129,0.30)] px-2 py-0.5 rounded text-[11px] font-medium">Closed Won</span></div><span className="text-[14px] font-medium text-[var(--color-emerald)]">+${sale.amount.toLocaleString()}</span></div>
+                        <div className="p-4 grid grid-cols-3 gap-4 text-[13px] pl-5"><div><p className="text-[var(--color-text-secondary)] mb-1">Customer</p><p className="text-white font-medium">{sale.customer}</p></div><div><p className="text-[var(--color-text-secondary)] mb-1">Close Date</p><p className="text-white">{sale.closeDate}</p></div><div><p className="text-[var(--color-text-secondary)] mb-1">Items</p><p className="text-white">{sale.items} Units</p></div></div>
                       </div>
                     ))}</div>;
                   })()}
                 </>
               )}
-            </div>
           </div>
-        </>
-      )}
+        )}
+      </Drawer>
 
-      {/* Add drawer — comprehensive, sectioned intake per member type */}
-      {addOpen && canManage && (() => {
+      {/* Add / register — shared Drawer */}
+      {canManage && (() => {
         const t = TAB_TO_TYPE[activeTab];
         const isCompany = t !== 'ASSOCIATE';
         const showLogin = t === 'ASSOCIATE' || t === 'VENDOR';
         return (
-        <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={closeAdd} />
-          <form onSubmit={handleAdd} className="fixed top-0 right-0 h-full w-full max-w-[640px] bg-[#2b2a2c] border-l border-[#454446] shadow-2xl z-50 flex flex-col">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#454446] bg-[#1c1c1c] shrink-0">
-              <div>
-                <h2 className="text-[18px] font-medium text-white">Register New {TYPE_LABEL[t]}</h2>
-                <p className="text-[13px] text-[#b8b6b9] mt-1">Capture the full record. Fields marked <span className="text-red-400">*</span> are required.</p>
-              </div>
-              <button type="button" onClick={closeAdd} className="text-[#b8b6b9] hover:text-white hover:bg-[#333234] p-1.5 rounded transition-colors"><X size={20} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-[13px]">
+      <Drawer
+        open={addOpen}
+        onClose={closeAdd}
+        width={640}
+        title={`Add ${TYPE_LABEL[t]}`}
+        subtitle={
+          <>
+            Required fields marked <span className="text-[var(--color-ruby)]">*</span>. Save creates a stable system ID.
+          </>
+        }
+        footer={
+          <>
+            <Button variant="ghost" size="sm" type="button" onClick={closeAdd}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" type="submit" form="crm-add-form" disabled={isPending}>
+              {isPending ? 'Saving…' : `Save ${TYPE_LABEL[t].toLowerCase()}`}
+            </Button>
+          </>
+        }
+      >
+          <form id="crm-add-form" onSubmit={handleAdd} className="p-6 space-y-7 text-[13px]">
               {/* Shared identity/contact/address — customers use their own richer sections below */}
               {t !== 'CUSTOMER' && (<>
               {/* Identity */}
@@ -996,8 +1087,8 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 <div className="grid grid-cols-2 gap-4">
                   {isCompany && <Fld label="Legal Entity Name"><input name="legalName" placeholder="Registered legal name" className={addInputCls} /></Fld>}
                   <Fld label="Website"><input name="website" placeholder="https://example.com" className={addInputCls} /></Fld>
-                  <Fld label="Status"><select name="status" defaultValue="ACTIVE" className={addInputCls}>{PARTY_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
-                  {t === 'SUPPLIER' && <Fld label="Supplier Type"><select name="subType" className={addInputCls}><option value="">—</option>{SUPPLIER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>}
+                  <Fld label="Status"><select name="status" defaultValue="ACTIVE" className={addSelectCls}>{PARTY_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                  {t === 'SUPPLIER' && <Fld label="Supplier Type"><select name="subType" className={addSelectCls}><option value="">—</option>{SUPPLIER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>}
                 </div>
               </Sec>
 
@@ -1008,7 +1099,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <Fld label="Email"><input name="email" type="email" placeholder="email@example.com" className={addInputCls} /></Fld>
                   <Fld label="Phone"><input name="phone" placeholder="+1 (555) 000-0000" className={addInputCls} /></Fld>
                 </div>
-                <p className="text-[11px] text-[#7d7c7f]">Provide at least one way to reach this member (email or phone).</p>
+                <p className="text-[11px] text-[var(--color-fog-500)]">Provide at least one way to reach this member (email or phone).</p>
               </Sec>
 
               {/* Address */}
@@ -1019,7 +1110,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <Fld label="City"><input name="addr_city" placeholder="City" className={addInputCls} /></Fld>
                   <Fld label="State / Region"><input name="addr_region" placeholder="State / province" className={addInputCls} /></Fld>
                   <Fld label="Postal Code"><input name="addr_postal" placeholder="ZIP / postal" className={addInputCls} /></Fld>
-                  <Fld label="Country"><select name="addr_country" className={addInputCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                  <Fld label="Country"><select name="addr_country" className={addSelectCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
                 </div>
               </Sec>
               </>)}
@@ -1028,11 +1119,11 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {t === 'SUPPLIER' && (
                 <Sec title="Commercial & Compliance">
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Origin Country"><select name="origin" className={addInputCls}><option value="">—</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
-                    <Fld label="Materials Supplied"><select name="materialCategories" multiple className={`${addInputCls} h-[88px]`}>{MATERIAL_CATEGORIES.map((m) => <option key={m} value={m}>{m}</option>)}</select></Fld>
-                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
-                    <Fld label="Incoterms"><select name="incoterms" className={addInputCls}><option value="">—</option>{INCOTERMS.map((i) => <option key={i} value={i}>{i}</option>)}</select></Fld>
-                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Origin Country"><select name="origin" className={addSelectCls}><option value="">—</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Materials Supplied"><select name="materialCategories" multiple className={`${addSelectCls} !h-[88px] py-1`}>{MATERIAL_CATEGORIES.map((m) => <option key={m} value={m}>{m}</option>)}</select></Fld>
+                    <Fld label="Payment Terms"><select name="terms" className={addSelectCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Incoterms"><select name="incoterms" className={addSelectCls}><option value="">—</option>{INCOTERMS.map((i) => <option key={i} value={i}>{i}</option>)}</select></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addSelectCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
                     <Fld label="Credit Limit"><input name="creditLimit" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
                     <Fld label="Lead Time (days)"><input name="leadTimeDays" type="number" min="0" placeholder="e.g. 45" className={addInputCls} /></Fld>
                     <Fld label="Min Order Value"><input name="minOrderValue" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
@@ -1047,11 +1138,11 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {t === 'VENDOR' && (
                 <Sec title="Service & Compliance">
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Service Type"><select name="service" className={addInputCls}><option value="">—</option>{VENDOR_SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
-                    <Fld label="Rate Basis"><select name="rateBasis" className={addInputCls}><option value="">—</option>{VENDOR_RATE_BASIS.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                    <Fld label="Service Type"><select name="service" className={addSelectCls}><option value="">—</option>{VENDOR_SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                    <Fld label="Rate Basis"><select name="rateBasis" className={addSelectCls}><option value="">—</option>{VENDOR_RATE_BASIS.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
                     <Fld label="Service Area / Lanes"><input name="serviceArea" placeholder="e.g. Genoa → NJ" className={addInputCls} /></Fld>
-                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
-                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addSelectCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Payment Terms"><select name="terms" className={addSelectCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
                     <Fld label="Tax ID"><input name="taxId" placeholder="Tax / registration #" className={addInputCls} /></Fld>
                     <Fld label="Insurance Policy"><input name="insurancePolicy" placeholder="Policy # + expiry" className={addInputCls} /></Fld>
                     <Fld label="License # (MC/DOT/FMC)"><input name="licenseNumber" placeholder="Carrier / broker license" className={addInputCls} /></Fld>
@@ -1067,18 +1158,18 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     <input name="name" required placeholder="e.g. Premier Stone Works" className={addInputCls} />
                   </Fld>
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Customer Type"><select name="subType" className={addInputCls}><option value="">—</option>{CUSTOMER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                    <Fld label="Customer Type"><select name="subType" className={addSelectCls}><option value="">—</option>{CUSTOMER_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
                     <Fld label="Contact Name"><input name="contact" placeholder="e.g. Sarah Jenkins" className={addInputCls} /></Fld>
                     <Fld label="Print Name / DBA"><input name="dba" placeholder="Doing-business-as name" className={addInputCls} /></Fld>
                     <Fld label="Referred By"><input name="referredBy" placeholder="Referral source / partner" className={addInputCls} /></Fld>
-                    <Fld label="Parent Customer"><select name="parentCustomerId" className={addInputCls}><option value="">— None (top-level) —</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Fld>
-                    <Fld label="Status"><select name="status" defaultValue="ACTIVE" className={addInputCls}>{PARTY_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
+                    <Fld label="Parent Customer"><select name="parentCustomerId" className={addSelectCls}><option value="">— None (top-level) —</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Fld>
+                    <Fld label="Status"><select name="status" defaultValue="ACTIVE" className={addSelectCls}>{PARTY_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select></Fld>
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
-                    <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="multiLocation" className="accent-[#e3c16c]" /> Multi-location customer</label>
-                    <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="genericCustomer" className="accent-[#e3c16c]" /> Generic / walk-in customer</label>
+                    <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="multiLocation" className="accent-[var(--color-vein)]" /> Multi-location customer</label>
+                    <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="genericCustomer" className="accent-[var(--color-vein)]" /> Generic / walk-in customer</label>
                   </div>
-                  <p className="text-[11px] text-[#7d7c7f]">A Customer ID (C-###) is assigned automatically on save.</p>
+                  <p className="text-[11px] text-[var(--color-fog-500)]">A Customer ID (C-###) is assigned automatically on save.</p>
                 </Sec>
 
                 {/* 2 — Contact Information */}
@@ -1092,7 +1183,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     <Fld label="Accounting Email"><input name="accountingEmail" type="email" placeholder="ap@example.com" className={addInputCls} /></Fld>
                     <Fld label="Website"><input name="website" placeholder="https://example.com" className={addInputCls} /></Fld>
                   </div>
-                  <p className="text-[11px] text-[#7d7c7f]">Provide at least one way to reach this customer (email or phone).</p>
+                  <p className="text-[11px] text-[var(--color-fog-500)]">Provide at least one way to reach this customer (email or phone).</p>
                 </Sec>
 
                 {/* 3 — Bill-To Address */}
@@ -1104,13 +1195,13 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     <Fld label="State / Region"><input name="bill_region" placeholder="State / province" className={addInputCls} /></Fld>
                     <Fld label="ZIP / Postal"><input name="bill_postal" placeholder="ZIP / postal" className={addInputCls} /></Fld>
                     <Fld label="County"><input name="bill_county" placeholder="County" className={addInputCls} /></Fld>
-                    <Fld label="Country"><select name="bill_country" defaultValue="United States" className={addInputCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Country"><select name="bill_country" defaultValue="United States" className={addSelectCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
                   </div>
                 </Sec>
 
                 {/* 4 — Shipping Address */}
                 <Sec title="Shipping Address">
-                  <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="ship_copy" className="accent-[#e3c16c]" /> Same as bill-to address</label>
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="ship_copy" className="accent-[var(--color-vein)]" /> Same as bill-to address</label>
                   <Fld label="Street Address"><input name="ship_line1" placeholder="Street, building" className={addInputCls} /></Fld>
                   <Fld label="Address Line 2"><input name="ship_line2" placeholder="Suite, unit (optional)" className={addInputCls} /></Fld>
                   <div className="grid grid-cols-2 gap-4">
@@ -1118,18 +1209,18 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                     <Fld label="State / Region"><input name="ship_region" placeholder="State / province" className={addInputCls} /></Fld>
                     <Fld label="ZIP / Postal"><input name="ship_postal" placeholder="ZIP / postal" className={addInputCls} /></Fld>
                     <Fld label="County"><input name="ship_county" placeholder="County" className={addInputCls} /></Fld>
-                    <Fld label="Country"><select name="ship_country" defaultValue="United States" className={addInputCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Country"><select name="ship_country" defaultValue="United States" className={addSelectCls}><option value="">— Select —</option>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
                   </div>
                 </Sec>
 
                 {/* 5 — Sales & Pricing */}
                 <Sec title="Sales & Pricing">
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Assigned Rep"><select name="assignedAssociateId" className={addInputCls}><option value="">— Unassigned —</option>{associates.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Fld>
-                    <Fld label="Price Tier"><select name="priceTier" className={addInputCls}><option value="">—</option>{CUSTOMER_PRICE_TIERS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
-                    <Fld label="Payment Terms"><select name="terms" className={addInputCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
-                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addInputCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
-                    <Fld label="Default Fulfillment"><select name="defaultFulfillment" className={addInputCls}><option value="">—</option>{FULFILLMENT_METHODS.map((f) => <option key={f} value={f}>{f}</option>)}</select></Fld>
+                    <Fld label="Assigned Rep"><select name="assignedAssociateId" className={addSelectCls}><option value="">— Unassigned —</option>{associates.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Fld>
+                    <Fld label="Price Tier"><select name="priceTier" className={addSelectCls}><option value="">—</option>{CUSTOMER_PRICE_TIERS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Payment Terms"><select name="terms" className={addSelectCls}><option value="">—</option>{PAYMENT_TERMS.map((p) => <option key={p} value={p}>{p}</option>)}</select></Fld>
+                    <Fld label="Currency"><select name="currency" defaultValue="USD" className={addSelectCls}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></Fld>
+                    <Fld label="Default Fulfillment"><select name="defaultFulfillment" className={addSelectCls}><option value="">—</option>{FULFILLMENT_METHODS.map((f) => <option key={f} value={f}>{f}</option>)}</select></Fld>
                     <Fld label="How did you hear?"><input name="source" placeholder="e.g. Referral, Trade show" className={addInputCls} /></Fld>
                   </div>
                 </Sec>
@@ -1139,24 +1230,24 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <div className="grid grid-cols-2 gap-4">
                     <Fld label="Tax ID / EIN"><input name="taxId" placeholder="Tax / EIN" className={addInputCls} /></Fld>
                     <Fld label="Sales Tax Code"><input name="salesTaxCode" placeholder="Tax jurisdiction code" className={addInputCls} /></Fld>
-                    <Fld label="Exempt Reason"><select name="taxExemptReason" className={addInputCls}><option value="">—</option>{TAX_EXEMPT_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                    <Fld label="Exempt Reason"><select name="taxExemptReason" className={addSelectCls}><option value="">—</option>{TAX_EXEMPT_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
                     <Fld label="Exempt Certificate #"><input name="resaleCertNumber" placeholder="If tax-exempt" className={addInputCls} /></Fld>
                     <Fld label="Exempt Expiry"><input name="exemptCertExpiry" type="date" className={addInputCls} /></Fld>
                   </div>
-                  <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9] pt-1"><input type="checkbox" name="taxExempt" className="accent-[#e3c16c]" /> Tax-exempt customer</label>
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)] pt-1"><input type="checkbox" name="taxExempt" className="accent-[var(--color-vein)]" /> Tax-exempt customer</label>
                 </Sec>
 
                 {/* 7 — Accounting Controls */}
                 <Sec title="Accounting Controls">
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Document Delivery"><select name="docDeliveryPref" className={addInputCls}><option value="">—</option>{DOC_DELIVERY_METHODS.map((d) => <option key={d} value={d}>{d}</option>)}</select></Fld>
+                    <Fld label="Document Delivery"><select name="docDeliveryPref" className={addSelectCls}><option value="">—</option>{DOC_DELIVERY_METHODS.map((d) => <option key={d} value={d}>{d}</option>)}</select></Fld>
                     <Fld label="Customer Since"><input name="customerSince" type="date" className={addInputCls} /></Fld>
                     <Fld label="Grace Period (days)"><input name="gracePeriodDays" type="number" min="0" max="365" placeholder="e.g. 5" className={addInputCls} /></Fld>
                     <Fld label="Hold (days)"><input name="holdDays" type="number" min="0" max="365" placeholder="e.g. 30" className={addInputCls} /></Fld>
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
-                    <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="poRequired" className="accent-[#e3c16c]" /> Purchase order required</label>
-                    <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="applyFinanceCharges" className="accent-[#e3c16c]" /> Apply finance charges</label>
+                    <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="poRequired" className="accent-[var(--color-vein)]" /> Purchase order required</label>
+                    <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="applyFinanceCharges" className="accent-[var(--color-vein)]" /> Apply finance charges</label>
                   </div>
                 </Sec>
 
@@ -1165,7 +1256,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <div className="grid grid-cols-2 gap-4">
                     <Fld label="Credit Limit"><input name="creditLimit" type="number" min="0" placeholder="0" className={addInputCls} /></Fld>
                   </div>
-                  <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="creditLockExempt" className="accent-[#e3c16c]" /> Exempt from credit lock</label>
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="creditLockExempt" className="accent-[var(--color-vein)]" /> Exempt from credit lock</label>
                   <Fld label="Sales Alert Note"><textarea name="salesAlertNote" rows={2} placeholder="Shown to sales when quoting (optional)" className={`${addInputCls} resize-none`} /></Fld>
                   <Fld label="Sales Lock Note"><textarea name="salesLockNote" rows={2} placeholder="Reason orders are blocked (optional)" className={`${addInputCls} resize-none`} /></Fld>
                 </Sec>
@@ -1175,7 +1266,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <Fld label="Delivery Instructions"><textarea name="deliveryInstructions" rows={2} placeholder="Site access, hours, equipment (optional)" className={`${addInputCls} resize-none`} /></Fld>
                   <Fld label="Collection Notes"><textarea name="collectionNotes" rows={2} placeholder="AR / collections context (optional)" className={`${addInputCls} resize-none`} /></Fld>
                   <Fld label="Internal Notes"><textarea name="notes" rows={2} placeholder="Internal notes (optional)" className={`${addInputCls} resize-none`} /></Fld>
-                  <label className="flex items-center gap-2 text-[12px] text-[#b8b6b9]"><input type="checkbox" name="copyNotesToOrders" className="accent-[#e3c16c]" /> Copy notes to all orders</label>
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)]"><input type="checkbox" name="copyNotesToOrders" className="accent-[var(--color-vein)]" /> Copy notes to all orders</label>
                 </Sec>
               </>)}
 
@@ -1183,7 +1274,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               {t === 'ASSOCIATE' && (
                 <Sec title="Role & Compensation">
                   <div className="grid grid-cols-2 gap-4">
-                    <Fld label="Role"><select name="role" className={addInputCls}><option value="">—</option>{ASSOCIATE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
+                    <Fld label="Role"><select name="role" className={addSelectCls}><option value="">—</option>{ASSOCIATE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
                     <Fld label="Base Location"><input name="location" placeholder="e.g. Maryland Hub" className={addInputCls} /></Fld>
                     <Fld label="Territory"><input name="territory" placeholder="e.g. Mid-Atlantic" className={addInputCls} /></Fld>
                     <Fld label="Employee ID"><input name="employeeId" placeholder="EMP-001" className={addInputCls} /></Fld>
@@ -1194,17 +1285,55 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 </Sec>
               )}
 
-              {/* Login provisioning */}
+              {/* Login provisioning — quiet institutional callout */}
               {showLogin && (
-                <Sec title="Portal Access">
-                  <label className="flex items-center gap-2 text-[12px] text-white"><input type="checkbox" checked={provisionLogin} onChange={(e) => setProvisionLogin(e.target.checked)} className="accent-[#e3c16c]" /> Create a portal login for this member</label>
-                  {provisionLogin && (
-                    <div className="grid grid-cols-2 gap-4 mt-1">
-                      <Fld label="Login Email"><input name="loginEmail" type="email" placeholder="defaults to contact email" className={addInputCls} /></Fld>
-                      <Fld label="Login Role"><select name="loginRole" defaultValue={t === 'VENDOR' ? 'VENDOR' : 'SALES'} className={addInputCls}>{LOGIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></Fld>
-                      <p className="col-span-2 text-[11px] text-[#7d7c7f]">A one-time temporary password will be generated and shown once after saving.</p>
-                    </div>
-                  )}
+                <Sec title="Portal access" hint={t === 'VENDOR' ? 'Optional vendor login for shipment visibility.' : 'Optional associate login for sales workspace.'}>
+                  <div className="rounded-[var(--radius-md)] border border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)]/60 p-3.5 space-y-3">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={provisionLogin}
+                        onChange={(e) => setProvisionLogin(e.target.checked)}
+                        className="accent-[var(--color-vein)] mt-0.5 shrink-0"
+                      />
+                      <span>
+                        <span className="block text-[13px] text-white font-medium">Create portal login</span>
+                        <span className="block text-[11px] text-[var(--color-text-secondary)] mt-0.5 leading-relaxed">
+                          Issues a one-time temporary password after save. Share it out-of-band; it is not emailed.
+                        </span>
+                      </span>
+                    </label>
+                    {provisionLogin && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[var(--color-basalt-500)]">
+                        <Fld label="Login email">
+                          <input
+                            name="loginEmail"
+                            type="email"
+                            placeholder="Defaults to contact email"
+                            className={addInputCls}
+                            autoComplete="off"
+                          />
+                        </Fld>
+                        <Fld label="Login role">
+                          <select
+                            name="loginRole"
+                            defaultValue={t === 'VENDOR' ? 'VENDOR' : 'SALES'}
+                            className={addSelectCls}
+                          >
+                            {LOGIN_ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {r === 'SALES' ? 'Sales' : r === 'VENDOR' ? 'Vendor' : r}
+                              </option>
+                            ))}
+                          </select>
+                        </Fld>
+                        <p className="sm:col-span-2 text-[11px] text-[var(--color-fog-500)] flex items-start gap-1.5">
+                          <Lock size={12} className="shrink-0 mt-0.5 text-[var(--color-vein)]" />
+                          Password is shown once in a dialog after save — copy before closing.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </Sec>
               )}
 
@@ -1215,75 +1344,120 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               </Sec>
               )}
 
-              {actionError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{actionError}</div>}
-            </div>
-            <div className="p-4 border-t border-[#454446] bg-[#1c1c1c] flex items-center justify-end gap-3 shrink-0">
-              <button type="button" onClick={closeAdd} className="px-4 py-2 text-[13px] font-medium text-white hover:bg-[#333234] rounded-md transition-colors">Cancel</button>
-              <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] font-medium text-black rounded-md bg-[#e3c16c] hover:bg-[#d2ac55] transition-colors disabled:opacity-60">{isPending ? 'Saving…' : 'Save Record'}</button>
-            </div>
+              {actionError && (
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded-[var(--radius-sm)]">
+                  {actionError}
+                </div>
+              )}
           </form>
-        </>
+      </Drawer>
         );
       })()}
 
-      {/* One-time temp-password reveal after login provisioning */}
-      {tempPassword && (
-        <>
-          <div className="fixed inset-0 bg-black/70 z-[60]" onClick={() => setTempPassword(null)} />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] bg-[#1c1c1c] border border-[#454446] rounded-xl shadow-2xl z-[61] p-6">
-            <div className="flex items-center gap-2 mb-3"><KeyRound size={18} className="text-[#e3c16c]" /><h3 className="text-[15px] font-medium text-white">Portal login created</h3></div>
-            <p className="text-[13px] text-[#b8b6b9] mb-4">Share this one-time temporary password securely. It won&apos;t be shown again.</p>
-            <div className="flex items-center justify-between bg-[#2b2a2c] border border-[#454446] rounded-lg px-3 py-2.5 mb-5">
-              <code className="text-[15px] text-white font-mono tracking-wide">{tempPassword}</code>
-              <button onClick={() => navigator.clipboard?.writeText(tempPassword)} className="text-[#92b0ce] hover:text-white p-1" title="Copy"><Copy size={15} /></button>
+      <Modal
+        open={!!tempPassword}
+        onClose={() => setTempPassword(null)}
+        title={
+          <span className="flex items-center gap-2">
+            <KeyRound size={18} className="text-[var(--color-vein)]" /> Portal login created
+          </span>
+        }
+        subtitle="Copy it now — it will not be shown again and is not emailed."
+        width={420}
+        zIndex={70}
+        footer={
+          <Button variant="primary" className="w-full" onClick={() => setTempPassword(null)}>
+            Done
+          </Button>
+        }
+      >
+        {tempPassword && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 bg-[var(--color-basalt-950)] border border-[rgba(227,193,108,0.3)] rounded-[var(--radius-md)] px-3 py-3">
+              <code className="text-[15px] text-white bp-mono tracking-wide break-all">{tempPassword}</code>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(tempPassword);
+                  toast('Password copied', 'success');
+                }}
+                className="btn-secondary !min-h-8 !px-2.5 text-[12px] shrink-0"
+                title="Copy password"
+              >
+                <Copy size={14} /> Copy
+              </button>
             </div>
-            <button onClick={() => setTempPassword(null)} className="w-full bg-[#e3c16c] text-black py-2 rounded-md text-[13px] font-medium hover:bg-[#d2ac55] transition-colors">Done</button>
+            <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+              Share over a secure channel. The user should change it after first sign-in.
+            </p>
           </div>
-        </>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
 
-function Sec({ title, children }: { title: string; children: React.ReactNode }) {
+function Sec({
+  title,
+  children,
+  hint,
+}: {
+  title: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium border-b border-[#454446] pb-1.5">{title}</h3>
+    <section className="space-y-3">
+      <header className="border-b border-[var(--color-basalt-500)] pb-1.5">
+        <h3 className="bp-section-title text-[var(--color-fog-500)]">{title}</h3>
+        {hint && (
+          <p className="text-[11px] text-[var(--color-fog-500)] mt-1 leading-relaxed">{hint}</p>
+        )}
+      </header>
       {children}
-    </div>
+    </section>
   );
 }
 
 function Fld({ label, children, req }: { label: string; children: React.ReactNode; req?: boolean }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[#b8b6b9] block text-[12px]">{label}{req && <span className="text-red-400"> *</span>}</label>
+      <label className="text-[var(--color-text-secondary)] block text-[12px] font-medium">
+        {label}
+        {req && <span className="text-[var(--color-ruby)]"> *</span>}
+      </label>
       {children}
     </div>
   );
 }
 
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th className={`px-4 py-3 font-medium border-b border-[#454446] ${right ? 'text-right' : ''}`}>{children}</th>;
+  return <th className={right ? 'text-right' : undefined}>{children}</th>;
 }
 function EmptyRow({ cols }: { cols: number }) {
-  return <tr><td colSpan={cols} className="px-6 py-12 text-center text-[#b8b6b9]">No records match your filters.</td></tr>;
+  return (
+    <tr>
+      <td colSpan={cols} className="!py-12 text-center text-[var(--color-text-secondary)]">
+        No records match your filters.
+      </td>
+    </tr>
+  );
 }
 function Pill({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return <span className="flex items-center gap-1.5 bg-[#333234] border border-[#454446] px-2.5 py-1 rounded-full text-[11px] text-white">{label}<X size={12} className="cursor-pointer hover:text-[#e3c16c] ml-1" onClick={onRemove} /></span>;
+  return <span className="flex items-center gap-1.5 bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] px-2.5 py-1 rounded-full text-[11px] text-white">{label}<X size={12} className="cursor-pointer hover:text-[var(--color-vein)] ml-1" onClick={onRemove} /></span>;
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><p className="text-[11px] text-[#b8b6b9] uppercase tracking-wider mb-1">{label}</p>{children}</div>;
+  return <div><p className="text-[11px] text-[var(--color-text-secondary)] uppercase tracking-wider mb-1">{label}</p>{children}</div>;
 }
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
-  return <div className="bg-[#333234] border border-[#454446] p-3 rounded-md"><p className="text-[11px] text-[#b8b6b9] uppercase tracking-wider mb-1">{label}</p><p className="text-[14px] font-medium" style={{ color: color ?? '#ffffff' }}>{value}</p></div>;
+  return <div className="bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] p-3 rounded-md"><p className="text-[11px] text-[var(--color-text-secondary)] uppercase tracking-wider mb-1">{label}</p><p className="text-[14px] font-medium" style={{ color: color ?? '#ffffff' }}>{value}</p></div>;
 }
 
 // A titled detail section for the customer drill-down drawer; lays its fields out in a grid.
 function DrawerSection({ title, children, cols = 3 }: { title: string; children: React.ReactNode; cols?: number }) {
   return (
     <div>
-      <h3 className="text-[11px] uppercase tracking-wider text-[#b8b6b9] font-medium border-b border-[#454446] pb-1.5 mb-3">{title}</h3>
+      <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium border-b border-[var(--color-basalt-500)] pb-1.5 mb-3">{title}</h3>
       <div className={`grid gap-x-6 gap-y-3 ${cols === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}>{children}</div>
     </div>
   );

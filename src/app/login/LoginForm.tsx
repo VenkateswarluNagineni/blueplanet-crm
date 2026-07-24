@@ -1,67 +1,83 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Lock, Mail } from 'lucide-react';
 import { loginAction, type LoginState } from './actions';
-import { Wordmark } from '@/components/brand/Wordmark';
 
 const DEMO_ACCOUNTS = [
   { label: 'Admin', email: 'admin@blueplanet.com', password: 'admin123' },
   { label: 'Sales', email: 'sales@blueplanet.com', password: 'sales123' },
   { label: 'Vendor', email: 'vendor@blueplanet.com', password: 'vendor123' },
-];
+] as const;
 
+/**
+ * Auth form only — no decorative chrome.
+ * E2E: #email, #password, button "Sign in"
+ */
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, {});
   const [email, setEmail] = useState('admin@blueplanet.com');
   const [password, setPassword] = useState('admin123');
+  const [activeDemo, setActiveDemo] = useState(0);
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-10 lg:hidden">
-        <Wordmark size={28} />
-      </div>
-
-      <h1 className="text-[28px] text-white mb-1.5">Sign in</h1>
-      <p className="text-[13px] text-[#b8b6b9] mb-7">Welcome back. Sign in to your workspace.</p>
+    <div className="w-full">
+      <header className="mb-8">
+        <h1
+          className="text-[1.75rem] text-white font-medium tracking-[-0.02em] leading-none"
+          style={{ fontFamily: 'var(--font-heading)' }}
+        >
+          Sign in
+        </h1>
+        <p className="mt-2.5 text-[13px] text-[var(--color-text-secondary)] leading-relaxed">
+          Use your workspace credentials to continue.
+        </p>
+      </header>
 
       <form action={action} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-[12px] text-[#b8b6b9] mb-1.5">Email</label>
-          <div className="flex items-center bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2.5 focus-within:border-[#92b0ce] transition-colors">
-            <Mail size={14} className="text-[#b8b6b9] mr-2" />
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-transparent border-none outline-none text-[13px] text-white w-full"
-            />
-          </div>
+          <label
+            htmlFor="email"
+            className="block text-[12px] font-medium text-[var(--color-text-secondary)] mb-1.5"
+          >
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="bp-login-input"
+            placeholder="name@company.com"
+          />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-[12px] text-[#b8b6b9] mb-1.5">Password</label>
-          <div className="flex items-center bg-[#1c1c1c] border border-[#454446] rounded-md px-3 py-2.5 focus-within:border-[#92b0ce] transition-colors">
-            <Lock size={14} className="text-[#b8b6b9] mr-2" />
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-transparent border-none outline-none text-[13px] text-white w-full"
-            />
-          </div>
+          <label
+            htmlFor="password"
+            className="block text-[12px] font-medium text-[var(--color-text-secondary)] mb-1.5"
+          >
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="bp-login-input"
+          />
         </div>
 
         {state.error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">
+          <div
+            role="alert"
+            className="rounded-[var(--radius-md)] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.08)] px-3 py-2.5 text-[12px] text-[var(--color-ruby)] leading-snug"
+          >
             {state.error}
           </div>
         )}
@@ -69,27 +85,47 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full bg-[#e3c16c] text-[#1a1a1a] font-medium text-[13px] rounded-md py-2.5 hover:bg-[#d2ac55] transition-colors disabled:opacity-60"
+          className="btn-primary w-full !min-h-11 !text-[14px] !font-semibold mt-1"
         >
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 
-      <div className="mt-8 pt-6 border-t border-[#454446]">
-        <p className="text-[11px] uppercase tracking-wider text-[#b8b6b9] mb-3">Demo accounts — tap to fill</p>
-        <div className="grid grid-cols-3 gap-2 text-[11px]">
-          {DEMO_ACCOUNTS.map((a) => (
-            <button
-              type="button"
-              key={a.email}
-              onClick={() => { setEmail(a.email); setPassword(a.password); }}
-              className="bg-[#1c1c1c] border border-[#454446] rounded p-2 text-left hover:border-[#e3c16c] transition-colors"
-            >
-              <p className="text-white font-medium">{a.label}</p>
-              <p className="text-[#92b0ce] mt-0.5">{a.password}</p>
-            </button>
-          ))}
+      {/* Demo picker — segmented control, not toy chips */}
+      <div className="mt-8 pt-6 border-t border-[var(--color-basalt-500)]">
+        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--color-fog-500)] mb-2.5">
+          Demo accounts
+        </p>
+        <div
+          className="grid grid-cols-3 rounded-[var(--radius-md)] border border-[var(--color-basalt-500)] p-0.5 bg-[var(--color-basalt-950)]"
+          role="group"
+          aria-label="Fill demo credentials"
+        >
+          {DEMO_ACCOUNTS.map((a, i) => {
+            const on = activeDemo === i;
+            return (
+              <button
+                key={a.email}
+                type="button"
+                onClick={() => {
+                  setActiveDemo(i);
+                  setEmail(a.email);
+                  setPassword(a.password);
+                }}
+                className={`h-9 rounded-[calc(var(--radius-md)-2px)] text-[12px] font-medium transition-colors ${
+                  on
+                    ? 'bg-[var(--color-basalt-700)] text-white shadow-sm'
+                    : 'text-[var(--color-text-secondary)] hover:text-white'
+                }`}
+              >
+                {a.label}
+              </button>
+            );
+          })}
         </div>
+        <p className="mt-2.5 text-[11px] text-[var(--color-fog-500)] text-center font-mono tabular-nums">
+          {DEMO_ACCOUNTS[activeDemo].password}
+        </p>
       </div>
     </div>
   );

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Check, X, Ruler, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import type { ApprovalItem } from '@/server/queries/approvals';
 import { approveApprovalAction, rejectApprovalAction } from '@/server/actions/approvals';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PageShell } from '@/components/ui/PageShell';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
   const router = useRouter();
@@ -24,46 +27,61 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
   const resolved = approvals.filter((a) => a.status !== 'PENDING');
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
-      <div className="pt-6 pb-4 px-6 border-b border-[#454446] shrink-0 bg-[#1c1c1c]">
-        <h1 className="text-[20px] font-medium text-white mb-1">Pending Approvals</h1>
-        <p className="text-[13px] text-[#b8b6b9]">Review and resolve measurement overrides submitted from the floor.</p>
-      </div>
+    <PageShell
+      header={
+        <PageHeader
+          breadcrumbs={[
+            { label: 'Ops', href: '/' },
+            { label: 'Approvals' },
+          ]}
+          title="Approvals"
+          subtitle="Review and resolve measurement overrides submitted from the floor."
+          meta={[
+            { label: `${pending.length} awaiting`, tone: pending.length > 0 ? 'gold' : 'green' },
+            { label: `${resolved.length} resolved`, tone: 'neutral' },
+          ]}
+        />
+      }
+    >
+      {error && <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{error}</div>}
 
-      {error && <div className="mx-6 mt-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{error}</div>}
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="space-y-6">
         <div>
           <h2 className="text-[13px] font-medium text-white mb-3">Awaiting Review ({pending.length})</h2>
           {pending.length === 0 ? (
-            <div className="text-center py-12 text-[#b8b6b9] bg-[#1c1c1c] border border-[#454446] border-dashed rounded-md">No approvals awaiting review.</div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No approvals awaiting review"
+              hint="Measurement overrides submitted from the floor will land here."
+              className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] border-dashed rounded-md py-12"
+            />
           ) : (
             <div className="space-y-3">
               {pending.map((a) => (
-                <div key={a.id} className="bg-[#1c1c1c] border border-[#e3c16c]/30 rounded-lg p-4 flex items-center justify-between gap-4">
+                <div key={a.id} className="bp-card p-4 flex items-center justify-between gap-4 !border-[rgba(227,193,108,0.35)]">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-9 h-9 rounded-md bg-[#e3c16c]/10 text-[#e3c16c] flex items-center justify-center shrink-0"><Ruler size={16} /></div>
+                    <div className="w-9 h-9 rounded-[var(--radius-md)] bg-[rgba(227,193,108,0.12)] text-[var(--color-vein)] flex items-center justify-center shrink-0"><Ruler size={16} /></div>
                     <div className="min-w-0">
-                      <p className="text-[13px] text-white font-medium truncate">{a.productName} <span className="text-[#92b0ce] font-mono">· {a.slabId}</span></p>
-                      <div className="flex items-center gap-2 text-[12px] text-[#b8b6b9] mt-0.5">
+                      <p className="text-[13px] text-white font-medium truncate">{a.productName} <span className="text-[var(--color-sodalite)] font-mono">· {a.slabId}</span></p>
+                      <div className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)] mt-0.5">
                         <span>{a.currentLength ?? '—'}&quot; × {a.currentWidth ?? '—'}&quot;</span>
-                        <ArrowRight size={12} className="text-[#e3c16c]" />
+                        <ArrowRight size={12} className="text-[var(--color-vein)]" />
                         <span className="text-white">{a.proposedLength}&quot; × {a.proposedWidth}&quot;</span>
-                        <span className="ml-2 text-[#b8b6b9]">submitted by {a.submittedByRole} · {a.createdAt}</span>
+                        <span className="ml-2 text-[var(--color-text-secondary)]">submitted by {a.submittedByRole} · {a.createdAt}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">
-                          🔐 Variance Delta: +4.2%
+                        <span className="bg-[var(--color-coral)]/10 text-[var(--color-coral)] border border-[rgba(232,149,107,0.3)] px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold">
+                          Variance +4.2%
                         </span>
-                        <span className="bg-[#92b0ce]/10 text-[#92b0ce] border border-[#92b0ce]/20 px-1.5 py-0.5 rounded text-[10px]">
-                          Cryptographic Sign-off Required
+                        <span className="bg-[rgba(146,176,206,0.10)] text-[var(--color-sodalite)] border border-[rgba(146,176,206,0.20)] px-1.5 py-0.5 rounded text-[10px]">
+                          Admin sign-off required
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button disabled={isPending} onClick={() => act(rejectApprovalAction, a.id)} className="flex items-center gap-1 text-[12px] text-[#b8b6b9] border border-[#454446] hover:text-red-400 hover:border-red-400/40 px-3 py-1.5 rounded transition-colors disabled:opacity-50"><X size={13} /> Reject</button>
-                    <button disabled={isPending} onClick={() => act(approveApprovalAction, a.id)} className="flex items-center gap-1 text-[12px] text-black bg-[#10b981] hover:bg-[#059669] px-3 py-1.5 rounded font-medium transition-colors disabled:opacity-50"><Check size={13} /> Approve</button>
+                    <button disabled={isPending} onClick={() => act(rejectApprovalAction, a.id)} className="btn-secondary flex items-center gap-1 text-[12px] py-1.5 disabled:opacity-50 hover:!border-[rgba(239,68,68,0.4)] hover:!text-[var(--color-ruby)]"><X size={13} /> Reject</button>
+                    <button disabled={isPending} onClick={() => act(approveApprovalAction, a.id)} className="flex items-center gap-1 text-[12px] text-[var(--color-basalt-950)] bg-[var(--color-emerald)] hover:opacity-90 px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors disabled:opacity-50"><Check size={13} /> Approve</button>
                   </div>
                 </div>
               ))}
@@ -76,10 +94,10 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
             <h2 className="text-[13px] font-medium text-white mb-3">Recently Resolved</h2>
             <div className="space-y-2">
               {resolved.map((a) => (
-                <div key={a.id} className="bg-[#1c1c1c] border border-[#454446] rounded-md p-3 flex items-center justify-between opacity-80">
-                  <p className="text-[12px] text-[#b8b6b9]"><span className="text-white font-mono">{a.slabId}</span> · {a.proposedLength}&quot; × {a.proposedWidth}&quot;</p>
+                <div key={a.id} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md p-3 flex items-center justify-between opacity-80">
+                  <p className="text-[12px] text-[var(--color-text-secondary)]"><span className="text-white font-mono">{a.slabId}</span> · {a.proposedLength}&quot; × {a.proposedWidth}&quot;</p>
                   {a.status === 'COMPLETED' ? (
-                    <span className="text-[11px] text-[#10b981] flex items-center gap-1"><CheckCircle2 size={13} /> Approved</span>
+                    <span className="text-[11px] text-[var(--color-emerald)] flex items-center gap-1"><CheckCircle2 size={13} /> Approved</span>
                   ) : (
                     <span className="text-[11px] text-red-400 flex items-center gap-1"><XCircle size={13} /> Rejected</span>
                   )}
@@ -89,6 +107,6 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

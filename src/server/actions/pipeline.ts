@@ -67,7 +67,7 @@ const ConvertSchema = z.object({
  */
 export async function convertOpportunityToOrderAction(
   input: z.input<typeof ConvertSchema>,
-): Promise<ActionResult> {
+): Promise<ActionResult & { soNumber?: string }> {
   const role = await getEffectiveRole();
   requireRole(role, ['ADMIN', 'SALES']);
 
@@ -123,7 +123,7 @@ export async function convertOpportunityToOrderAction(
   revalidatePath('/orders');
   revalidatePath('/catalog');
   revalidatePath('/crm');
-  return { ok: true };
+  return { ok: true, soNumber };
 }
 
 export async function setOpportunityStatusAction(id: string, status: string): Promise<ActionResult> {

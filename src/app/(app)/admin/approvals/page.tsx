@@ -1,14 +1,12 @@
-import { redirect } from 'next/navigation';
-import { ApprovalsClient } from '@/components/ApprovalsClient';
-import { getEffectiveRole } from '@/lib/auth';
+import { getSessionContext } from '@/lib/auth';
+import { assertPageAccess } from '@/lib/page-access';
 import { getApprovals } from '@/server/queries/approvals';
+import { ApprovalsClient } from '@/components/ApprovalsClient';
 
 export const metadata = { title: 'Approvals | BluePlanet' };
 
 export default async function ApprovalsPage() {
-  const role = (await getEffectiveRole()) ?? 'SALES';
-  if (role !== 'ADMIN') redirect('/');
-
+  assertPageAccess(await getSessionContext(), 'admin');
   const approvals = await getApprovals();
   return <ApprovalsClient approvals={approvals} />;
 }

@@ -16,8 +16,8 @@ const PALETTE = ['#e3c16c', '#92b0ce', '#10b981', '#e8956b', '#b58cd6', '#5db5b5
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#1c1c1c] border border-[#454446] rounded-lg p-5">
-      <h3 className="text-[13px] font-medium text-white mb-4">{title}</h3>
+    <div className="bp-card p-5 h-full">
+      <h3 className="text-[13px] font-medium text-white mb-4 tracking-tight">{title}</h3>
       <div className="h-[220px]">{children}</div>
     </div>
   );

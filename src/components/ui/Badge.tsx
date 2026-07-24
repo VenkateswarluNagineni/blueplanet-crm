@@ -3,33 +3,92 @@ import React from 'react';
 export type Tone = 'neutral' | 'blue' | 'gold' | 'green' | 'red' | 'orange';
 
 const TONES: Record<Tone, string> = {
-  neutral: 'bg-[#333234] border-[#454446] text-[#b8b6b9]',
-  blue: 'bg-[#92b0ce]/10 border-[#92b0ce]/30 text-[#92b0ce]',
-  gold: 'bg-[#e3c16c]/10 border-[#e3c16c]/30 text-[#e3c16c]',
-  green: 'bg-[#10b981]/10 border-[#10b981]/20 text-[#10b981]',
-  red: 'bg-red-500/10 border-red-500/30 text-red-400',
-  orange: 'bg-[#e8956b]/10 border-[#e8956b]/30 text-[#e8956b]',
+  neutral:
+    'bg-[var(--color-basalt-700)] border-[var(--color-basalt-500)] text-[var(--color-text-secondary)]',
+  blue: 'bg-[rgba(146,176,206,0.1)] border-[rgba(146,176,206,0.3)] text-[var(--color-sodalite)]',
+  gold: 'bg-[rgba(227,193,108,0.1)] border-[rgba(227,193,108,0.3)] text-[var(--color-vein)]',
+  green: 'bg-[rgba(16,185,129,0.1)] border-[rgba(16,185,129,0.25)] text-[var(--color-emerald)]',
+  red: 'bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.3)] text-[var(--color-ruby)]',
+  orange: 'bg-[rgba(232,149,107,0.1)] border-[rgba(232,149,107,0.3)] text-[var(--color-coral)]',
 };
 
-/** A small, consistent status/label chip used across lists and drawers. */
-export function Badge({ tone = 'neutral', children, className = '' }: { tone?: Tone; children: React.ReactNode; className?: string }) {
+/** Status/label chip — DESIGN.md §4.4 */
+export function Badge({
+  tone = 'neutral',
+  children,
+  className = '',
+}: {
+  tone?: Tone;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${TONES[tone]} ${className}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border ${TONES[tone]} ${className}`}
+    >
       {children}
     </span>
   );
 }
 
-// Domain status → tone, so every status renders the same color everywhere.
 const STATUS_TONE: Record<string, Tone> = {
-  ACTIVE: 'green', PREFERRED: 'gold', ON_HOLD: 'orange', INACTIVE: 'neutral',
-  AVAILABLE: 'green', RESERVED: 'orange', COMMITTED: 'blue', SOLD: 'neutral',
-  WRITTEN_OFF: 'red', ORDERED: 'blue', RECEIVED: 'blue',
-  TRANSFER: 'blue', HOLD: 'gold', RELEASE: 'green', WRITE_OFF: 'red',
+  ACTIVE: 'green',
+  PREFERRED: 'gold',
+  ON_HOLD: 'gold', // reserved / held — thin gold language (ceremony)
+  INACTIVE: 'neutral',
+  AVAILABLE: 'green',
+  RESERVED: 'gold',
+  COMMITTED: 'blue',
+  SOLD: 'neutral',
+  WRITTEN_OFF: 'red',
+  ORDERED: 'blue',
+  RECEIVED: 'blue',
+  TRANSFER: 'blue',
+  HOLD: 'gold',
+  RELEASE: 'green',
+  WRITE_OFF: 'red',
+  PRODUCTION: 'blue',
+  ON_WATER: 'blue',
+  CUSTOMS: 'orange',
+  INLAND_TRANSIT: 'blue',
+  PLACED: 'gold',
+  COMPLETED: 'green',
+  CANCELLED: 'red',
+  LEAD: 'neutral',
+  QUOTED: 'blue',
+  NEGOTIATION: 'gold',
+  CLOSED_WON: 'green',
+  CLOSED_LOST: 'red',
 };
 
-/** A status chip that maps a known domain status to its canonical tone. */
-export function StatusPill({ status, className = '' }: { status: string; className?: string }) {
-  const tone = STATUS_TONE[status.toUpperCase()] ?? 'neutral';
-  return <Badge tone={tone} className={className}>{status.replace(/_/g, ' ')}</Badge>;
+const STATUS_LABEL: Record<string, string> = {
+  ON_HOLD: 'On hold',
+  WRITTEN_OFF: 'Written off',
+  CLOSED_WON: 'Closed won',
+  CLOSED_LOST: 'Closed lost',
+};
+
+/** Domain status → canonical tone everywhere. Held = quiet gold (reservation ceremony). */
+export function StatusPill({
+  status,
+  className = '',
+  title,
+}: {
+  status: string;
+  className?: string;
+  /** Optional tooltip (e.g. hold reason). */
+  title?: string;
+}) {
+  const key = status.toUpperCase();
+  const tone = STATUS_TONE[key] ?? 'neutral';
+  const label = STATUS_LABEL[key] ?? status.replace(/_/g, ' ');
+  const held = key === 'ON_HOLD' || key === 'RESERVED';
+  return (
+    <Badge
+      tone={tone}
+      className={`${held ? 'bp-status-held' : ''} ${className}`.trim()}
+    >
+      <span title={title}>{label}</span>
+    </Badge>
+  );
 }

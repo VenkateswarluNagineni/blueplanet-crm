@@ -1,21 +1,24 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useTransition, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Search,
-  ListFilter,
-  XCircle,
-  CheckCircle2,
-  Clock,
   Upload,
   ArrowUpDown,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 import type { OrderRow } from '@/server/queries/orders';
 import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/actions/sales';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PageShell } from '@/components/ui/PageShell';
+import { ListToolbar, FilterChip } from '@/components/ui/ListToolbar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusPill } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 type SortField = 'date' | 'material' | 'customer' | 'value';
 type SortDir = 'asc' | 'desc';
@@ -50,6 +53,7 @@ export default function OrdersDashboardClient({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const _toast = useToast();
   const { confirm, confirmDialog: _confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
@@ -58,9 +62,34 @@ export default function OrdersDashboardClient({
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [actionError, setActionError] = useState('');
+  const [highlightOrder, setHighlightOrder] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLTableRowElement | null>(null);
 
   const [receiptModalOrder, setReceiptModalOrder] = useState<string | null>(null);
   const [receiptRefInput, setReceiptRefInput] = useState('');
+
+  // Deep-link: /orders?order=<soNumber|id> seeds search + highlights the row.
+  // Also honors /orders?status=COMPLETED|PLACED|CANCELLED from the command center.
+  useEffect(() => {
+    const wanted = searchParams.get('order');
+    const status = searchParams.get('status');
+    const t = setTimeout(() => {
+      if (wanted) {
+        setSearchTerm(wanted);
+        setHighlightOrder(wanted);
+      }
+      if (status && ['PLACED', 'COMPLETED', 'CANCELLED', 'ALL'].includes(status.toUpperCase())) {
+        setStatusFilter(status.toUpperCase() === 'ALL' ? 'ALL' : status.toUpperCase());
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!highlightOrder) return;
+    const t = setTimeout(() => highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    return () => clearTimeout(t);
+  }, [highlightOrder, searchTerm, statusFilter]);
 
   const handleAddReceipt = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,53 +178,64 @@ export default function OrdersDashboardClient({
       }
     });
 
-  return (
-    <div className="h-full w-full flex flex-col bg-[#2b2a2c] text-[#d9d8d9]">
-      {/* Header & Controls */}
-      <div className="pt-6 pb-4 px-6 border-b border-[#454446] shrink-0 bg-[#1c1c1c]">
-        <div className="flex justify-between items-end mb-4">
-          <div>
-            <h1 className="text-[20px] font-medium text-white mb-2">Sales Orders</h1>
-            <p className="text-[13px] text-[#b8b6b9]">
-              {isAdmin
-                ? 'Global view of all transactions, cancellations, and completions.'
-                : 'Manage your active quotes and cancellations.'}
-            </p>
-          </div>
-          <span className="text-[12px] text-[#b8b6b9] bg-[#2b2a2c] border border-[#454446] px-3 py-1.5 rounded">
-            {isAdmin ? 'Admin View — all reps' : 'My Orders'}
-          </span>
-        </div>
+  const pendingCount = orders.filter((o) => o.status === 'PLACED').length;
+  const completedCount = orders.filter((o) => o.status === 'COMPLETED').length;
+  const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
 
-        <div className="flex justify-between items-center">
-          <div className="flex gap-4 items-center">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-2.5 text-[#b8b6b9]" />
-              <input
-                type="text"
-                placeholder="Search orders or customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-1.5 bg-[#2b2a2c] border border-[#454446] rounded text-[13px] text-white focus:outline-none focus:border-[#92b0ce] w-80 transition-colors"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-[13px]">
-              <ListFilter size={14} className="text-[#b8b6b9]" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                aria-label="Filter by status"
-                className="bg-[#2b2a2c] border border-[#454446] rounded px-2 py-1.5 text-white outline-none focus:border-[#92b0ce] transition-colors"
-              >
-                <option value="ALL">All statuses</option>
-                <option value="PLACED">Pending Payment</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('ALL');
+    setHighlightOrder(null);
+  };
+
+  return (
+    <PageShell
+      flush
+      header={
+        <PageHeader
+          eyebrow="Sales"
+          title="Orders"
+          subtitle={
+            isAdmin
+              ? 'Global view of all transactions, cancellations, and completions.'
+              : 'Manage your active quotes and cancellations.'
+          }
+          meta={[
+            { label: isAdmin ? 'All reps' : 'My book', tone: isAdmin ? 'gold' : 'green' },
+            { label: `${orders.length} total`, tone: 'neutral' },
+            ...(pendingCount > 0
+              ? [{ label: `${pendingCount} pending payment`, tone: 'gold' as const }]
+              : []),
+          ]}
+        >
+          <ListToolbar
+            search={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Search orders, customers, or materials…"
+            resultCount={displayedOrders.length}
+            totalCount={orders.length}
+            onClear={searchTerm || statusFilter !== 'ALL' ? clearFilters : undefined}
+            clearLabel="Reset filters"
+            filters={
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <FilterChip active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} count={orders.length}>
+                  All
+                </FilterChip>
+                <FilterChip active={statusFilter === 'PLACED'} onClick={() => setStatusFilter('PLACED')} count={pendingCount}>
+                  Pending
+                </FilterChip>
+                <FilterChip active={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} count={completedCount}>
+                  Completed
+                </FilterChip>
+                <FilterChip active={statusFilter === 'CANCELLED'} onClick={() => setStatusFilter('CANCELLED')} count={cancelledCount}>
+                  Cancelled
+                </FilterChip>
+              </div>
+            }
+          />
+        </PageHeader>
+      }
+    >
 
       {actionError && (
         <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">
@@ -203,75 +243,100 @@ export default function OrdersDashboardClient({
         </div>
       )}
 
-      {/* Table View */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="bg-[#1c1c1c] border border-[#454446] rounded-xl overflow-hidden shadow-md">
-          <table className="w-full text-left border-collapse">
+      {/* Table View — DESIGN.md §5 / Phase C dense table */}
+      <div className="p-6">
+        <div className="bp-table-shell">
+          <table className="bp-table">
             <thead>
-              <tr className="bg-[#333234] text-[11px] uppercase tracking-wider text-[#b8b6b9]">
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Order ID</th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="date" label="Date" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="customer" label="Customer / Project" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]"><SortHeader field="material" label="Material (Slab)" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-right"><SortHeader field="value" label="Total Value" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Rep ID</th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446]">Status</th>
-                <th className="py-3.5 px-4 font-medium border-b border-[#454446] text-center">Actions</th>
+              <tr>
+                <th>Order ID</th>
+                <th><SortHeader field="date" label="Date" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th><SortHeader field="customer" label="Customer / Project" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th><SortHeader field="material" label="Material (Slab)" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th className="text-right"><SortHeader field="value" label="Total Value" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th>Rep ID</th>
+                <th>Status</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#454446] text-[13px]">
+            <tbody>
               {displayedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-[#b8b6b9]">No orders found matching your criteria.</td>
+                  <td colSpan={8} className="!p-4">
+                    <EmptyState
+                      icon={FileText}
+                      title={orders.length === 0 ? 'No sales orders yet' : 'No orders match your filters'}
+                      hint={
+                        orders.length === 0
+                          ? 'Convert a pipeline deal or create an order from the catalog.'
+                          : 'Try another status chip or clear search.'
+                      }
+                      action={
+                        (searchTerm || statusFilter !== 'ALL') ? (
+                          <button type="button" onClick={clearFilters} className="btn-ghost text-[13px]">
+                            Reset filters
+                          </button>
+                        ) : undefined
+                      }
+                      className="py-10"
+                    />
+                  </td>
                 </tr>
               ) : (
-                displayedOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-[#2b2a2c] transition-colors">
-                    <td className="py-4 px-4 font-mono text-white font-medium">{order.soNumber}</td>
-                    <td className="py-4 px-4 text-[#b8b6b9]">{order.placedAt}</td>
-                    <td className="py-4 px-4 font-medium text-white">{order.customerName}</td>
-                    <td className="p-3">
+                displayedOrders.map((order) => {
+                  const isHit =
+                    !!highlightOrder &&
+                    (order.soNumber === highlightOrder || order.id === highlightOrder);
+                  return (
+                  <tr
+                    key={order.id}
+                    ref={isHit ? highlightRef : undefined}
+                    className={isHit ? 'bp-table-row-hit' : undefined}
+                  >
+                    <td className="bp-id">{order.soNumber}</td>
+                    <td className="text-[var(--color-text-secondary)]">{order.placedAt}</td>
+                    <td className="font-medium text-white">{order.customerName}</td>
+                    <td>
                       <span className="text-white">{order.materialName}</span>
                       <br />
                       {order.slabId !== '—' ? (
                         <a
                           href={`/inventory?slab=${encodeURIComponent(order.slabId)}`}
-                          className="text-[11px] text-[#92b0ce] hover:text-white hover:underline"
+                          className="text-[11px] text-[var(--color-sodalite)] hover:text-white hover:underline bp-mono"
                           title="Open this slab's full Material Passport in Inventory"
                         >
                           {order.slabId} ({order.sqft} sqft) ↗
                         </a>
                       ) : (
-                        <span className="text-[11px] text-[#92b0ce]">{order.slabId} ({order.sqft} sqft)</span>
+                        <span className="text-[11px] text-[var(--color-sodalite)] bp-mono">{order.slabId} ({order.sqft} sqft)</span>
                       )}
                     </td>
-                    <td className="p-3 text-right font-medium text-[#10b981]">
+                    <td className="bp-money">
                       ${order.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        <span className="bg-[#454446] text-white px-1.5 py-0.5 rounded text-[11px] font-mono">{order.repId} (60%)</span>
-                        <span className="bg-[#333234] text-[#92b0ce] border border-[#454446] px-1 py-0.5 rounded text-[10px] font-mono" title="Branch Override Associate">SPLIT (40%)</span>
+                        <span className="bg-[var(--color-basalt-500)] text-white px-1.5 py-0.5 rounded text-[11px] font-mono">{order.repId} (60%)</span>
+                        <span className="bg-[var(--color-basalt-700)] text-[var(--color-sodalite)] border border-[var(--color-basalt-500)] px-1 py-0.5 rounded text-[10px] font-mono" title="Branch Override Associate">SPLIT (40%)</span>
                       </div>
-                      <div className="text-[10px] text-[#10b981] mt-1 font-mono">
+                      <div className="text-[10px] text-[var(--color-emerald)] mt-1 font-mono">
                         Payout: ${(order.totalValue * 0.045).toFixed(2)}
                       </div>
                     </td>
                     <td className="p-3">
+                      <StatusPill
+                        status={
+                          order.status === 'PLACED'
+                            ? 'PLACED'
+                            : order.status === 'COMPLETED'
+                              ? 'COMPLETED'
+                              : order.status === 'CANCELLED'
+                                ? 'CANCELLED'
+                                : order.status
+                        }
+                      />
                       {order.status === 'PLACED' && (
-                        <span className="inline-flex items-center gap-1 text-[#e3c16c] bg-[#e3c16c]/10 px-2 py-1 rounded text-[11px] font-medium border border-[#e3c16c]/20">
-                          <Clock size={12} /> Pending Payment
-                        </span>
-                      )}
-                      {order.status === 'COMPLETED' && (
-                        <span className="inline-flex items-center gap-1 text-[#10b981] bg-[#10b981]/10 px-2 py-1 rounded text-[11px] font-medium border border-[#10b981]/20">
-                          <CheckCircle2 size={12} /> Completed
-                        </span>
-                      )}
-                      {order.status === 'CANCELLED' && (
-                        <span className="inline-flex items-center gap-1 text-red-400 bg-red-400/10 px-2 py-1 rounded text-[11px] font-medium border border-red-400/20">
-                          <XCircle size={12} /> Cancelled
-                        </span>
+                        <span className="block text-[10px] text-[var(--color-fog-500)] mt-1">Pending payment</span>
                       )}
                     </td>
                     <td className="p-3 text-center relative group">
@@ -281,14 +346,14 @@ export default function OrdersDashboardClient({
                             <button
                               onClick={() => handleCancelOrder(order.id)}
                               disabled={isPending}
-                              className="text-[11px] text-[#b8b6b9] hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
                             >
                               Cancel Order
                             </button>
                             <button
                               onClick={() => { setReceiptModalOrder(order.id); setActionError(''); }}
                               disabled={isPending}
-                              className="text-[11px] text-[#b8b6b9] hover:text-[#10b981] hover:bg-[#10b981]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-emerald)] hover:bg-[var(--color-emerald)]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
                             >
                               <Upload size={10} /> Add Receipt
                             </button>
@@ -298,7 +363,7 @@ export default function OrdersDashboardClient({
                           <button
                             onClick={() => handleReopenOrder(order.id)}
                             disabled={isPending}
-                            className="text-[11px] text-[#b8b6b9] hover:text-[#e3c16c] hover:bg-[#e3c16c]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                            className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-vein)] hover:bg-[var(--color-vein)]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
                             title={order.status === 'COMPLETED' ? 'Reverse this sale back to Pending' : 'Reactivate this cancelled order'}
                           >
                             <RotateCcw size={10} /> Reopen
@@ -307,53 +372,59 @@ export default function OrdersDashboardClient({
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add Receipt Modal */}
-      {receiptModalOrder && (
-        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#2b2a2c] border border-[#454446] rounded-lg w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#454446] bg-[#1c1c1c] flex justify-between items-center">
-              <h3 className="text-white font-medium">Upload Payment Receipt</h3>
-              <button onClick={() => setReceiptModalOrder(null)} className="text-[#b8b6b9] hover:text-white transition-colors">
-                <XCircle size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleAddReceipt} className="p-6 space-y-4">
-              <p className="text-[13px] text-[#b8b6b9]">
-                Attach proof of payment to officially complete this transaction.
-              </p>
-              <div>
-                <label className="block text-[12px] text-[#b8b6b9] mb-1.5">Wire / Check / Receipt Reference #</label>
-                <input
-                  type="text"
-                  required
-                  value={receiptRefInput}
-                  onChange={(e) => setReceiptRefInput(e.target.value)}
-                  className="w-full bg-[#1c1c1c] border border-[#454446] rounded px-3 py-2 text-white text-[13px] focus:outline-none focus:border-[#92b0ce]"
-                  placeholder="e.g. WIRE-998822"
-                />
-              </div>
-              {actionError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{actionError}</div>
-              )}
-              <div className="pt-4 mt-2 border-t border-[#454446] flex justify-end gap-3">
-                <button type="button" onClick={() => setReceiptModalOrder(null)} className="px-4 py-2 text-[13px] text-[#b8b6b9] hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={isPending} className="px-4 py-2 text-[13px] bg-[#10b981] text-black font-medium rounded hover:bg-[#059669] transition-colors flex items-center gap-2 disabled:opacity-60">
-                  <Upload size={14} /> {isPending ? 'Completing…' : 'Complete Transaction'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={!!receiptModalOrder}
+        onClose={() => setReceiptModalOrder(null)}
+        title="Upload Payment Receipt"
+        subtitle="Attach proof of payment to officially complete this transaction."
+        width={400}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" type="button" onClick={() => setReceiptModalOrder(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              form="receipt-form"
+              disabled={isPending}
+              className="!bg-[var(--color-emerald)] hover:!opacity-90"
+            >
+              <Upload size={14} /> {isPending ? 'Completing…' : 'Complete Transaction'}
+            </Button>
+          </>
+        }
+      >
+        <form id="receipt-form" onSubmit={handleAddReceipt} className="space-y-4">
+          <div>
+            <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">
+              Wire / Check / Receipt Reference #
+            </label>
+            <input
+              type="text"
+              required
+              value={receiptRefInput}
+              onChange={(e) => setReceiptRefInput(e.target.value)}
+              className="bp-input"
+              placeholder="e.g. WIRE-998822"
+            />
           </div>
-        </div>
-      )}
-    </div>
+          {actionError && (
+            <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded-[var(--radius-sm)]">
+              {actionError}
+            </div>
+          )}
+        </form>
+      </Modal>
+    </PageShell>
   );
 }
