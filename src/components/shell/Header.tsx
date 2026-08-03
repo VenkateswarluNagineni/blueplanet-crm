@@ -5,7 +5,7 @@ import { useRole } from '@/context/RoleContext';
 import { useMobileNav } from '@/context/MobileNav';
 import { useState, useEffect } from 'react';
 import { logoutAction } from '@/server/session-actions';
-import { CommandPalette } from '@/components/CommandPalette';
+import { CommandPalette } from '@/components/shell/CommandPalette';
 import { Drawer } from '@/components/ui/Drawer';
 
 export function Header() {
