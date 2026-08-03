@@ -22,9 +22,9 @@ import {
   Target,
   PauseCircle,
 } from 'lucide-react';
-import type { DashboardData } from '@/server/queries/dashboard';
+import type { DashboardData } from '@/server/dashboard/queries';
 import { ChartWidget, type ChartKey } from '@/components/dashboard/DashboardCharts';
-import { setDashboardLayoutAction } from '@/server/actions/dashboard';
+import { setDashboardLayoutAction } from '@/server/dashboard/actions';
 import { useRole } from '@/context/RoleContext';
 
 type Kind = 'kpi' | 'chart';

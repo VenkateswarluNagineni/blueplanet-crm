@@ -1,7 +1,7 @@
 import { getSessionContext } from '@/lib/domain/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/domain/rbac';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getInventoryOverview } from '@/server/queries/inventoryOverview';
+import { getInventoryOverview } from '@/server/inventory/overview-queries';
 import { InventoryOverviewClient } from '@/components/inventory/InventoryOverviewClient';
 
 export const metadata = { title: 'Inventory Overview | BluePlanet' };

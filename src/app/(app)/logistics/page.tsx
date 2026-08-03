@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getPurchaseOrders } from '@/server/queries/purchasing';
+import { getPurchaseOrders } from '@/server/purchasing/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { LogisticsTrackerClient } from '@/components/logistics/LogisticsTrackerClient';

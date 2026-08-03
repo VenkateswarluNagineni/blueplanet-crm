@@ -8,8 +8,8 @@ import {
   RotateCcw,
   FileText,
 } from 'lucide-react';
-import type { OrderRow } from '@/server/queries/orders';
-import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/actions/sales';
+import type { OrderRow } from '@/server/orders/queries';
+import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/orders/actions';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/ui/PageHeader';

@@ -2,7 +2,7 @@ import { CrmDashboardClient } from '@/components/crm/CrmDashboardClient';
 import { SalesCrmClient } from '@/components/crm/SalesCrmClient';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getCrmData, getSalesCrmData } from '@/server/queries/crm';
+import { getCrmData, getSalesCrmData } from '@/server/crm/queries';
 
 export const metadata = {
   title: 'People & Companies | BluePlanet',

@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { getEffectiveRole } from '@/lib/domain/auth';
 import { requireRole } from '@/lib/domain/rbac';
-import type { PoLogisticsStatus } from '@/server/queries/purchasing';
+import type { PoLogisticsStatus } from '@/server/purchasing/queries';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 

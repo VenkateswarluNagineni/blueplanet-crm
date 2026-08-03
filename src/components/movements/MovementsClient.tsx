@@ -5,7 +5,7 @@ import { Search, LayoutGrid, ArrowRight, History } from 'lucide-react';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
-import type { MovementLogRow } from '@/server/queries/movements';
+import type { MovementLogRow } from '@/server/movements/queries';
 
 const TYPE_TONE: Record<string, string> = {
   TRANSFER: 'text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)] bg-[rgba(146,176,206,0.10)]',

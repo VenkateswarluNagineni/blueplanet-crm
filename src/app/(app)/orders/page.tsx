@@ -1,7 +1,7 @@
 import OrdersDashboardClient from '@/components/orders/OrdersDashboardClient';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getSalesOrders } from '@/server/queries/orders';
+import { getSalesOrders } from '@/server/orders/queries';
 
 export const metadata = {
   title: 'Sales Orders | BluePlanet',

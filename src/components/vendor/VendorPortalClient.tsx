@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from 'react';
 import { FileText, DollarSign, Ship, AlertTriangle, Package } from 'lucide-react';
-import type { VendorOrder, VendorInvoiceRow } from '@/server/queries/vendor';
+import type { VendorOrder, VendorInvoiceRow } from '@/server/vendor/queries';
 import { VendorDashboard, type VendorKpis } from '@/components/vendor/VendorDashboard';
 import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { EmptyState } from '@/components/ui/EmptyState';

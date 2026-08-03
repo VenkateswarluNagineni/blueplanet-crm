@@ -7,7 +7,7 @@ import {
   TrendingUp, Globe, X, MapPin, FileText, Target, ListFilter, Edit2, KeyRound, Copy, Briefcase,
   LayoutGrid, Columns3, AlertTriangle, Lock,
 } from 'lucide-react';
-import type { CrmData, CrmCustomer } from '@/server/queries/crm';
+import type { CrmData, CrmCustomer } from '@/server/crm/queries';
 import { FacetCard } from '@/components/ui/FacetCard';
 import { Badge, StatusPill } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -15,7 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { ArrowUpDown } from 'lucide-react';
 import type { CreatePartyInput } from '@/lib/domain/party-validation';
-import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/actions/crm';
+import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/crm/actions';
 import {
   COUNTRIES, CURRENCIES, PAYMENT_TERMS, INCOTERMS, PARTY_STATUS, SUPPLIER_SUBTYPES,
   CUSTOMER_SUBTYPES, MATERIAL_CATEGORIES, VENDOR_SERVICE_TYPES, VENDOR_RATE_BASIS,

@@ -37,9 +37,9 @@ import { useToast } from '@/components/ui/Toast';
 import {
   submitMeasurementOverrideAction,
   transferSlabsAction, holdSlabsAction, releaseSlabsAction, writeOffSlabsAction,
-} from '@/server/actions/inventory';
+} from '@/server/inventory/actions';
 import { Term } from '@/components/ui/Tooltip';
-import type { InventoryRow, InventoryLocation } from '@/server/queries/inventory';
+import type { InventoryRow, InventoryLocation } from '@/server/inventory/queries';
 import { ArrowLeftRight, PauseCircle, PlayCircle, Trash2, History, ArrowLeft } from 'lucide-react';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 import { PageHeader } from '@/components/ui/PageHeader';

@@ -2,7 +2,7 @@ import CatalogDashboardClient from '@/components/catalog/CatalogDashboardClient'
 import { getSessionContext } from '@/lib/domain/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/domain/rbac';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getCatalog } from '@/server/queries/catalog';
+import { getCatalog } from '@/server/catalog/queries';
 
 export const metadata = {
   title: 'Material Catalog | BluePlanet',

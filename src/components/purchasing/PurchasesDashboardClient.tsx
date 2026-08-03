@@ -24,8 +24,8 @@ import { ListToolbar, FilterChip } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { LOGISTICS_STATUS_LABEL } from '@/lib/domain/logistics-stages';
-import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/queries/purchasing';
-import { createPOAction, advancePOAction } from '@/server/actions/purchasing';
+import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/purchasing/queries';
+import { createPOAction, advancePOAction } from '@/server/purchasing/actions';
 
 type SlipTarget = 'SUPPLIER' | 'OCEAN' | 'CUSTOMS' | 'INLAND';
 

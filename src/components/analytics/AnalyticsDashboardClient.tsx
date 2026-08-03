@@ -9,9 +9,9 @@ import {
   Download,
   Filter,
 } from 'lucide-react';
-import type { PoRow } from '@/server/queries/purchasing';
-import type { OrderRow } from '@/server/queries/orders';
-import type { CatalogProduct } from '@/server/queries/catalog';
+import type { PoRow } from '@/server/purchasing/queries';
+import type { OrderRow } from '@/server/orders/queries';
+import type { CatalogProduct } from '@/server/catalog/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';

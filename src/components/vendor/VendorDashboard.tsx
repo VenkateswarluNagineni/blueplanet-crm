@@ -15,7 +15,7 @@ import {
   RotateCcw,
   Check,
 } from 'lucide-react';
-import { setDashboardLayoutAction } from '@/server/actions/dashboard';
+import { setDashboardLayoutAction } from '@/server/dashboard/actions';
 
 export type VendorKpis = {
   balanceDue: number;

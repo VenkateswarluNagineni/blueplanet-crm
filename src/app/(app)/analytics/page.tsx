@@ -1,9 +1,9 @@
 import AnalyticsDashboardClient from '@/components/analytics/AnalyticsDashboardClient';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getPurchaseOrders } from '@/server/queries/purchasing';
-import { getSalesOrders } from '@/server/queries/orders';
-import { getCatalog } from '@/server/queries/catalog';
+import { getPurchaseOrders } from '@/server/purchasing/queries';
+import { getSalesOrders } from '@/server/orders/queries';
+import { getCatalog } from '@/server/catalog/queries';
 
 export const metadata = {
   title: 'Analytics | BluePlanet CRM',

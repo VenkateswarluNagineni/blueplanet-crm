@@ -1,7 +1,7 @@
 'use client';
 
 import { Layers } from 'lucide-react';
-import type { InventoryRow } from '@/server/queries/inventory';
+import type { InventoryRow } from '@/server/inventory/queries';
 import { StatusPill } from '@/components/ui/Badge';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 

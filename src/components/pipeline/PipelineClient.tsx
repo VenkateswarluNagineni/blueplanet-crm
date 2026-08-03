@@ -4,12 +4,12 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trophy, Ban, RotateCcw, FileOutput, ExternalLink } from 'lucide-react';
-import type { OppItem, QuotableSlab } from '@/server/queries/pipeline';
+import type { OppItem, QuotableSlab } from '@/server/pipeline/queries';
 import {
   createOpportunityAction,
   setOpportunityStatusAction,
   convertOpportunityToOrderAction,
-} from '@/server/actions/pipeline';
+} from '@/server/pipeline/actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { Modal } from '@/components/ui/Modal';

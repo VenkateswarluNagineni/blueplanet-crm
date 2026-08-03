@@ -1,7 +1,7 @@
 import PurchasesDashboardClient from '@/components/purchasing/PurchasesDashboardClient';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getPurchaseOrders, getPurchasingRefData } from '@/server/queries/purchasing';
+import { getPurchaseOrders, getPurchasingRefData } from '@/server/purchasing/queries';
 
 export const metadata = {
   title: 'Purchasing & Logistics | BluePlanet',

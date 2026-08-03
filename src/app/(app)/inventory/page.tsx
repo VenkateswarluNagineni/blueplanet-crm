@@ -2,7 +2,7 @@ import { InventoryTableClient } from '@/components/inventory/InventoryTableClien
 import { getSessionContext } from '@/lib/domain/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/domain/rbac';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getInventoryItems, getInventoryLocations } from '@/server/queries/inventory';
+import { getInventoryItems, getInventoryLocations } from '@/server/inventory/queries';
 
 export const metadata = {
   title: 'Inventory Search | BluePlanet',

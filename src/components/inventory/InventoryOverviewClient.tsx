@@ -7,7 +7,7 @@ import {
   Search, History, Warehouse, Box, Package, MapPin, Layers, ArrowRight,
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
-import type { InventoryOverview } from '@/server/queries/inventoryOverview';
+import type { InventoryOverview } from '@/server/inventory/overview-queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { KpiCard, RestrictedValue } from '@/components/ui/KpiCard';

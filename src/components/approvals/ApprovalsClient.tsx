@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X, Ruler, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
-import type { ApprovalItem } from '@/server/queries/approvals';
-import { approveApprovalAction, rejectApprovalAction } from '@/server/actions/approvals';
+import type { ApprovalItem } from '@/server/approvals/queries';
+import { approveApprovalAction, rejectApprovalAction } from '@/server/approvals/actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';

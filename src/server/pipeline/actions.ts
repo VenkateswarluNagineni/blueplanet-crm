@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { getEffectiveRole } from '@/lib/domain/auth';
 import { requireRole } from '@/lib/domain/rbac';
-import { PIPELINE_STAGES } from '@/server/queries/pipeline';
+import { PIPELINE_STAGES } from '@/server/pipeline/queries';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 

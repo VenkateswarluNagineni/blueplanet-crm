@@ -20,8 +20,8 @@ import {
   ArrowUpDown,
   Box,
 } from 'lucide-react';
-import type { CatalogProduct, CatalogSlab } from '@/server/queries/catalog';
-import { createQuoteAction } from '@/server/actions/sales';
+import type { CatalogProduct, CatalogSlab } from '@/server/catalog/queries';
+import { createQuoteAction } from '@/server/orders/actions';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';

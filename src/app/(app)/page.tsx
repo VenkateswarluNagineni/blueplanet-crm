@@ -1,7 +1,7 @@
 import { getSessionContext } from '@/lib/domain/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/domain/rbac';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getDashboardData } from '@/server/queries/dashboard';
+import { getDashboardData } from '@/server/dashboard/queries';
 import { CustomizableDashboard } from '@/components/dashboard/CustomizableDashboard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';

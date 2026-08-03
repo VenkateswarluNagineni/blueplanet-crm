@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import {
   Search, Mail, Phone, Target, TrendingUp, Briefcase, Pencil, Check, X, FileText, ExternalLink, Users,
 } from 'lucide-react';
-import type { SalesCrmData } from '@/server/queries/crm';
-import { setSalesTargetAction } from '@/server/actions/crm';
+import type { SalesCrmData } from '@/server/crm/queries';
+import { setSalesTargetAction } from '@/server/crm/actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { ListToolbar } from '@/components/ui/ListToolbar';

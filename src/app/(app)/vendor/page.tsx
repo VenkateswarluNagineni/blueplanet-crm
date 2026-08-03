@@ -1,7 +1,7 @@
 import { Truck } from 'lucide-react';
 import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
-import { getVendorPortal } from '@/server/queries/vendor';
+import { getVendorPortal } from '@/server/vendor/queries';
 import type { VendorKpis } from '@/components/vendor/VendorDashboard';
 import { VendorPortalClient } from '@/components/vendor/VendorPortalClient';
 import { PageHeader } from '@/components/ui/PageHeader';

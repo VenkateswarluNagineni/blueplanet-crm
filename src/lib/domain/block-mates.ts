@@ -1,4 +1,4 @@
-import type { InventoryRow } from '@/server/queries/inventory';
+import type { InventoryRow } from '@/server/inventory/queries';
 
 /** Preferred display order for block-mate strips (yard ops first). */
 const STATUS_ORDER: Record<string, number> = {

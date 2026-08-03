@@ -10,7 +10,7 @@ import {
   Cell,
   CartesianGrid,
 } from 'recharts';
-import type { DashboardData } from '@/server/queries/dashboard';
+import type { DashboardData } from '@/server/dashboard/queries';
 
 const PALETTE = ['#e3c16c', '#92b0ce', '#10b981', '#e8956b', '#b58cd6', '#5db5b5'];
 

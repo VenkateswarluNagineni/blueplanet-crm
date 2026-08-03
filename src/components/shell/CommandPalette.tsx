@@ -15,7 +15,7 @@ import {
   FileText,
   Truck,
 } from 'lucide-react';
-import { globalSearchAction, type SearchHit, type SearchKind } from '@/server/actions/search';
+import { globalSearchAction, type SearchHit, type SearchKind } from '@/server/search/actions';
 import { type AppRole, visibleNavItems, labelFor } from '@/lib/domain/nav';
 import type { VisibilitySettings } from '@/context/RoleContext';
 
