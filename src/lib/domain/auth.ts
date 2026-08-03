@@ -1,8 +1,8 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
-import { db } from './db';
-import { env } from './env';
+import { db } from '../db';
+import { env } from '../env';
 
 const SECRET = new TextEncoder().encode(env.AUTH_SECRET);
 const SESSION_COOKIE = 'bp_session';

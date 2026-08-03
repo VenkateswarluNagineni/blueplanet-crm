@@ -1,6 +1,6 @@
 import 'server-only';
-import { db } from './db';
-import { ForbiddenError } from './errors';
+import { db } from '../db';
+import { ForbiddenError } from '../errors';
 
 export type VisibilitySettings = {
   salesCanViewLandedCost: boolean;

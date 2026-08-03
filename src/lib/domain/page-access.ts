@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import type { SessionContext } from '@/lib/auth';
-import { canViewFullInventory, type VisibilitySettings } from '@/lib/rbac';
+import type { SessionContext } from '@/lib/domain/auth';
+import { canViewFullInventory, type VisibilitySettings } from '@/lib/domain/rbac';
 
 /** Role-appropriate landing path after a forbidden navigation. */
 export function homeForRole(role: string): string {
