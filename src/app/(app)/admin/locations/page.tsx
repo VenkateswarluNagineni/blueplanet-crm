@@ -1,7 +1,7 @@
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getLocationsAdmin } from '@/server/queries/locations';
-import { LocationsClient } from '@/components/LocationsClient';
+import { LocationsClient } from '@/components/locations/LocationsClient';
 
 export const metadata = { title: 'Locations | BluePlanet' };
 

@@ -1,7 +1,7 @@
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getStockMovements } from '@/server/queries/movements';
-import { MovementsClient } from '@/components/MovementsClient';
+import { MovementsClient } from '@/components/movements/MovementsClient';
 
 export const metadata = { title: 'Stock Movements | BluePlanet' };
 

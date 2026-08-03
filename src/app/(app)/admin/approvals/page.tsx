@@ -1,7 +1,7 @@
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getApprovals } from '@/server/queries/approvals';
-import { ApprovalsClient } from '@/components/ApprovalsClient';
+import { ApprovalsClient } from '@/components/approvals/ApprovalsClient';
 
 export const metadata = { title: 'Approvals | BluePlanet' };
 
