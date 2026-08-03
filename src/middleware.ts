@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { env } from '@/lib/env';
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'dev-insecure-secret-change-me',
-);
+const SECRET = new TextEncoder().encode(env.AUTH_SECRET);
 const PUBLIC_PATHS = ['/login'];
 
 export async function middleware(req: NextRequest) {

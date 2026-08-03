@@ -2,10 +2,9 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { db } from './db';
+import { env } from './env';
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'dev-insecure-secret-change-me',
-);
+const SECRET = new TextEncoder().encode(env.AUTH_SECRET);
 const SESSION_COOKIE = 'bp_session';
 const IMPERSONATE_COOKIE = 'bp_impersonate';
 const VALID_ROLES = ['ADMIN', 'SALES', 'VENDOR'];
