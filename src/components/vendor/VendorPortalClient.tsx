@@ -3,8 +3,8 @@
 import { useMemo, useRef } from 'react';
 import { FileText, DollarSign, Ship, AlertTriangle, Package } from 'lucide-react';
 import type { VendorOrder, VendorInvoiceRow } from '@/server/queries/vendor';
-import { VendorDashboard, type VendorKpis } from '@/components/VendorDashboard';
-import { LogisticsStageBar } from '@/components/LogisticsStageBar';
+import { VendorDashboard, type VendorKpis } from '@/components/vendor/VendorDashboard';
+import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
 

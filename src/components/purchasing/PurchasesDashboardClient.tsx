@@ -22,7 +22,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { ListToolbar, FilterChip } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { LogisticsStageBar } from '@/components/LogisticsStageBar';
+import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { LOGISTICS_STATUS_LABEL } from '@/lib/logistics-stages';
 import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/queries/purchasing';
 import { createPOAction, advancePOAction } from '@/server/actions/purchasing';

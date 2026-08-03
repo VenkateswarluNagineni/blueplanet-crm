@@ -5,7 +5,7 @@ import { assertPageAccess } from '@/lib/page-access';
 import { getPurchaseOrders } from '@/server/queries/purchasing';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
-import { LogisticsTrackerClient } from '@/components/LogisticsTrackerClient';
+import { LogisticsTrackerClient } from '@/components/logistics/LogisticsTrackerClient';
 
 export const metadata = { title: 'Logistics | BluePlanet' };
 

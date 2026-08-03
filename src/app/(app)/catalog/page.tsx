@@ -1,4 +1,4 @@
-import CatalogDashboardClient from '@/components/CatalogDashboardClient';
+import CatalogDashboardClient from '@/components/catalog/CatalogDashboardClient';
 import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/rbac';
 import { assertPageAccess } from '@/lib/page-access';

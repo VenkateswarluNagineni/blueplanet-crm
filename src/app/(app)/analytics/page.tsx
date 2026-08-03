@@ -1,4 +1,4 @@
-import AnalyticsDashboardClient from '@/components/AnalyticsDashboardClient';
+import AnalyticsDashboardClient from '@/components/analytics/AnalyticsDashboardClient';
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getPurchaseOrders } from '@/server/queries/purchasing';

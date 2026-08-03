@@ -51,6 +51,8 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { swatchBaseForMaterial } from '@/lib/material-swatch';
+import { getBlockMates } from '@/lib/block-mates';
+import { PassportMatesStrip } from '@/components/inventory/PassportMatesStrip';
 
 type InventoryItemProps = InventoryRow;
 type BulkOp = 'TRANSFER' | 'HOLD' | 'RELEASE' | 'WRITE_OFF';
@@ -272,6 +274,11 @@ export function InventoryTableClient({
     params.set('slab', slab.uniqueSlabId);
     router.replace(`/inventory?${params.toString()}`, { scroll: false });
   };
+
+  const passportMates = useMemo(() => {
+    if (!selectedPassportSlab) return [];
+    return getBlockMates(selectedPassportSlab, initialData);
+  }, [selectedPassportSlab, initialData]);
 
   // Deep-link filters: arriving with ?location=<name> / ?status=<STATUS> (e.g. from the
   // Inventory Overview by-location rows) pre-seeds the matching sidebar filter once on mount.
@@ -1406,6 +1413,8 @@ export function InventoryTableClient({
                 </div>
               )}
             </div>
+
+            <PassportMatesStrip mates={passportMates} onSelect={openPassport} />
 
             {/* Drawer Content (Timeline) — real lineage from the database */}
             <div className="flex-1 overflow-y-auto p-6">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ship, ArrowRight, Package } from 'lucide-react';
-import { LogisticsStageBar } from '@/components/LogisticsStageBar';
+import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import {
   LOGISTICS_STEPS,
   LOGISTICS_STATUS_LABEL,

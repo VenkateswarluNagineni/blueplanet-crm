@@ -1,4 +1,4 @@
-import PurchasesDashboardClient from '@/components/PurchasesDashboardClient';
+import PurchasesDashboardClient from '@/components/purchasing/PurchasesDashboardClient';
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getPurchaseOrders, getPurchasingRefData } from '@/server/queries/purchasing';

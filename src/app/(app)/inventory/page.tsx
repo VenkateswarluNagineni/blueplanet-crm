@@ -1,4 +1,4 @@
-import { InventoryTableClient } from '@/components/InventoryTableClient';
+import { InventoryTableClient } from '@/components/inventory/InventoryTableClient';
 import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/rbac';
 import { assertPageAccess } from '@/lib/page-access';
