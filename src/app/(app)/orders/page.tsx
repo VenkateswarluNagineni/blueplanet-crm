@@ -1,4 +1,4 @@
-import OrdersDashboardClient from '@/components/OrdersDashboardClient';
+import OrdersDashboardClient from '@/components/orders/OrdersDashboardClient';
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getSalesOrders } from '@/server/queries/orders';

@@ -1,4 +1,4 @@
-import { PipelineClient } from '@/components/PipelineClient';
+import { PipelineClient } from '@/components/pipeline/PipelineClient';
 import { getSessionContext } from '@/lib/auth';
 import { getCompanySettings, canViewAllPipeline } from '@/lib/rbac';
 import { assertPageAccess } from '@/lib/page-access';

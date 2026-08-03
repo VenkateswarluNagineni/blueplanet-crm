@@ -1,5 +1,5 @@
-import { CrmDashboardClient } from '@/components/CrmDashboardClient';
-import { SalesCrmClient } from '@/components/SalesCrmClient';
+import { CrmDashboardClient } from '@/components/crm/CrmDashboardClient';
+import { SalesCrmClient } from '@/components/crm/SalesCrmClient';
 import { getSessionContext } from '@/lib/auth';
 import { assertPageAccess } from '@/lib/page-access';
 import { getCrmData, getSalesCrmData } from '@/server/queries/crm';
