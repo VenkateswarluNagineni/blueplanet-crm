@@ -5,9 +5,9 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole, getSessionContext } from '@/lib/auth';
-import { requireRole } from '@/lib/rbac';
-import { createPartySchema, normalizePhone, normalizeCommission, type CreatePartyInput } from '@/lib/validation/party';
+import { getEffectiveRole, getSessionContext } from '@/lib/domain/auth';
+import { requireRole } from '@/lib/domain/rbac';
+import { createPartySchema, normalizePhone, normalizeCommission, type CreatePartyInput } from '@/lib/domain/party-validation';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type CreatePartyResult =

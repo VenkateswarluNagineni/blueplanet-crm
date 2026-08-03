@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser, getEffectiveRole } from '@/lib/auth';
-import { getCompanySettings } from '@/lib/rbac';
+import { getCurrentUser, getEffectiveRole } from '@/lib/domain/auth';
+import { getCompanySettings } from '@/lib/domain/rbac';
 import { db } from '@/lib/db';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { Header } from '@/components/shell/Header';

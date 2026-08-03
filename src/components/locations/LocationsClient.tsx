@@ -4,7 +4,7 @@ import React, { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Edit2, Phone, Printer, MapPin, Package, Users, Trash2 } from 'lucide-react';
 import { BrandMark } from '@/components/brand/Wordmark';
-import { LOCATION_TYPES, COUNTRIES } from '@/lib/reference';
+import { LOCATION_TYPES, COUNTRIES } from '@/lib/domain/reference';
 import { createLocationAction, updateLocationAction, softDeleteLocationAction, type LocationInput } from '@/server/actions/locations';
 import type { AdminLocation } from '@/server/queries/locations';
 import { useToast } from '@/components/ui/Toast';

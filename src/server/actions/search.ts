@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { getSessionContext } from '@/lib/auth';
-import { getCompanySettings, canViewFullInventory } from '@/lib/rbac';
+import { getSessionContext } from '@/lib/domain/auth';
+import { getCompanySettings, canViewFullInventory } from '@/lib/domain/rbac';
 
 export type SearchKind = 'customer' | 'supplier' | 'vendor' | 'associate' | 'product' | 'slab' | 'order' | 'location';
 export type SearchHit = { kind: SearchKind; id: string; label: string; sublabel: string | null; href: string };

@@ -1,6 +1,6 @@
 import OrdersDashboardClient from '@/components/orders/OrdersDashboardClient';
-import { getSessionContext } from '@/lib/auth';
-import { assertPageAccess } from '@/lib/page-access';
+import { getSessionContext } from '@/lib/domain/auth';
+import { assertPageAccess } from '@/lib/domain/page-access';
 import { getSalesOrders } from '@/server/queries/orders';
 
 export const metadata = {

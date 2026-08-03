@@ -15,7 +15,7 @@ import type { CatalogProduct } from '@/server/queries/catalog';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { swatchBaseForMaterial } from '@/lib/material-swatch';
+import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 
 export default function AnalyticsDashboardClient({
   purchaseOrders,

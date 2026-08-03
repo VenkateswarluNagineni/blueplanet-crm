@@ -3,7 +3,7 @@
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { createSession } from '@/lib/auth';
+import { createSession } from '@/lib/domain/auth';
 
 export type LoginState = { error?: string };
 

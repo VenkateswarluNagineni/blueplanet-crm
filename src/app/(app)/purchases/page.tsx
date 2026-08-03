@@ -1,6 +1,6 @@
 import PurchasesDashboardClient from '@/components/purchasing/PurchasesDashboardClient';
-import { getSessionContext } from '@/lib/auth';
-import { assertPageAccess } from '@/lib/page-access';
+import { getSessionContext } from '@/lib/domain/auth';
+import { assertPageAccess } from '@/lib/domain/page-access';
 import { getPurchaseOrders, getPurchasingRefData } from '@/server/queries/purchasing';
 
 export const metadata = {

@@ -14,14 +14,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { ArrowUpDown } from 'lucide-react';
-import type { CreatePartyInput } from '@/lib/validation/party';
+import type { CreatePartyInput } from '@/lib/domain/party-validation';
 import { createPartyAction, updatePartyAction, softDeletePartyAction } from '@/server/actions/crm';
 import {
   COUNTRIES, CURRENCIES, PAYMENT_TERMS, INCOTERMS, PARTY_STATUS, SUPPLIER_SUBTYPES,
   CUSTOMER_SUBTYPES, MATERIAL_CATEGORIES, VENDOR_SERVICE_TYPES, VENDOR_RATE_BASIS,
   CUSTOMER_PRICE_TIERS, ASSOCIATE_ROLES, LOGIN_ROLES,
   TAX_EXEMPT_REASONS, DOC_DELIVERY_METHODS, FULFILLMENT_METHODS,
-} from '@/lib/reference';
+} from '@/lib/domain/reference';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';

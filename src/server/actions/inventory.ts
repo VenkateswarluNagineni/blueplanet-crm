@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole, getSessionContext } from '@/lib/auth';
-import { requireRole } from '@/lib/rbac';
+import { getEffectiveRole, getSessionContext } from '@/lib/domain/auth';
+import { requireRole } from '@/lib/domain/rbac';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type BulkResult = { ok: true; affected: number; skipped: number } | { ok: false; error: string };

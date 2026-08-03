@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole } from '@/lib/auth';
-import { requireRole } from '@/lib/rbac';
+import { getEffectiveRole } from '@/lib/domain/auth';
+import { requireRole } from '@/lib/domain/rbac';
 import type { PoLogisticsStatus } from '@/server/queries/purchasing';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };

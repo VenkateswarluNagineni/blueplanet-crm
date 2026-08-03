@@ -14,7 +14,7 @@ import {
   labelFor,
   isNavActive,
   GROUP_ORDER,
-} from '@/lib/nav';
+} from '@/lib/domain/nav';
 
 export type NavBadges = Partial<Record<string, number>>;
 

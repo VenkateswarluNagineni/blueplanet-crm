@@ -1,7 +1,7 @@
 import { PipelineClient } from '@/components/pipeline/PipelineClient';
-import { getSessionContext } from '@/lib/auth';
-import { getCompanySettings, canViewAllPipeline } from '@/lib/rbac';
-import { assertPageAccess } from '@/lib/page-access';
+import { getSessionContext } from '@/lib/domain/auth';
+import { getCompanySettings, canViewAllPipeline } from '@/lib/domain/rbac';
+import { assertPageAccess } from '@/lib/domain/page-access';
 import { getOpportunities, getAssociateOptions, getQuotableSlabs } from '@/server/queries/pipeline';
 
 export const metadata = { title: 'Sales Pipeline | BluePlanet' };

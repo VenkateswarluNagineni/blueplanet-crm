@@ -3,8 +3,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { destroySession, setImpersonation, getCurrentUser } from '@/lib/auth';
-import { canManageSettings } from '@/lib/rbac';
+import { destroySession, setImpersonation, getCurrentUser } from '@/lib/domain/auth';
+import { canManageSettings } from '@/lib/domain/rbac';
 import { ForbiddenError, ValidationError } from '@/lib/errors';
 
 export async function logoutAction(): Promise<void> {

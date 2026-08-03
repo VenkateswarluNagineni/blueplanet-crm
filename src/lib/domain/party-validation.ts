@@ -9,7 +9,7 @@ import {
   CUSTOMER_SUBTYPES, MATERIAL_CATEGORIES, VENDOR_SERVICE_TYPES, VENDOR_RATE_BASIS,
   CUSTOMER_PRICE_TIERS, ADDRESS_KINDS, CONTACT_KINDS, LOGIN_ROLES,
   TAX_EXEMPT_REASONS, DOC_DELIVERY_METHODS, FULFILLMENT_METHODS,
-} from '@/lib/reference';
+} from '@/lib/domain/reference';
 
 /** Normalize a phone number toward E.164-ish: keep a single leading +, digits only. */
 export function normalizePhone(raw: string | undefined | null): string | undefined {

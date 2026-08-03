@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/domain/auth';
 import { LoginForm } from './LoginForm';
 import { Wordmark } from '@/components/brand/Wordmark';
 

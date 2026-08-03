@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { swatchBaseForMaterial } from '@/lib/material-swatch';
+import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 
 // ---- Products Master List: price band + facet/column config ----
 

@@ -3,7 +3,7 @@
 import { Layers } from 'lucide-react';
 import type { InventoryRow } from '@/server/queries/inventory';
 import { StatusPill } from '@/components/ui/Badge';
-import { swatchBaseForMaterial } from '@/lib/material-swatch';
+import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 
 type Props = {
   mates: InventoryRow[];

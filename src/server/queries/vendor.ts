@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
-import { LOGISTICS_STATUS_LABEL, type PoLogisticsStatus } from '@/lib/logistics-stages';
+import { LOGISTICS_STATUS_LABEL, type PoLogisticsStatus } from '@/lib/domain/logistics-stages';
 
 export type VendorOrder = {
   poNumber: string;

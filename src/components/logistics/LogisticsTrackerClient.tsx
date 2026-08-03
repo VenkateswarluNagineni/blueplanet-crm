@@ -8,7 +8,7 @@ import {
   LOGISTICS_STEPS,
   LOGISTICS_STATUS_LABEL,
   type PoLogisticsStatus,
-} from '@/lib/logistics-stages';
+} from '@/lib/domain/logistics-stages';
 import { FilterChip } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
 

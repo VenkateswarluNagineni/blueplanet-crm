@@ -50,8 +50,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Drawer } from '@/components/ui/Drawer';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { swatchBaseForMaterial } from '@/lib/material-swatch';
-import { getBlockMates } from '@/lib/block-mates';
+import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
+import { getBlockMates } from '@/lib/domain/block-mates';
 import { PassportMatesStrip } from '@/components/inventory/PassportMatesStrip';
 
 type InventoryItemProps = InventoryRow;

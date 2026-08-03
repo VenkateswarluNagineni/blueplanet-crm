@@ -3,9 +3,9 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getSessionContext } from '@/lib/auth';
-import { requireRole } from '@/lib/rbac';
-import { LOCATION_TYPES, COUNTRIES } from '@/lib/reference';
+import { getSessionContext } from '@/lib/domain/auth';
+import { requireRole } from '@/lib/domain/rbac';
+import { LOCATION_TYPES, COUNTRIES } from '@/lib/domain/reference';
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 

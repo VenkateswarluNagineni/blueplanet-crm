@@ -1,7 +1,7 @@
 import { CrmDashboardClient } from '@/components/crm/CrmDashboardClient';
 import { SalesCrmClient } from '@/components/crm/SalesCrmClient';
-import { getSessionContext } from '@/lib/auth';
-import { assertPageAccess } from '@/lib/page-access';
+import { getSessionContext } from '@/lib/domain/auth';
+import { assertPageAccess } from '@/lib/domain/page-access';
 import { getCrmData, getSalesCrmData } from '@/server/queries/crm';
 
 export const metadata = {

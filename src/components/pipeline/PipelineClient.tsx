@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { swatchBaseForMaterial } from '@/lib/material-swatch';
+import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 
 const STAGES: { key: string; label: string; color: string }[] = [
   { key: 'LEAD', label: 'Lead', color: '#b8b6b9' },

@@ -5,7 +5,7 @@ import {
   LOGISTICS_STEPS,
   LOGISTICS_STATUS_INDEX,
   type PoLogisticsStatus,
-} from '@/lib/logistics-stages';
+} from '@/lib/domain/logistics-stages';
 
 /**
  * Shared progress strip for PO logistics — Purchasing rows + Logistics + Vendor.

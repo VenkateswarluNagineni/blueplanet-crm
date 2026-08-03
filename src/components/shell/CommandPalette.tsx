@@ -16,7 +16,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { globalSearchAction, type SearchHit, type SearchKind } from '@/server/actions/search';
-import { type AppRole, visibleNavItems, labelFor } from '@/lib/nav';
+import { type AppRole, visibleNavItems, labelFor } from '@/lib/domain/nav';
 import type { VisibilitySettings } from '@/context/RoleContext';
 
 const KIND_ICON: Record<SearchKind, React.ComponentType<{ size?: number; className?: string }>> = {
