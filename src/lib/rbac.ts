@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from './db';
+import { ForbiddenError } from './errors';
 
 export type VisibilitySettings = {
   salesCanViewLandedCost: boolean;
@@ -44,6 +45,6 @@ export function canManageSettings(role: string): boolean {
 /** Throw if the role is not in the allow-list. Use at the top of Server Actions. */
 export function requireRole(role: string | null, allowed: string[]): asserts role is string {
   if (!role || !allowed.includes(role)) {
-    throw new Error('Forbidden: insufficient permissions');
+    throw new ForbiddenError();
   }
 }
