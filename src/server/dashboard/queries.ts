@@ -18,6 +18,8 @@ export type DashboardData = {
     availableSlabs: number;
     /** Slabs currently ON_HOLD (reservation ceremony). */
     onHoldSlabs: number;
+    /** Sales orders placed but not yet completed or cancelled. */
+    ordersToReview: number;
   };
   inventoryByLocation: { name: string; value: number }[];
   pipelineByStage: { name: string; value: number }[];
@@ -35,7 +37,7 @@ const PO_LABEL: Record<string, string> = {
 
 export async function getDashboardData(canViewCost: boolean): Promise<DashboardData> {
   const now = new Date();
-  const [available, onHoldSlabs, locations, pos, opps, completedSales, pendingApprovals] =
+  const [available, onHoldSlabs, locations, pos, opps, completedSales, pendingApprovals, ordersToReview] =
     await Promise.all([
       db.inventoryItem.findMany({
         where: { deletedAt: null, status: 'AVAILABLE' },
@@ -59,6 +61,7 @@ export async function getDashboardData(canViewCost: boolean): Promise<DashboardD
         },
       }),
       db.eventOutbox.count({ where: { status: 'PENDING' } }),
+      db.salesOrder.count({ where: { deletedAt: null, status: 'PLACED' } }),
     ]);
 
   const locName = new Map(locations.map((l) => [l.id, l.name]));
@@ -108,6 +111,7 @@ export async function getDashboardData(canViewCost: boolean): Promise<DashboardD
       pendingApprovals,
       availableSlabs: available.length,
       onHoldSlabs,
+      ordersToReview,
     },
     inventoryByLocation: canViewCost
       ? Array.from(byLoc, ([name, value]) => ({ name, value: Math.round(value) }))

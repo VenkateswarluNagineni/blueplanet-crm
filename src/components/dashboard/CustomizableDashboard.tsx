@@ -260,19 +260,15 @@ function AttentionStrip({ data, role }: { data: DashboardData; role: AppRole }) 
     {
       id: 'orders',
       label: 'Review sales orders',
-      count: 0,
+      count: a.ordersToReview,
       href: '/orders',
       icon: Clock,
       tone: '#10b981',
-      // Always offer a commercial path for sales when nothing else fires.
-      show: role === 'SALES',
+      show: role === 'SALES' && a.ordersToReview > 0,
     },
   ].filter((i) => i.show);
 
-  // Prefer urgent / non-zero counts; still show sales shortcut.
-  const visible = items
-    .filter((i) => i.count > 0 || i.id === 'orders')
-    .slice(0, 4);
+  const visible = items.filter((i) => i.count > 0).slice(0, 4);
 
   if (visible.length === 0) return null;
 
@@ -304,7 +300,7 @@ function AttentionStrip({ data, role }: { data: DashboardData; role: AppRole }) 
                   }`}
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
-                  {item.id === 'orders' ? 'Open' : item.count.toLocaleString()}
+                  {item.count.toLocaleString()}
                 </p>
               </div>
               <ArrowUpRight

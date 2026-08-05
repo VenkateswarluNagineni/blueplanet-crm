@@ -15,7 +15,7 @@ const DEFAULT_LAYOUTS: Record<string, string[]> = {
     'chart:inventoryByLocation', 'chart:pipelineByStage', 'chart:poByStatus', 'chart:salesByAssociate',
   ],
   SALES: [
-    'kpi:availableSlabs', 'kpi:openPipelineValue', 'kpi:ytdSales', 'kpi:inTransitPos',
+    'kpi:openPipelineValue', 'kpi:ytdSales', 'kpi:availableSlabs', 'kpi:inTransitPos',
     'chart:pipelineByStage', 'chart:salesByAssociate', 'chart:poByStatus',
   ],
 };
