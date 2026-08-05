@@ -1415,7 +1415,7 @@ export function InventoryTableClient({
               )}
             </div>
 
-            <PassportMatesStrip mates={passportMates} onSelect={openPassport} />
+            <PassportMatesStrip currentSlab={selectedPassportSlab} mates={passportMates} onSelect={openPassport} />
 
             <SlabPhotoGallery slab={selectedPassportSlab} />
 

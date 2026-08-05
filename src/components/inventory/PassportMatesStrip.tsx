@@ -1,17 +1,22 @@
 'use client';
 
-import { Layers } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, Layers } from 'lucide-react';
 import type { InventoryRow } from '@/server/inventory/queries';
 import { StatusPill } from '@/components/ui/Badge';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
+import { BookMatchPreviewModal } from '@/components/inventory/BookMatchPreviewModal';
 
 type Props = {
+  currentSlab: InventoryRow;
   mates: InventoryRow[];
   onSelect: (slab: InventoryRow) => void;
 };
 
 /** Horizontal block-family strip — siblings from the same lot / bundle (H3.1). */
-export function PassportMatesStrip({ mates, onSelect }: Props) {
+export function PassportMatesStrip({ currentSlab, mates, onSelect }: Props) {
+  const [previewMate, setPreviewMate] = useState<InventoryRow | null>(null);
+
   if (mates.length === 0) return null;
 
   return (
@@ -27,13 +32,34 @@ export function PassportMatesStrip({ mates, onSelect }: Props) {
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
         {mates.map((mate) => (
-          <button
+          <div
             key={mate.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(mate)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(mate);
+              }
+            }}
             data-testid={`passport-mate-${mate.uniqueSlabId}`}
-            className="shrink-0 w-[148px] text-left rounded-[var(--radius-md)] border border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)] p-2.5 hover:border-[rgba(227,193,108,0.35)] hover:bg-[var(--color-basalt-800)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-vein)]"
+            className="relative shrink-0 w-[148px] text-left rounded-[var(--radius-md)] border border-[var(--color-basalt-500)] bg-[var(--color-basalt-900)] p-2.5 hover:border-[rgba(227,193,108,0.35)] hover:bg-[var(--color-basalt-800)] transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-vein)]"
           >
+            {currentSlab.photos.length > 0 && mate.photos.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewMate(mate);
+                }}
+                title="Preview book-match"
+                data-testid={`book-match-preview-${mate.uniqueSlabId}`}
+                className="absolute top-1.5 right-1.5 p-1 rounded-[var(--radius-sm)] bg-black/50 text-white hover:bg-black/70 transition-colors"
+              >
+                <BookOpen size={11} />
+              </button>
+            )}
             <div className="flex items-start gap-2">
               {mate.photos.length > 0 ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -68,9 +94,17 @@ export function PassportMatesStrip({ mates, onSelect }: Props) {
               <StatusPill status={mate.status} />
               <span className="text-[10px] text-[var(--color-fog-500)] tabular-nums">{mate.totalSf} sf</span>
             </div>
-          </button>
+          </div>
         ))}
       </div>
+      {previewMate && (
+        <BookMatchPreviewModal
+          open
+          onClose={() => setPreviewMate(null)}
+          left={currentSlab}
+          right={previewMate}
+        />
+      )}
     </div>
   );
 }
