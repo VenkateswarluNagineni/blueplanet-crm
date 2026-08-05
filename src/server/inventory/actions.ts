@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { getEffectiveRole, getSessionContext } from '@/lib/domain/auth';
 import { requireRole } from '@/lib/domain/rbac';
+import { ALLOWED_MIME_TYPES, MAX_PHOTO_BYTES, deleteSlabPhoto, saveSlabPhoto } from '@/lib/storage';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type BulkResult = { ok: true; affected: number; skipped: number } | { ok: false; error: string };
@@ -164,4 +165,60 @@ export async function writeOffSlabsAction(slabIds: string[], reason: string): Pr
   if (ops.length) await db.$transaction(ops);
   revalidatePath('/inventory');
   return { ok: true, affected: eligible.length, skipped: slabs.length - eligible.length };
+}
+
+/** Attach a staff-captured photo to a slab (opt-in, multi-photo). Admin and Sales. */
+export async function uploadSlabPhotoAction(inventoryItemId: string, formData: FormData): Promise<ActionResult> {
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  requireRole(ctx.role, ['ADMIN', 'SALES']);
+
+  const slab = await db.inventoryItem.findFirst({ where: { id: inventoryItemId, deletedAt: null } });
+  if (!slab) return { ok: false, error: 'Slab not found.' };
+
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No file provided.' };
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return { ok: false, error: 'Only JPEG, PNG, or WEBP photos are supported.' };
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { ok: false, error: 'Photos must be under 8MB.' };
+  }
+
+  const { storageKey } = await saveSlabPhoto(inventoryItemId, file);
+
+  const maxSort = await db.slabPhoto.aggregate({
+    where: { inventoryItemId },
+    _max: { sortOrder: true },
+  });
+
+  await db.slabPhoto.create({
+    data: {
+      inventoryItemId,
+      storageKey,
+      originalName: file.name || null,
+      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      uploadedByUserId: ctx.user.id,
+      uploadedByRole: ctx.role,
+    },
+  });
+
+  revalidatePath('/inventory');
+  return { ok: true };
+}
+
+/** Remove a slab photo (DB row + underlying file). Admin and Sales. */
+export async function deleteSlabPhotoAction(photoId: string): Promise<ActionResult> {
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  requireRole(ctx.role, ['ADMIN', 'SALES']);
+
+  const photo = await db.slabPhoto.findUnique({ where: { id: photoId } });
+  if (!photo) return { ok: false, error: 'Photo not found.' };
+
+  await db.slabPhoto.delete({ where: { id: photoId } });
+  await deleteSlabPhoto(photo.storageKey);
+
+  revalidatePath('/inventory');
+  return { ok: true };
 }

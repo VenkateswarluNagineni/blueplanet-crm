@@ -41,6 +41,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local slab-photo storage (dev stopgap — see src/lib/storage.ts)
+/storage/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

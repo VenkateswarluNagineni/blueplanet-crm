@@ -43,6 +43,8 @@ export type MovementRow = {
   createdAt: string; // ISO
 };
 
+export type SlabPhotoRow = { id: string; sortOrder: number };
+
 export type InventoryRow = {
   id: string;
   uniqueSlabId: string;
@@ -67,6 +69,7 @@ export type InventoryRow = {
   location: { name: string };
   movements: MovementRow[];
   trace: SlabTrace;
+  photos: SlabPhotoRow[];
 };
 
 export type InventoryLocation = { id: string; name: string; code: string };
@@ -87,6 +90,7 @@ export async function getInventoryItems(
       product: { select: { name: true, materialType: true, originCountry: true, category: true, baseColor: true, finish: true, productGroup: true } },
       location: { select: { name: true } },
       movements: { orderBy: { createdAt: 'desc' }, take: 20 },
+      photos: { select: { id: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } },
       poLineItem: {
         include: { purchaseOrder: { include: { supplier: { select: { name: true, originCountry: true } } } } },
       },
@@ -176,6 +180,7 @@ export async function getInventoryItems(
         byRole: m.byRole, createdAt: m.createdAt.toISOString(),
       })),
       trace,
+      photos: i.photos,
     };
   });
 }

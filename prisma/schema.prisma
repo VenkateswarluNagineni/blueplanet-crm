@@ -290,6 +290,7 @@ model InventoryItem {
   bundleId  String?
 
   movements StockMovement[]
+  photos    SlabPhoto[]
 
   // Dimensions
   lengthInches Float
@@ -332,6 +333,23 @@ model StockMovement {
   byUserId        String?
   byRole          String?
   createdAt       DateTime      @default(now())
+
+  @@index([inventoryItemId])
+}
+
+// Staff-captured photos of the physical slab (opt-in, multi-photo). Stored on
+// local disk for now via src/lib/storage.ts; storageKey is the seam for a
+// future move to object storage.
+model SlabPhoto {
+  id               String        @id @default(uuid())
+  inventoryItemId  String
+  inventoryItem    InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  storageKey       String
+  originalName     String?
+  sortOrder        Int           @default(0)
+  uploadedByUserId String?
+  uploadedByRole   String?
+  createdAt        DateTime      @default(now())
 
   @@index([inventoryItemId])
 }

@@ -53,6 +53,7 @@ import { Button } from '@/components/ui/Button';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 import { getBlockMates } from '@/lib/domain/block-mates';
 import { PassportMatesStrip } from '@/components/inventory/PassportMatesStrip';
+import { SlabPhotoGallery } from '@/components/inventory/SlabPhotoGallery';
 
 type InventoryItemProps = InventoryRow;
 type BulkOp = 'TRANSFER' | 'HOLD' | 'RELEASE' | 'WRITE_OFF';
@@ -1415,6 +1416,8 @@ export function InventoryTableClient({
             </div>
 
             <PassportMatesStrip mates={passportMates} onSelect={openPassport} />
+
+            <SlabPhotoGallery slab={selectedPassportSlab} />
 
             {/* Drawer Content (Timeline) — real lineage from the database */}
             <div className="flex-1 overflow-y-auto p-6">
