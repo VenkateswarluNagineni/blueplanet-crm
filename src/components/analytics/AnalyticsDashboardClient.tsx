@@ -12,6 +12,7 @@ import {
 import type { PoRow } from '@/server/purchasing/queries';
 import type { OrderRow } from '@/server/orders/queries';
 import type { CatalogProduct } from '@/server/catalog/queries';
+import type { LandedCostSummary } from '@/server/analytics/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -21,39 +22,31 @@ export default function AnalyticsDashboardClient({
   purchaseOrders,
   salesOrders,
   catalog,
+  landedCostSummary,
 }: {
   purchaseOrders: PoRow[];
   salesOrders: OrderRow[];
   catalog: CatalogProduct[];
+  landedCostSummary: LandedCostSummary;
 }) {
   const [filterType, setFilterType] = useState('ALL');
 
+  // Material cost is still a per-PO estimate for slabs not yet received (no real
+  // per-slab data exists before receipt) — but freight legs are real, already-paid
+  // totals, so include them rather than silently dropping them from capital deployed.
   const totalLandedCost = purchaseOrders.reduce(
-    (sum, po) => sum + po.orderedSlabs * po.unitCost * 45,
+    (sum, po) => sum + po.orderedSlabs * po.unitCost * 45 + po.oceanCost + po.customsCost + po.inlandCost,
     0,
   );
 
   const totalBookedRevenue = salesOrders.reduce((sum, so) => sum + so.totalValue, 0);
 
-  const totalSoldSqft = salesOrders.reduce((sum, so) => sum + so.sqft, 0);
-  const costSamples = catalog.filter((c) => c.avgCostPerSf != null && c.avgCostPerSf > 0);
-  const avgCostAcrossCatalog =
-    costSamples.length > 0
-      ? costSamples.reduce((sum, c) => sum + (c.avgCostPerSf as number), 0) / costSamples.length
-      : null;
-  const estimatedCostOfGoodsSold =
-    avgCostAcrossCatalog != null ? totalSoldSqft * avgCostAcrossCatalog : null;
-  const netMarginValue =
-    estimatedCostOfGoodsSold != null ? totalBookedRevenue - estimatedCostOfGoodsSold : null;
-  const netMarginPercent =
-    netMarginValue != null && totalBookedRevenue > 0
-      ? (netMarginValue / totalBookedRevenue) * 100
-      : null;
+  // Real COGS: the immutable per-slab landed cost snapshotted at sale — not a catalog-average guess.
+  const netMarginValue = totalBookedRevenue - landedCostSummary.realCogs;
+  const netMarginPercent = totalBookedRevenue > 0 ? (netMarginValue / totalBookedRevenue) * 100 : null;
 
-  const physicalInventoryValue = catalog.reduce((sum, sku) => {
-    const unit = sku.avgCostPerSf ?? 0;
-    return sum + sku.slabsInYard * 45 * unit;
-  }, 0);
+  // Real landed cost of every available slab — not a hardcoded-sf-per-slab guess.
+  const physicalInventoryValue = landedCostSummary.yardLandedCost;
 
   const filteredCatalog = catalog.filter((sku) => {
     if (filterType === 'HIGH_VELOCITY') return sku.slabsOnHold + sku.slabsInTransit > sku.slabsInYard;
@@ -156,9 +149,7 @@ export default function AnalyticsDashboardClient({
               {netMarginPercent != null ? `${netMarginPercent.toFixed(1)}%` : '—'}
             </div>
             <div className="text-[11px] text-[var(--color-text-secondary)]">
-              {netMarginValue != null
-                ? `Est. yield ${usd(Math.max(0, netMarginValue))}`
-                : 'Needs cost visibility on catalog lines'}
+              Yield {usd(Math.max(0, netMarginValue))}
             </div>
           </div>
 
@@ -171,7 +162,7 @@ export default function AnalyticsDashboardClient({
             </div>
             <div className="bp-kpi-value mb-1">{usd(physicalInventoryValue)}</div>
             <div className="text-[11px] text-[var(--color-text-secondary)]">
-              Active warehouse inventory at avg cost
+              Active warehouse inventory, landed cost
             </div>
           </div>
         </div>

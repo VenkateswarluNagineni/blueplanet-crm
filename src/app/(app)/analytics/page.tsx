@@ -4,6 +4,7 @@ import { assertPageAccess } from '@/lib/domain/page-access';
 import { getPurchaseOrders } from '@/server/purchasing/queries';
 import { getSalesOrders } from '@/server/orders/queries';
 import { getCatalog } from '@/server/catalog/queries';
+import { getLandedCostSummary } from '@/server/analytics/queries';
 
 export const metadata = {
   title: 'Analytics | BluePlanet CRM',
@@ -13,10 +14,11 @@ export const metadata = {
 export default async function AnalyticsPage() {
   assertPageAccess(await getSessionContext(), 'admin');
 
-  const [purchaseOrders, salesOrders, catalog] = await Promise.all([
+  const [purchaseOrders, salesOrders, catalog, landedCostSummary] = await Promise.all([
     getPurchaseOrders(),
     getSalesOrders(null),
     getCatalog(true),
+    getLandedCostSummary(),
   ]);
 
   return (
@@ -25,6 +27,7 @@ export default async function AnalyticsPage() {
         purchaseOrders={purchaseOrders}
         salesOrders={salesOrders}
         catalog={catalog}
+        landedCostSummary={landedCostSummary}
       />
     </div>
   );
