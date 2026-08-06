@@ -529,5 +529,7 @@ model CompanySetting {
   salesCanViewLandedCost     Boolean  @default(false)
   salesCanViewAllPipeline    Boolean  @default(false)
   vendorCanViewFullInventory Boolean  @default(false)
+  /** PO estimated total ($) above which a PO requires approval before it can proceed. null = disabled. */
+  poApprovalThreshold        Float?
   updatedAt                  DateTime @updatedAt
 }

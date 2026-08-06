@@ -10,6 +10,9 @@ export type PoLogisticsStatus =
 
 export type EtaStatus = 'RECEIVED' | 'ON_TRACK' | 'DUE_SOON' | 'OVERDUE' | 'NONE';
 
+/** Financial/sign-off status — distinct from `PoRow.status` below, which is the logistics stage. */
+export type PoApprovalStatus = 'PENDING_APPROVAL' | 'ISSUED' | 'FULFILLED';
+
 export type PoRow = {
   id: string;
   poNumber: string;
@@ -29,6 +32,8 @@ export type PoRow = {
   containerId: string | null;
   destinationHub: string | null;
   status: PoLogisticsStatus;
+  /** Financial/sign-off status — PENDING_APPROVAL blocks logistics actions until approved. */
+  approvalStatus: PoApprovalStatus;
   documentRefs: string[];
   issuedAt: string | null;
   ledgerHash: string | null;
@@ -105,6 +110,7 @@ export async function getPurchaseOrders(): Promise<PoRow[]> {
       containerId: po.containerId,
       destinationHub: po.destinationHub,
       status,
+      approvalStatus: po.status as PoApprovalStatus,
       documentRefs: po.documentRefs,
       issuedAt: po.issuedAt ? po.issuedAt.toISOString() : null,
       ledgerHash: po.ledgerHash,

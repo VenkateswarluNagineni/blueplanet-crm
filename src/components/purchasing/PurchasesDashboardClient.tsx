@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { Term } from '@/components/ui/Tooltip';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
@@ -25,7 +26,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { LOGISTICS_STATUS_LABEL } from '@/lib/domain/logistics-stages';
 import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/purchasing/queries';
-import { createPOAction, advancePOAction } from '@/server/purchasing/actions';
+import { createPOAction, advancePOAction, approvePOAction } from '@/server/purchasing/actions';
 
 type SlipTarget = 'SUPPLIER' | 'OCEAN' | 'CUSTOMS' | 'INLAND';
 
@@ -57,12 +58,15 @@ export default function PurchasesDashboardClient({
   vendors,
   materials,
   nextPoNumber,
+  poApprovalThreshold,
 }: {
   purchaseOrders: PoRow[];
+  poApprovalThreshold: number | null;
 } & PurchasingRefData) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { confirm, confirmDialog } = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState('');
 
@@ -215,6 +219,24 @@ export default function PurchasesDashboardClient({
       }
       setVerifyModalOpen({ isOpen: false, poId: null });
       setVerifyDocRef('');
+      router.refresh();
+    });
+  };
+
+  const handleApprove = async (po: PoRow) => {
+    const ok = await confirm({
+      title: `Approve ${po.poNumber}?`,
+      message: `This PO is above the approval threshold. Approving lets it start moving through logistics.`,
+      confirmLabel: 'Approve',
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const res = await approvePOAction(po.id);
+      if (!res.ok) {
+        toast(res.error, 'error');
+        return;
+      }
+      toast(`${po.poNumber} approved.`, 'success');
       router.refresh();
     });
   };
@@ -395,13 +417,29 @@ export default function PurchasesDashboardClient({
                         )}
                       </td>
                       <td className="p-3">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-[var(--color-basalt-500)] bg-[var(--color-basalt-800)] text-[var(--color-text-muted)]">
-                          {LOGISTICS_STATUS_LABEL[po.status]}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          {po.approvalStatus === 'PENDING_APPROVAL' && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-[rgba(227,193,108,0.35)] bg-[rgba(227,193,108,0.10)] text-[var(--color-vein)]">
+                              Pending Approval
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-[var(--color-basalt-500)] bg-[var(--color-basalt-800)] text-[var(--color-text-muted)]">
+                            {LOGISTICS_STATUS_LABEL[po.status]}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex flex-col items-center gap-1.5">
-                          {po.status !== 'RECEIVED' ? (
+                          {po.approvalStatus === 'PENDING_APPROVAL' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(po)}
+                              disabled={isPending}
+                              className="btn-secondary !min-h-7 !px-2.5 text-[11px] disabled:opacity-60"
+                            >
+                              Approve
+                            </button>
+                          ) : po.status !== 'RECEIVED' ? (
                             <button
                               type="button"
                               onClick={() => { setVerifyModalOpen({ isOpen: true, poId: po.id }); setFormError(''); }}
@@ -412,7 +450,7 @@ export default function PurchasesDashboardClient({
                           ) : (
                             <span className="text-[11px] text-[var(--color-text-secondary)] italic">Completed</span>
                           )}
-                          {po.status !== 'RECEIVED' && (
+                          {po.approvalStatus !== 'PENDING_APPROVAL' && po.status !== 'RECEIVED' && (
                             <Link
                               href={`/logistics#${encodeURIComponent(po.poNumber)}`}
                               className="text-[10px] text-[var(--color-sodalite)] hover:text-white transition-colors"
@@ -606,6 +644,11 @@ export default function PurchasesDashboardClient({
                       <span className="text-white font-medium border-t border-[var(--color-basalt-500)] pt-1 mt-1"><Term k="landedCost">Est. Landed</Term></span>
                       <span className="text-right text-[var(--color-vein)] font-medium border-t border-[var(--color-basalt-500)] pt-1 mt-1">{fmt(landed)} <span className="text-[var(--color-text-secondary)] font-normal">({fmt(landed / estSf)}/sf)</span></span>
                     </div>
+                    {poApprovalThreshold != null && landed > poApprovalThreshold && (
+                      <p className="mt-2 pt-2 border-t border-[rgba(227,193,108,0.25)] text-[11px] text-[var(--color-vein)]">
+                        Above the {fmt(poApprovalThreshold)} approval threshold — this PO will require admin approval before it can proceed.
+                      </p>
+                    )}
                   </div>
                 );
               })()}
@@ -907,6 +950,7 @@ export default function PurchasesDashboardClient({
           </div>
         </div>
       )}
+      {confirmDialog}
     </PageShell>
   );
 }

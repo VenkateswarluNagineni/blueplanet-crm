@@ -6,12 +6,15 @@ export type VisibilitySettings = {
   salesCanViewLandedCost: boolean;
   salesCanViewAllPipeline: boolean;
   vendorCanViewFullInventory: boolean;
+  /** PO estimated total ($) above which a PO requires approval before it can proceed. null = disabled. */
+  poApprovalThreshold: number | null;
 };
 
 export const DEFAULT_SETTINGS: VisibilitySettings = {
   salesCanViewLandedCost: false,
   salesCanViewAllPipeline: false,
   vendorCanViewFullInventory: false,
+  poApprovalThreshold: null,
 };
 
 export async function getCompanySettings(companyId: string): Promise<VisibilitySettings> {
@@ -21,6 +24,7 @@ export async function getCompanySettings(companyId: string): Promise<VisibilityS
     salesCanViewLandedCost: s.salesCanViewLandedCost,
     salesCanViewAllPipeline: s.salesCanViewAllPipeline,
     vendorCanViewFullInventory: s.vendorCanViewFullInventory,
+    poApprovalThreshold: s.poApprovalThreshold,
   };
 }
 

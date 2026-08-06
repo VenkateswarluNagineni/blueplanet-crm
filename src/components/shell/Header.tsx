@@ -204,6 +204,36 @@ export function Header() {
               </label>
             </div>
           </div>
+
+          <div className="space-y-4 pt-2">
+            <h3 className="bp-section-title border-b border-[var(--color-basalt-500)] pb-2">
+              Purchasing controls
+            </h3>
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[14px] text-white font-medium mb-1">PO approval threshold</p>
+                <p className="text-[12px] text-[var(--color-text-secondary)] leading-relaxed">
+                  POs estimated above this amount require admin approval before proceeding. Leave blank to disable.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[13px] text-[var(--color-fog-500)]">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  placeholder="Off"
+                  className="bp-select h-8 w-24 text-[12px] py-0"
+                  value={settings.poApprovalThreshold ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    updateSetting('poApprovalThreshold', raw === '' ? null : Math.max(0, Number(raw)));
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </Drawer>
     </>

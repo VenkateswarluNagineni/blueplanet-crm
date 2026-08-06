@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { getEffectiveRole } from '@/lib/domain/auth';
-import { requireRole } from '@/lib/domain/rbac';
+import { getEffectiveRole, getSessionContext } from '@/lib/domain/auth';
+import { getCompanySettings, requireRole } from '@/lib/domain/rbac';
 import type { PoLogisticsStatus } from '@/server/purchasing/queries';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -70,8 +70,9 @@ export async function createPOAction(input: {
   destinationHub: string;
   estimatedDelivery: string;
 }): Promise<ActionResult> {
-  const role = await getEffectiveRole();
-  requireRole(role, ['ADMIN']);
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  requireRole(ctx.role, ['ADMIN']);
 
   const parsed = CreatePoSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Please complete all required PO fields, including the estimated delivery date.' };
@@ -104,6 +105,13 @@ export async function createPOAction(input: {
   const poNumber = await nextPoNumber();
   const ledgerHash = 'sha256:' + randomBytes(32).toString('hex');
 
+  // Same estimate the create-PO modal already previews client-side (material at a
+  // blended sf/slab assumption, plus the real freight-leg totals) — real per-slab
+  // cost isn't known until receipt, but this is enough to gate large commitments.
+  const estimatedTotal = d.orderedSlabs * d.unitCost * 63.5 + oceanCost + customsCost + inlandCost;
+  const settings = await getCompanySettings(ctx.user.companyId);
+  const needsApproval = settings.poApprovalThreshold != null && estimatedTotal > settings.poApprovalThreshold;
+
   // Line items are created per-slab at receipt (each slab gets its own POLineItem so
   // its Material Passport can trace back to this PO), so none are created up-front.
   await db.purchaseOrder.create({
@@ -111,7 +119,7 @@ export async function createPOAction(input: {
       poNumber,
       supplierId: supplier.id,
       productId: product.id,
-      status: 'ISSUED',
+      status: needsApproval ? 'PENDING_APPROVAL' : 'ISSUED',
       logisticsStatus: 'PRODUCTION',
       orderedSlabs: d.orderedSlabs,
       unitCost: d.unitCost,
@@ -133,6 +141,20 @@ export async function createPOAction(input: {
   return { ok: true };
 }
 
+/** Sign off on a PO that was gated by the PO approval threshold. Admin only. */
+export async function approvePOAction(poId: string): Promise<ActionResult> {
+  const role = await getEffectiveRole();
+  requireRole(role, ['ADMIN']);
+
+  const po = await db.purchaseOrder.findFirst({ where: { id: poId, deletedAt: null } });
+  if (!po) return { ok: false, error: 'Purchase order not found.' };
+  if (po.status !== 'PENDING_APPROVAL') return { ok: false, error: 'This PO is not awaiting approval.' };
+
+  await db.purchaseOrder.update({ where: { id: po.id }, data: { status: 'ISSUED' } });
+  revalidatePath('/purchases');
+  return { ok: true };
+}
+
 export async function advancePOAction(poId: string, docRef?: string): Promise<ActionResult> {
   const role = await getEffectiveRole();
   requireRole(role, ['ADMIN']);
@@ -142,6 +164,9 @@ export async function advancePOAction(poId: string, docRef?: string): Promise<Ac
     include: { product: true },
   });
   if (!po) return { ok: false, error: 'Purchase order not found.' };
+  if (po.status === 'PENDING_APPROVAL') {
+    return { ok: false, error: 'This PO must be approved before it can proceed.' };
+  }
 
   const current = po.logisticsStatus as PoLogisticsStatus;
   if (current === 'RECEIVED') return { ok: false, error: 'This PO is already received.' };

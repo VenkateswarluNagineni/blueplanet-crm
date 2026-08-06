@@ -9,13 +9,14 @@ export interface VisibilitySettings {
   salesCanViewLandedCost: boolean;
   salesCanViewAllPipeline: boolean;
   vendorCanViewFullInventory: boolean;
+  poApprovalThreshold: number | null;
 }
 
 interface RoleContextType {
   role: Role;
   setRole: (role: Role) => void;
   settings: VisibilitySettings;
-  updateSetting: (key: keyof VisibilitySettings, value: boolean) => void;
+  updateSetting: (key: keyof VisibilitySettings, value: boolean | number | null) => void;
   /** True only for real ADMINs — gates the impersonation switcher. */
   canImpersonate: boolean;
   userEmail: string;
@@ -50,7 +51,7 @@ export function SessionProvider({
     });
   };
 
-  const updateSetting = (key: keyof VisibilitySettings, value: boolean) => {
+  const updateSetting = (key: keyof VisibilitySettings, value: boolean | number | null) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     startTransition(() => {
       updateSettingAction(key, value);
