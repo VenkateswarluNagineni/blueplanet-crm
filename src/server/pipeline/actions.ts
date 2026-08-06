@@ -77,7 +77,11 @@ export async function convertOpportunityToOrderAction(
 
   const opp = await db.opportunity.findFirst({
     where: { id: opportunityId, deletedAt: null },
-    include: { customer: { select: { name: true } } },
+    include: {
+      customer: {
+        select: { name: true, creditLimit: true, creditLockExempt: true, salesLockNote: true },
+      },
+    },
   });
   if (!opp) return { ok: false, error: 'Opportunity not found.' };
   if (opp.status !== 'CLOSED_WON') return { ok: false, error: 'Only won deals can be converted to an order.' };
@@ -92,6 +96,36 @@ export async function convertOpportunityToOrderAction(
   const floor = slab.product.minPricePerSf ?? 0;
   if (pricePerSf < floor) {
     return { ok: false, error: `Price cannot be below the authorized minimum of $${floor}/sqft.` };
+  }
+
+  const customer = opp.customer;
+  if (customer && !customer.creditLockExempt) {
+    if (customer.salesLockNote) {
+      return { ok: false, error: customer.salesLockNote };
+    }
+    if (customer.creditLimit > 0) {
+      const openOrders = await db.salesOrder.findMany({
+        where: { customerId: opp.customerId, status: 'PLACED', deletedAt: null },
+        include: { soLineItems: { include: { inventoryItem: { select: { totalSf: true } } } } },
+      });
+      const openExposure = openOrders.reduce(
+        (sum, so) =>
+          sum + so.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0),
+        0,
+      );
+      const newOrderValue = pricePerSf * slab.totalSf;
+      const projected = openExposure + newOrderValue;
+      if (projected > customer.creditLimit) {
+        return {
+          ok: false,
+          error: `This order would put ${customer.name} $${Math.round(
+            projected - customer.creditLimit,
+          ).toLocaleString()} over their $${customer.creditLimit.toLocaleString()} credit limit (currently $${Math.round(
+            openExposure,
+          ).toLocaleString()} in open orders).`,
+        };
+      }
+    }
   }
 
   const soNumber = await nextSoNumber();
