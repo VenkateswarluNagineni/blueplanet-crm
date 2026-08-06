@@ -8,11 +8,13 @@ import {
   BarChart3,
   Download,
   Filter,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import type { PoRow } from '@/server/purchasing/queries';
 import type { OrderRow } from '@/server/orders/queries';
 import type { CatalogProduct } from '@/server/catalog/queries';
-import type { LandedCostSummary } from '@/server/analytics/queries';
+import type { LandedCostSummary, InventoryAgingReport, MaterialMarginRow } from '@/server/analytics/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -23,11 +25,15 @@ export default function AnalyticsDashboardClient({
   salesOrders,
   catalog,
   landedCostSummary,
+  inventoryAging,
+  marginByMaterial,
 }: {
   purchaseOrders: PoRow[];
   salesOrders: OrderRow[];
   catalog: CatalogProduct[];
   landedCostSummary: LandedCostSummary;
+  inventoryAging: InventoryAgingReport;
+  marginByMaterial: MaterialMarginRow[];
 }) {
   const [filterType, setFilterType] = useState('ALL');
 
@@ -47,6 +53,9 @@ export default function AnalyticsDashboardClient({
 
   // Real landed cost of every available slab — not a hardcoded-sf-per-slab guess.
   const physicalInventoryValue = landedCostSummary.yardLandedCost;
+
+  const agedCapital180Plus =
+    inventoryAging.buckets.find((b) => b.label === '180+')?.capitalTiedUp ?? 0;
 
   const filteredCatalog = catalog.filter((sku) => {
     if (filterType === 'HIGH_VELOCITY') return sku.slabsOnHold + sku.slabsInTransit > sku.slabsInYard;
@@ -165,6 +174,171 @@ export default function AnalyticsDashboardClient({
               Active warehouse inventory, landed cost
             </div>
           </div>
+        </div>
+
+        <div className="bp-table-shell flex flex-col">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)] flex flex-wrap justify-between items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-white font-medium text-[14px] truncate">Inventory aging</h3>
+            </div>
+            <div className="text-[12px] text-[var(--color-text-secondary)]">
+              {usd(agedCapital180Plus)} tied up 180+ days
+            </div>
+          </div>
+
+          {inventoryAging.buckets.every((b) => b.count === 0) ? (
+            <div className="p-8">
+              <EmptyState
+                icon={Clock}
+                title="No yard stock yet"
+                hint="Aging appears here once slabs are received into inventory."
+              />
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="bp-table min-w-max">
+                  <thead>
+                    <tr>
+                      <th>Age in yard</th>
+                      <th className="text-center">Slabs</th>
+                      <th className="text-right">Sqft</th>
+                      <th className="text-right">Capital tied up</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventoryAging.buckets.map((bucket) => (
+                      <tr key={bucket.label}>
+                        <td className="font-medium text-white">{bucket.label} days</td>
+                        <td className="text-center text-white font-medium tabular-nums">{bucket.count}</td>
+                        <td className="text-right bp-mono tabular-nums text-[var(--color-text-secondary)]">
+                          {bucket.totalSf.toFixed(1)}
+                        </td>
+                        <td className="text-right bp-mono tabular-nums text-[var(--color-text-secondary)]">
+                          {usd(bucket.capitalTiedUp)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {inventoryAging.oldestSlabs.length > 0 && (
+                <div className="border-t border-[var(--color-basalt-500)]">
+                  <div className="px-5 py-2.5 bg-[var(--color-basalt-700)]">
+                    <h4 className="text-[12px] text-[var(--color-text-secondary)] font-medium">Oldest stock</h4>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="bp-table min-w-max">
+                      <thead>
+                        <tr>
+                          <th>Slab</th>
+                          <th>Material</th>
+                          <th className="text-right">Days in yard</th>
+                          <th className="text-right">Capital tied up</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inventoryAging.oldestSlabs.map((slab) => (
+                          <tr key={slab.id}>
+                            <td className="bp-mono text-[var(--color-text-secondary)]">{slab.uniqueSlabId}</td>
+                            <td className="text-white">{slab.materialName}</td>
+                            <td className="text-right bp-mono tabular-nums text-white font-medium">
+                              {slab.daysInYard}
+                            </td>
+                            <td className="text-right bp-mono tabular-nums text-[var(--color-text-secondary)]">
+                              {usd(slab.capitalTiedUp)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="bp-table-shell flex flex-col">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)] flex flex-wrap justify-between items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-white font-medium text-[14px] truncate">Margin by material</h3>
+              <span className="text-[11px] bg-[var(--color-basalt-900)] text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--color-basalt-500)] bp-mono shrink-0">
+                {marginByMaterial.length}
+              </span>
+            </div>
+          </div>
+
+          {marginByMaterial.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                icon={Layers}
+                title="No completed sales yet"
+                hint="Realized margin by material appears here once orders are marked complete."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="bp-table min-w-max">
+                <thead>
+                  <tr>
+                    <th>Material</th>
+                    <th className="text-center">Orders</th>
+                    <th className="text-right">Revenue</th>
+                    <th className="text-right">Real COGS</th>
+                    <th className="text-right">Margin $</th>
+                    <th className="text-right">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marginByMaterial.map((row) => (
+                    <tr key={row.materialType}>
+                      <td className="font-medium text-white">
+                        <span className="inline-flex items-center gap-2.5 min-w-0">
+                          <span
+                            className="bp-swatch shrink-0"
+                            style={{
+                              ['--swatch-base' as string]: swatchBaseForMaterial(row.materialType, null),
+                              width: 16,
+                              height: 16,
+                            }}
+                            aria-hidden
+                          />
+                          <span className="truncate">{row.materialType}</span>
+                        </span>
+                      </td>
+                      <td className="text-center text-white font-medium tabular-nums">{row.orderCount}</td>
+                      <td className="text-right bp-mono tabular-nums text-[var(--color-text-secondary)]">
+                        {usd(row.revenue)}
+                      </td>
+                      <td className="text-right bp-mono tabular-nums text-[var(--color-coral)]">
+                        {usd(row.realCogs)}
+                      </td>
+                      <td className="text-right bp-mono tabular-nums text-white font-medium">
+                        {usd(row.marginValue)}
+                      </td>
+                      <td className="text-right">
+                        {row.marginPercent != null ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                              row.marginPercent >= 40
+                                ? 'bg-[rgba(16,185,129,0.1)] text-[var(--color-emerald)]'
+                                : 'bg-[rgba(232,149,107,0.1)] text-[var(--color-coral)]'
+                            }`}
+                          >
+                            {row.marginPercent.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-fog-500)]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="bp-table-shell flex flex-col">
