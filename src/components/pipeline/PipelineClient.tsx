@@ -295,12 +295,12 @@ export function PipelineClient({
               >
                 People <ExternalLink size={12} />
               </Link>
-              <button
+              <Button
                 onClick={() => { setAddOpen(true); setError(''); }}
-                className="btn-primary flex items-center gap-2"
+                className="flex items-center gap-2"
               >
                 <Plus size={16} /> New Opportunity
-              </button>
+              </Button>
             </div>
           }
         />

@@ -533,13 +533,13 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         ]}
         actions={
           canManage ? (
-            <button
+            <Button
               type="button"
               onClick={() => { setAddOpen(true); setActionError(''); setProvisionLogin(false); }}
-              className="btn-primary !min-h-8 !px-3 text-[12px]"
+              size="sm"
             >
               <Plus size={14} /> Add {TYPE_LABEL[TAB_TO_TYPE[activeTab]]}
-            </button>
+            </Button>
           ) : undefined
         }
         className="pb-0"
@@ -783,13 +783,14 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         }
         headerExtra={
           viewing && canManage && !isEditingProfile && viewing.type !== 'CUSTOMER' ? (
-            <button
+            <Button
               type="button"
               onClick={() => setIsEditingProfile(true)}
-              className="btn-secondary !min-h-8 !px-2.5 text-[12px]"
+              variant="secondary"
+              size="sm"
             >
               <Edit2 size={14} /> Edit
-            </button>
+            </Button>
           ) : undefined
         }
       >
@@ -960,8 +961,8 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 })()}
                 {isEditingProfile && (
                   <div className="mt-6 pt-4 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
-                    <button type="button" onClick={() => setIsEditingProfile(false)} className="btn-ghost text-[12px]">Cancel</button>
-                    <button type="submit" disabled={isPending} className="btn-primary text-[12px] disabled:opacity-60">{isPending ? 'Saving…' : 'Save changes'}</button>
+                    <Button type="button" onClick={() => setIsEditingProfile(false)} variant="ghost">Cancel</Button>
+                    <Button type="submit" disabled={isPending}>{isPending ? 'Saving…' : 'Save changes'}</Button>
                   </div>
                 )}
               </form>
@@ -1375,17 +1376,19 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 bg-[var(--color-basalt-950)] border border-[rgba(227,193,108,0.3)] rounded-[var(--radius-md)] px-3 py-3">
               <code className="text-[15px] text-white bp-mono tracking-wide break-all">{tempPassword}</code>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   void navigator.clipboard?.writeText(tempPassword);
                   toast('Password copied', 'success');
                 }}
-                className="btn-secondary !min-h-8 !px-2.5 text-[12px] shrink-0"
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
                 title="Copy password"
               >
                 <Copy size={14} /> Copy
-              </button>
+              </Button>
             </div>
             <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
               Share over a secure channel. The user should change it after first sign-in.

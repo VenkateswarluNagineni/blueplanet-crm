@@ -27,6 +27,7 @@ import { ChartWidget, type ChartKey } from '@/components/dashboard/DashboardChar
 import { setDashboardLayoutAction } from '@/server/dashboard/actions';
 import { useRole } from '@/context/RoleContext';
 import { ACCENT } from '@/lib/ui/statusColors';
+import { Button } from '@/components/ui/Button';
 
 type Kind = 'kpi' | 'chart';
 type IconType = React.ComponentType<{ size?: number; className?: string }>;
@@ -445,23 +446,21 @@ export function CustomizableDashboard({
       <div className="flex items-center justify-end gap-2">
         {pending && <span className="text-[11px] text-[var(--color-text-secondary)]">Saving…</span>}
         {editing && (
-          <button
+          <Button
             type="button"
             onClick={reset}
-            className="btn-secondary !min-h-8 !px-2.5 text-[12px]"
+            variant="secondary"
+            size="sm"
             title="Reset to the default layout for your role"
           >
             <RotateCcw size={13} /> Reset
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
           onClick={() => setEditing((v) => !v)}
-          className={
-            editing
-              ? 'btn-primary !min-h-8 !px-2.5 text-[12px]'
-              : 'btn-secondary !min-h-8 !px-2.5 text-[12px]'
-          }
+          variant={editing ? 'primary' : 'secondary'}
+          size="sm"
         >
           {editing ? (
             <>
@@ -472,7 +471,7 @@ export function CustomizableDashboard({
               <Sliders size={13} /> Customize
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {editing && available.length > 0 && (
@@ -555,9 +554,9 @@ export function CustomizableDashboard({
           <p className="text-[13px] text-[var(--color-text-secondary)] mb-4">
             Add KPIs and charts for this role.
           </p>
-          <button type="button" onClick={() => setEditing(true)} className="btn-primary">
+          <Button type="button" onClick={() => setEditing(true)}>
             <Sliders size={13} /> Customize
-          </button>
+          </Button>
         </div>
       )}
     </div>

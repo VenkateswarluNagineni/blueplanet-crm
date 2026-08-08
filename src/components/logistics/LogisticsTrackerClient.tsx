@@ -10,6 +10,7 @@ import {
   type PoLogisticsStatus,
 } from '@/lib/domain/logistics-stages';
 import { FilterChip } from '@/components/ui/ListToolbar';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 /** Minimal PO fields needed for the tracker (avoids importing server-only modules). */
@@ -101,9 +102,9 @@ export function LogisticsTrackerClient({ pos }: { pos: LogisticsPoCard[] }) {
           title="No shipments in this stage"
           hint="Try another stage filter or open Purchasing to advance a PO."
           action={
-            <button type="button" onClick={() => setStageFilter('ALL')} className="btn-ghost text-[13px]">
+            <Button type="button" onClick={() => setStageFilter('ALL')} variant="ghost">
               Show all in transit
-            </button>
+            </Button>
           }
           className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] border-dashed rounded-md py-10"
         />

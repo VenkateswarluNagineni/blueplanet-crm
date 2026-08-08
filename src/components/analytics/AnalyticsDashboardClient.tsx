@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
+import { Button } from '@/components/ui/Button';
 
 export default function AnalyticsDashboardClient({
   purchaseOrders,
@@ -78,8 +79,10 @@ export default function AnalyticsDashboardClient({
             { label: `${salesOrders.length} orders`, tone: 'blue' },
           ]}
           actions={
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 const blob = new Blob(
                   [
@@ -111,10 +114,9 @@ export default function AnalyticsDashboardClient({
                 a.click();
                 URL.revokeObjectURL(url);
               }}
-              className="btn-secondary !min-h-8 !px-3 text-[12px]"
             >
               <Download size={14} /> Export JSON
-            </button>
+            </Button>
           }
         />
       }

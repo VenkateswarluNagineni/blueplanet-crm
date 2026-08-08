@@ -13,6 +13,7 @@ import { PageShell } from '@/components/ui/PageShell';
 import { ListToolbar } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ACCENT } from '@/lib/ui/statusColors';
+import { Button } from '@/components/ui/Button';
 
 /**
  * The CRM as a sales rep sees it: their own performance scorecard (with an
@@ -172,9 +173,9 @@ export function SalesCrmClient({ data, canEditTarget }: { data: SalesCrmData; ca
                       <Briefcase size={14} /> Go to pipeline
                     </Link>
                   ) : (
-                    <button type="button" onClick={() => setSearch('')} className="btn-ghost text-[13px]">
+                    <Button type="button" onClick={() => setSearch('')} variant="ghost">
                       Clear search
-                    </button>
+                    </Button>
                   )
                 }
                 className="py-12"
