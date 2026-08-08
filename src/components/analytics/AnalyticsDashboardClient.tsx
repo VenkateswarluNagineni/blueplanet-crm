@@ -20,6 +20,7 @@ import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 import { Button } from '@/components/ui/Button';
+import { MarginPill } from '@/components/ui/MarginPill';
 
 export default function AnalyticsDashboardClient({
   purchaseOrders,
@@ -179,7 +180,7 @@ export default function AnalyticsDashboardClient({
         </div>
 
         <div className="bp-table-shell flex flex-col">
-          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)] flex flex-wrap justify-between items-center gap-3">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-white font-medium text-[14px] truncate">Inventory aging</h3>
             </div>
@@ -227,7 +228,7 @@ export default function AnalyticsDashboardClient({
 
               {inventoryAging.oldestSlabs.length > 0 && (
                 <div className="border-t border-[var(--color-basalt-500)]">
-                  <div className="px-5 py-2.5 bg-[var(--color-basalt-700)]">
+                  <div className="px-5 py-2.5">
                     <h4 className="text-[12px] text-[var(--color-text-secondary)] font-medium">Oldest stock</h4>
                   </div>
                   <div className="overflow-x-auto">
@@ -263,7 +264,7 @@ export default function AnalyticsDashboardClient({
         </div>
 
         <div className="bp-table-shell flex flex-col">
-          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)] flex flex-wrap justify-between items-center gap-3">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-white font-medium text-[14px] truncate">Margin by material</h3>
               <span className="text-[11px] bg-[var(--color-basalt-900)] text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--color-basalt-500)] bp-mono shrink-0">
@@ -321,19 +322,7 @@ export default function AnalyticsDashboardClient({
                         {usd(row.marginValue)}
                       </td>
                       <td className="text-right">
-                        {row.marginPercent != null ? (
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                              row.marginPercent >= 40
-                                ? 'bg-[rgba(16,185,129,0.1)] text-[var(--color-emerald)]'
-                                : 'bg-[rgba(232,149,107,0.1)] text-[var(--color-coral)]'
-                            }`}
-                          >
-                            {row.marginPercent.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span className="text-[var(--color-fog-500)]">—</span>
-                        )}
+                        <MarginPill percent={row.marginPercent} />
                       </td>
                     </tr>
                   ))}
@@ -344,7 +333,7 @@ export default function AnalyticsDashboardClient({
         </div>
 
         <div className="bp-table-shell flex flex-col">
-          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)] flex flex-wrap justify-between items-center gap-3">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-white font-medium text-[14px] truncate">Material ledger</h3>
               <span className="text-[11px] bg-[var(--color-basalt-900)] text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--color-basalt-500)] bp-mono shrink-0">
@@ -436,19 +425,7 @@ export default function AnalyticsDashboardClient({
                           {retail != null ? `$${retail.toFixed(2)}` : '—'}
                         </td>
                         <td className="text-right">
-                          {margin != null ? (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                margin >= 40
-                                  ? 'bg-[rgba(16,185,129,0.1)] text-[var(--color-emerald)]'
-                                  : 'bg-[rgba(232,149,107,0.1)] text-[var(--color-coral)]'
-                              }`}
-                            >
-                              {margin.toFixed(1)}%
-                            </span>
-                          ) : (
-                            <span className="text-[var(--color-fog-500)]">—</span>
-                          )}
+                          <MarginPill percent={margin} />
                         </td>
                         <td className="text-center text-white font-medium tabular-nums">
                           {sku.slabsInYard}
