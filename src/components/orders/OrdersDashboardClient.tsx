@@ -339,21 +339,21 @@ export default function OrdersDashboardClient({
                         <span className="block text-[10px] text-[var(--color-fog-500)] mt-1">Pending payment</span>
                       )}
                     </td>
-                    <td className="p-3 text-center relative group">
-                      <div className="flex justify-center gap-2">
+                    <td className="p-3 text-center relative">
+                      <div className="bp-row-actions">
                         {order.status === 'PLACED' && (
                           <>
                             <button
                               onClick={() => handleCancelOrder(order.id)}
                               disabled={isPending}
-                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-ruby)] hover:bg-[rgba(239,68,68,0.1)] px-2 py-1 rounded transition-colors disabled:opacity-50"
+                              className="bp-row-action disabled:opacity-50"
                             >
                               Cancel Order
                             </button>
                             <button
                               onClick={() => { setReceiptModalOrder(order.id); setActionError(''); }}
                               disabled={isPending}
-                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-emerald)] hover:bg-[var(--color-emerald)]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                              className="bp-row-action bp-row-action--primary disabled:opacity-50"
                             >
                               <Upload size={10} /> Add Receipt
                             </button>
@@ -363,7 +363,7 @@ export default function OrdersDashboardClient({
                           <button
                             onClick={() => handleReopenOrder(order.id)}
                             disabled={isPending}
-                            className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-vein)] hover:bg-[var(--color-vein)]/10 px-2 py-1 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                            className="bp-row-action disabled:opacity-50"
                             title={order.status === 'COMPLETED' ? 'Reverse this sale back to Pending' : 'Reactivate this cancelled order'}
                           >
                             <RotateCcw size={10} /> Reopen
