@@ -107,19 +107,19 @@ export function InventoryOverviewClient({ overview, canViewCost }: { overview: I
               <MapPin size={15} className="text-[var(--color-sodalite)]" />
               <h3 className="text-[14px] font-medium text-white">Inventory by Location</h3>
             </div>
-            <table className="w-full text-[13px]">
+            <table className="bp-table">
               <thead>
-                <tr className="text-[var(--color-text-secondary)]">
-                  <th className="text-left font-medium px-5 py-2">Location</th>
-                  <th className="text-right font-medium px-3 py-2">Slabs</th>
-                  <th className="text-right font-medium px-3 py-2">Avail. SF</th>
-                  {canViewCost && <th className="text-right font-medium px-5 py-2">Value</th>}
+                <tr>
+                  <th>Location</th>
+                  <th className="text-right">Slabs</th>
+                  <th className="text-right">Avail. SF</th>
+                  {canViewCost && <th className="text-right">Value</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-basalt-500)]">
+              <tbody>
                 {overview.byLocation.map((l) => (
-                  <tr key={l.location} className="hover:bg-[var(--color-basalt-700)] transition-colors group">
-                    <td className="px-5 py-2.5">
+                  <tr key={l.location} className="group">
+                    <td>
                       <Link
                         href={`/inventory?location=${encodeURIComponent(l.location)}`}
                         className="text-white hover:text-[var(--color-sodalite)] flex items-center gap-1.5"
@@ -128,12 +128,12 @@ export function InventoryOverviewClient({ overview, canViewCost }: { overview: I
                         <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-sodalite)]" />
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-white">
+                    <td className="text-right text-white">
                       {l.slabs} <span className="text-[var(--color-fog-500)]">({l.availableSlabs} avail)</span>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-[var(--color-text-secondary)]">{l.availableSf.toLocaleString()}</td>
+                    <td className="text-right text-[var(--color-text-secondary)]">{l.availableSf.toLocaleString()}</td>
                     {canViewCost && (
-                      <td className="px-5 py-2.5 text-right text-[var(--color-vein)]">
+                      <td className="text-right text-[var(--color-vein)]">
                         {l.value != null ? `$${l.value.toLocaleString()}` : '—'}
                       </td>
                     )}
@@ -148,20 +148,20 @@ export function InventoryOverviewClient({ overview, canViewCost }: { overview: I
               <Layers size={15} className="text-[var(--color-coral)]" />
               <h3 className="text-[14px] font-medium text-white">Inventory by Category</h3>
             </div>
-            <table className="w-full text-[13px]">
+            <table className="bp-table">
               <thead>
-                <tr className="text-[var(--color-text-secondary)]">
-                  <th className="text-left font-medium px-5 py-2">Category</th>
-                  <th className="text-right font-medium px-3 py-2">Slabs</th>
-                  <th className="text-right font-medium px-5 py-2">Avail. SF</th>
+                <tr>
+                  <th>Category</th>
+                  <th className="text-right">Slabs</th>
+                  <th className="text-right">Avail. SF</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-basalt-500)]">
+              <tbody>
                 {overview.byCategory.map((c) => (
-                  <tr key={c.category} className="hover:bg-[var(--color-basalt-700)] transition-colors">
-                    <td className="px-5 py-2.5 text-white">{c.category}</td>
-                    <td className="px-3 py-2.5 text-right text-white">{c.slabs}</td>
-                    <td className="px-5 py-2.5 text-right text-[var(--color-text-secondary)]">{c.availableSf.toLocaleString()}</td>
+                  <tr key={c.category}>
+                    <td className="text-white">{c.category}</td>
+                    <td className="text-right text-white">{c.slabs}</td>
+                    <td className="text-right text-[var(--color-text-secondary)]">{c.availableSf.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
