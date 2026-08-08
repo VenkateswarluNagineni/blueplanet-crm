@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={t.id}
               role="status"
-              className={`animate-toast-in bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-lg shadow-2xl px-4 py-3 flex items-start gap-3 ${
+              className={`animate-toast-in bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-[var(--radius-xl)] bp-lift-3 px-4 py-3 flex items-start gap-3 ${
                 t.kind === 'reserve' ? 'bp-toast-reserve' : ''
               }`}
             >

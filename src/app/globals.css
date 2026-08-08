@@ -372,19 +372,6 @@ textarea {
     0 0 0 3px rgba(227, 193, 108, 0.12);
 }
 
-/* Deprecated panel — kept for any residual class use */
-.bp-login-panel {
-  width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
 @keyframes toast-in {
   from {
     opacity: 0;
