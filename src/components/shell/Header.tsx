@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { logoutAction } from '@/server/session-actions';
 import { CommandPalette } from '@/components/shell/CommandPalette';
 import { Drawer } from '@/components/ui/Drawer';
+import { Switch } from '@/components/ui/Switch';
 
 export function Header() {
   const { role, setRole, settings, updateSetting, canImpersonate, userEmail } = useRole();
@@ -151,15 +152,12 @@ export function Header() {
                   Allow sales reps to see landed cost calculations.
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.salesCanViewLandedCost}
-                  onChange={(e) => updateSetting('salesCanViewLandedCost', e.target.checked)}
-                />
-                <div className="w-9 h-5 bg-[var(--color-basalt-500)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--color-emerald)]" />
-              </label>
+              <Switch
+                checked={settings.salesCanViewLandedCost}
+                onChange={(checked) => updateSetting('salesCanViewLandedCost', checked)}
+                accent="emerald"
+                ariaLabel="View landed costs"
+              />
             </div>
 
             <div className="flex items-center justify-between gap-4">
@@ -169,15 +167,12 @@ export function Header() {
                   Allow sales to view the pipeline of all associates.
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.salesCanViewAllPipeline}
-                  onChange={(e) => updateSetting('salesCanViewAllPipeline', e.target.checked)}
-                />
-                <div className="w-9 h-5 bg-[var(--color-basalt-500)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--color-emerald)]" />
-              </label>
+              <Switch
+                checked={settings.salesCanViewAllPipeline}
+                onChange={(checked) => updateSetting('salesCanViewAllPipeline', checked)}
+                accent="emerald"
+                ariaLabel="Global pipeline visibility"
+              />
             </div>
           </div>
 
@@ -193,15 +188,12 @@ export function Header() {
                   Vendors can search all inventory, not only their shipped goods.
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.vendorCanViewFullInventory}
-                  onChange={(e) => updateSetting('vendorCanViewFullInventory', e.target.checked)}
-                />
-                <div className="w-9 h-5 bg-[var(--color-basalt-500)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--color-sodalite)]" />
-              </label>
+              <Switch
+                checked={settings.vendorCanViewFullInventory}
+                onChange={(checked) => updateSetting('vendorCanViewFullInventory', checked)}
+                accent="sodalite"
+                ariaLabel="Full inventory directory"
+              />
             </div>
           </div>
 
