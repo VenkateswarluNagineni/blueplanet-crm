@@ -1006,9 +1006,9 @@ export function InventoryTableClient({
                       hint="Try clearing filters or search to see yard stock."
                       action={
                         activeFilterCount > 0 ? (
-                          <button type="button" onClick={clearAllFilters} className="btn-ghost text-[13px]">
+                          <Button type="button" onClick={clearAllFilters} variant="ghost">
                             Clear filters
-                          </button>
+                          </Button>
                         ) : undefined
                       }
                       className="py-10"
@@ -1055,14 +1055,14 @@ export function InventoryTableClient({
                             >
                               <X size={14} />
                             </button>
-                            <button 
+                            <Button
                               type="button"
                               onClick={handleSubmitMeasures}
-                              className="btn-primary !min-h-7 !px-2 text-[11px] gap-1"
+                              className="!min-h-7 !px-2 text-[11px] gap-1"
                               title="Submit to Admin for Approval"
                             >
                               <Send size={12} /> Submit
-                            </button>
+                            </Button>
                           </div>
                         ) : isPendingApproval ? (
                           <button 

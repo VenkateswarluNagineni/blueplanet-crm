@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 type Props = { slab: InventoryRow };
 
@@ -71,14 +72,15 @@ export function SlabPhotoGallery({ slab }: Props) {
             Photos{photos.length > 0 ? ` · ${photos.length}` : ''}
           </h3>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isPending}
-          className="btn-ghost !min-h-7 !px-2 text-[11px] inline-flex items-center gap-1 disabled:opacity-50"
+          variant="ghost"
+          className="!min-h-7 !px-2 text-[11px] gap-1"
         >
           <Plus size={13} /> Add photos
-        </button>
+        </Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -95,9 +97,9 @@ export function SlabPhotoGallery({ slab }: Props) {
           title="No photos yet"
           hint="Add a photo so anyone browsing this slab's passport sees the actual piece."
           action={
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary text-[13px]">
+            <Button type="button" onClick={() => fileInputRef.current?.click()} variant="secondary">
               Add photos
-            </button>
+            </Button>
           }
           className="py-8 bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] border-dashed rounded-md"
         />

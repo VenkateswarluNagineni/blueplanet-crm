@@ -409,13 +409,14 @@ export default function CatalogDashboardClient({
                 {criticalLow.length > 2 ? '…' : ''}) below safety (≤ 5 slabs in yard).
               </span>
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => router.push('/purchases')}
-              className="btn-primary !min-h-8 !px-3 text-[12px] shrink-0"
+              size="sm"
+              className="shrink-0"
             >
               Issue PO
-            </button>
+            </Button>
           </div>
         );
       })()}
@@ -766,7 +767,7 @@ export default function CatalogDashboardClient({
                           </a>
                         </div>
                         <div className="text-right shrink-0">
-                          <button
+                          <Button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -774,10 +775,10 @@ export default function CatalogDashboardClient({
                               setQuotePrice(selectedMaterial.retailPricePerSf?.toString() ?? '');
                               setQuoteError('');
                             }}
-                            className="btn-primary !min-h-7 !px-2.5 text-[11px] opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="!min-h-7 !px-2.5 text-[11px] opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             Add to quote
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))
