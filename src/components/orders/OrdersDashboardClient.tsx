@@ -273,9 +273,9 @@ export default function OrdersDashboardClient({
                       }
                       action={
                         (searchTerm || statusFilter !== 'ALL') ? (
-                          <button type="button" onClick={clearFilters} className="btn-ghost text-[13px]">
+                          <Button type="button" onClick={clearFilters} variant="ghost">
                             Reset filters
-                          </button>
+                          </Button>
                         ) : undefined
                       }
                       className="py-10"

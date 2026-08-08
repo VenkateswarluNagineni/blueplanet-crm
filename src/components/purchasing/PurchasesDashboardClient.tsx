@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { Term } from '@/components/ui/Tooltip';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
@@ -317,13 +318,12 @@ export default function PurchasesDashboardClient({
               >
                 <Truck size={13} /> Logistics tracker
               </Link>
-              <button
+              <Button
                 type="button"
                 onClick={() => { setIsCreateModalOpen(true); setFormError(''); }}
-                className="btn-primary"
               >
                 <Plus size={16} /> Create PO
-              </button>
+              </Button>
             </div>
           }
         >
@@ -431,22 +431,23 @@ export default function PurchasesDashboardClient({
                       <td className="p-3 text-center">
                         <div className="flex flex-col items-center gap-1.5">
                           {po.approvalStatus === 'PENDING_APPROVAL' ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => handleApprove(po)}
                               disabled={isPending}
-                              className="btn-secondary !min-h-7 !px-2.5 text-[11px] disabled:opacity-60"
+                              variant="secondary"
+                              className="!min-h-7 !px-2.5 text-[11px]"
                             >
                               Approve
-                            </button>
+                            </Button>
                           ) : po.status !== 'RECEIVED' ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => { setVerifyModalOpen({ isOpen: true, poId: po.id }); setFormError(''); }}
-                              className="btn-primary !min-h-7 !px-2.5 text-[11px]"
+                              className="!min-h-7 !px-2.5 text-[11px]"
                             >
                               Verify step
-                            </button>
+                            </Button>
                           ) : (
                             <span className="text-[11px] text-[var(--color-text-secondary)] italic">Completed</span>
                           )}
@@ -482,17 +483,16 @@ export default function PurchasesDashboardClient({
                       }
                       action={
                         purchaseOrders.length === 0 ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => { setIsCreateModalOpen(true); setFormError(''); }}
-                            className="btn-primary inline-flex items-center gap-1.5"
                           >
                             <Plus size={14} /> Create PO
-                          </button>
+                          </Button>
                         ) : (
-                          <button type="button" onClick={clearPoFilters} className="btn-ghost text-[13px]">
+                          <Button type="button" onClick={clearPoFilters} variant="ghost">
                             Reset filters
-                          </button>
+                          </Button>
                         )
                       }
                       className="py-10"
@@ -674,8 +674,8 @@ export default function PurchasesDashboardClient({
               )}
 
               <div className="pt-4 mt-2 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
-                <button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} className="btn-ghost text-[13px]">Cancel</button>
-                <button type="submit" disabled={isPending} className="btn-primary text-[13px] disabled:opacity-60">{isPending ? 'Issuing…' : 'Issue PO'}</button>
+                <Button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} variant="ghost">Cancel</Button>
+                <Button type="submit" disabled={isPending}>{isPending ? 'Issuing…' : 'Issue PO'}</Button>
               </div>
             </form>
           </div>
