@@ -156,7 +156,7 @@ export function SalesCrmClient({ data, canEditTarget }: { data: SalesCrmData; ca
             Customers <span className="text-[var(--color-text-secondary)] font-normal">({customers.length})</span>
           </h2>
 
-          <div className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-lg overflow-hidden">
+          <div className="bp-table-shell">
             {filtered.length === 0 ? (
               <EmptyState
                 icon={Users}
@@ -180,31 +180,31 @@ export function SalesCrmClient({ data, canEditTarget }: { data: SalesCrmData; ca
                 className="py-12"
               />
             ) : (
-              <table className="w-full text-left border-collapse text-[13px]">
+              <table className="bp-table">
                 <thead>
-                  <tr className="bg-[var(--color-basalt-700)] text-[11px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)]">Customer</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)]">Contact</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)] text-right">Open Deals</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)] text-right">Open Value</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)] text-right">Orders</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)] text-right">Lifetime Value</th>
-                    <th className="p-3 font-medium border-b border-[var(--color-basalt-500)] text-center">Jump</th>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Contact</th>
+                    <th className="text-right">Open Deals</th>
+                    <th className="text-right">Open Value</th>
+                    <th className="text-right">Orders</th>
+                    <th className="text-right">Lifetime Value</th>
+                    <th className="text-center">Jump</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-basalt-500)]">
+                <tbody>
                   {filtered.map((c) => (
-                    <tr key={c.id} className="hover:bg-[var(--color-basalt-800)] transition-colors">
-                      <td className="p-3 font-medium text-white">{c.name}</td>
-                      <td className="p-3">
+                    <tr key={c.id}>
+                      <td className="font-medium text-white">{c.name}</td>
+                      <td>
                         <span className="text-[12px] text-[var(--color-sodalite)] flex items-center gap-1"><Mail size={11} /> {c.email}</span>
                         <span className="text-[11px] text-[var(--color-text-secondary)] flex items-center gap-1 mt-0.5"><Phone size={10} /> {c.phone}</span>
                       </td>
-                      <td className="p-3 text-right text-white">{c.openDeals}</td>
-                      <td className="p-3 text-right text-[var(--color-amethyst)]">{usd(c.openValue)}</td>
-                      <td className="p-3 text-right text-white">{c.ordersCount}</td>
-                      <td className="p-3 text-right text-[var(--color-emerald)] font-medium">{usd(c.lifetimeValue)}</td>
-                      <td className="p-3">
+                      <td className="text-right text-white">{c.openDeals}</td>
+                      <td className="text-right text-[var(--color-amethyst)]">{usd(c.openValue)}</td>
+                      <td className="text-right text-white">{c.ordersCount}</td>
+                      <td className="bp-money">{usd(c.lifetimeValue)}</td>
+                      <td>
                         <div className="flex items-center justify-center gap-1.5">
                           <Link
                             href="/pipeline"
