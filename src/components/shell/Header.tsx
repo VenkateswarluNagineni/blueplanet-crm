@@ -8,6 +8,7 @@ import { logoutAction } from '@/server/session-actions';
 import { CommandPalette } from '@/components/shell/CommandPalette';
 import { Drawer } from '@/components/ui/Drawer';
 import { Switch } from '@/components/ui/Switch';
+import { Button } from '@/components/ui/Button';
 
 export function Header() {
   const { role, setRole, settings, updateSetting, canImpersonate, userEmail } = useRole();
@@ -113,15 +114,16 @@ export function Header() {
           </button>
 
           <form action={logoutAction}>
-            <button
+            <Button
               type="submit"
-              className="btn-ghost !min-h-8 !px-2 text-[12px]"
+              variant="ghost"
+              size="sm"
               title="Sign out"
               aria-label="Sign out"
             >
               <LogOut size={14} />
               <span className="hidden lg:inline">Sign out</span>
-            </button>
+            </Button>
           </form>
         </div>
       </header>

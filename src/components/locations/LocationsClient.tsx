@@ -103,9 +103,9 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
           subtitle="Warehouses, showrooms, and stocking points."
           meta={[{ label: `${locations.length} sites`, tone: 'blue' }]}
           actions={
-            <button type="button" onClick={() => { setDrawer({ mode: 'ADD' }); setActionError(''); }} className="btn-primary !min-h-8 !px-3 text-[12px]">
+            <Button type="button" onClick={() => { setDrawer({ mode: 'ADD' }); setActionError(''); }} size="sm">
               <Plus size={14} /> New Location
-            </button>
+            </Button>
           }
         />
       }
@@ -117,9 +117,9 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
             title="No locations yet"
             hint="Add your first warehouse, showroom, or stocking point."
             action={
-              <button onClick={() => { setDrawer({ mode: 'ADD' }); setActionError(''); }} className="btn-primary inline-flex items-center gap-1.5">
+              <Button onClick={() => { setDrawer({ mode: 'ADD' }); setActionError(''); }}>
                 <Plus size={14} /> New Location
-              </button>
+              </Button>
             }
           />
         ) : (

@@ -8,6 +8,7 @@ import { approveApprovalAction, rejectApprovalAction } from '@/server/approvals/
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 
 export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
   const router = useRouter();
@@ -80,7 +81,7 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button disabled={isPending} onClick={() => act(rejectApprovalAction, a.id)} className="btn-secondary flex items-center gap-1 text-[12px] py-1.5 disabled:opacity-50 hover:!border-[rgba(239,68,68,0.4)] hover:!text-[var(--color-ruby)]"><X size={13} /> Reject</button>
+                    <Button disabled={isPending} onClick={() => act(rejectApprovalAction, a.id)} variant="secondary" className="flex items-center gap-1 text-[12px] py-1.5 hover:!border-[rgba(239,68,68,0.4)] hover:!text-[var(--color-ruby)]"><X size={13} /> Reject</Button>
                     <button disabled={isPending} onClick={() => act(approveApprovalAction, a.id)} className="flex items-center gap-1 text-[12px] text-[var(--color-basalt-950)] bg-[var(--color-emerald)] hover:opacity-90 px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors disabled:opacity-50"><Check size={13} /> Approve</button>
                   </div>
                 </div>
