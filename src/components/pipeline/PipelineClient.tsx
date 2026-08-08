@@ -15,13 +15,14 @@ import { PageShell } from '@/components/ui/PageShell';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
+import { ACCENT } from '@/lib/ui/statusColors';
 
 const STAGES: { key: string; label: string; color: string }[] = [
-  { key: 'LEAD', label: 'Lead', color: '#b8b6b9' },
-  { key: 'QUOTED', label: 'Quoted', color: '#92b0ce' },
-  { key: 'NEGOTIATION', label: 'Negotiation', color: '#e3c16c' },
-  { key: 'CLOSED_WON', label: 'Closed Won', color: '#10b981' },
-  { key: 'CLOSED_LOST', label: 'Closed Lost', color: '#ef4444' },
+  { key: 'LEAD', label: 'Lead', color: ACCENT.fog },
+  { key: 'QUOTED', label: 'Quoted', color: ACCENT.sodalite },
+  { key: 'NEGOTIATION', label: 'Negotiation', color: ACCENT.gold },
+  { key: 'CLOSED_WON', label: 'Closed Won', color: ACCENT.emerald },
+  { key: 'CLOSED_LOST', label: 'Closed Lost', color: ACCENT.ruby },
 ];
 
 function DealCard({

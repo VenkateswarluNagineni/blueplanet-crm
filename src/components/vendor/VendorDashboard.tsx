@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { setDashboardLayoutAction } from '@/server/dashboard/actions';
+import { ACCENT } from '@/lib/ui/statusColors';
 
 export type VendorKpis = {
   balanceDue: number;
@@ -32,11 +33,11 @@ const usd = (n: number) => `$${n.toLocaleString()}`;
 const num = (n: number) => n.toLocaleString();
 
 const CATALOG: WidgetDef[] = [
-  { key: 'vkpi:balanceDue', label: 'Outstanding Balance', icon: DollarSign, accent: '#e3c16c', value: (k) => usd(k.balanceDue) },
-  { key: 'vkpi:activeShipments', label: 'Active Shipments', icon: Ship, accent: '#92b0ce', value: (k) => num(k.activeShipments) },
-  { key: 'vkpi:totalPos', label: 'Assigned Orders', icon: Layers, accent: '#b58cd6', value: (k) => num(k.totalPos) },
-  { key: 'vkpi:openInvoices', label: 'Open Invoices', icon: FileText, accent: '#92b0ce', value: (k) => num(k.openInvoices) },
-  { key: 'vkpi:overdueAmount', label: 'Overdue', icon: AlertTriangle, accent: '#e8956b', value: (k) => usd(k.overdueAmount) },
+  { key: 'vkpi:balanceDue', label: 'Outstanding Balance', icon: DollarSign, accent: ACCENT.gold, value: (k) => usd(k.balanceDue) },
+  { key: 'vkpi:activeShipments', label: 'Active Shipments', icon: Ship, accent: ACCENT.sodalite, value: (k) => num(k.activeShipments) },
+  { key: 'vkpi:totalPos', label: 'Assigned Orders', icon: Layers, accent: ACCENT.amethyst, value: (k) => num(k.totalPos) },
+  { key: 'vkpi:openInvoices', label: 'Open Invoices', icon: FileText, accent: ACCENT.sodalite, value: (k) => num(k.openInvoices) },
+  { key: 'vkpi:overdueAmount', label: 'Overdue', icon: AlertTriangle, accent: ACCENT.coral, value: (k) => usd(k.overdueAmount) },
 ];
 
 const DEFAULT_LAYOUT = ['vkpi:balanceDue', 'vkpi:activeShipments', 'vkpi:totalPos', 'vkpi:overdueAmount'];

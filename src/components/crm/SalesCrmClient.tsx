@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { ListToolbar } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ACCENT } from '@/lib/ui/statusColors';
 
 /**
  * The CRM as a sales rep sees it: their own performance scorecard (with an
@@ -104,10 +105,10 @@ export function SalesCrmClient({ data, canEditTarget }: { data: SalesCrmData; ca
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <ScoreCell icon={TrendingUp} label="YTD Sales" value={usd(me.ytdSales)} accent="#10b981" href="/orders?status=COMPLETED" />
-              <ScoreCell icon={Briefcase} label="Open Pipeline" value={usd(me.activePipelineValue)} accent="#b58cd6" href="/pipeline" />
-              <ScoreCell icon={Target} label="Annual Target" value={me.salesTargetAnnual > 0 ? usd(me.salesTargetAnnual) : 'Not set'} accent="#e3c16c" />
-              <ScoreCell icon={Target} label="Quota Attainment" value={`${me.quotaAttainmentPct}%`} accent="#92b0ce" />
+              <ScoreCell icon={TrendingUp} label="YTD Sales" value={usd(me.ytdSales)} accent={ACCENT.emerald} href="/orders?status=COMPLETED" />
+              <ScoreCell icon={Briefcase} label="Open Pipeline" value={usd(me.activePipelineValue)} accent={ACCENT.amethyst} href="/pipeline" />
+              <ScoreCell icon={Target} label="Annual Target" value={me.salesTargetAnnual > 0 ? usd(me.salesTargetAnnual) : 'Not set'} accent={ACCENT.gold} />
+              <ScoreCell icon={Target} label="Quota Attainment" value={`${me.quotaAttainmentPct}%`} accent={ACCENT.sodalite} />
             </div>
 
             <div className="bg-[var(--color-basalt-800)] border border-[var(--color-basalt-500)] rounded-md p-4">

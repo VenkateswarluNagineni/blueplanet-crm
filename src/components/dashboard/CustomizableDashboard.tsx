@@ -26,6 +26,7 @@ import type { DashboardData } from '@/server/dashboard/queries';
 import { ChartWidget, type ChartKey } from '@/components/dashboard/DashboardCharts';
 import { setDashboardLayoutAction } from '@/server/dashboard/actions';
 import { useRole } from '@/context/RoleContext';
+import { ACCENT } from '@/lib/ui/statusColors';
 
 type Kind = 'kpi' | 'chart';
 type IconType = React.ComponentType<{ size?: number; className?: string }>;
@@ -56,7 +57,7 @@ const CATALOG: WidgetDef[] = [
     kind: 'kpi',
     requiresCost: true,
     icon: DollarSign,
-    accent: '#e3c16c',
+    accent: ACCENT.gold,
     value: (d) => usd(d.kpis.inventoryValue),
     href: () => '/inventory/overview',
   },
@@ -65,7 +66,7 @@ const CATALOG: WidgetDef[] = [
     label: 'Available Slabs',
     kind: 'kpi',
     icon: Boxes,
-    accent: '#92b0ce',
+    accent: ACCENT.sodalite,
     value: (d) => num(d.kpis.availableSlabs),
     href: () => '/inventory?status=AVAILABLE',
   },
@@ -74,7 +75,7 @@ const CATALOG: WidgetDef[] = [
     label: 'POs In Transit',
     kind: 'kpi',
     icon: Truck,
-    accent: '#e8956b',
+    accent: ACCENT.coral,
     value: (d) => num(d.kpis.inTransitPos),
     // Sales cannot open logistics — send them to inventory overview instead.
     href: (role) => (role === 'ADMIN' ? '/logistics' : '/inventory/overview'),
@@ -84,7 +85,7 @@ const CATALOG: WidgetDef[] = [
     label: 'Open Pipeline',
     kind: 'kpi',
     icon: Briefcase,
-    accent: '#b58cd6',
+    accent: ACCENT.amethyst,
     value: (d) => usd(d.kpis.openPipelineValue),
     href: () => '/pipeline',
   },
@@ -93,7 +94,7 @@ const CATALOG: WidgetDef[] = [
     label: 'YTD Closed Sales',
     kind: 'kpi',
     icon: TrendingUp,
-    accent: '#10b981',
+    accent: ACCENT.emerald,
     value: (d) => usd(d.kpis.ytdSales),
     href: () => '/orders?status=COMPLETED',
   },
@@ -103,7 +104,7 @@ const CATALOG: WidgetDef[] = [
     kind: 'kpi',
     adminOnly: true,
     icon: CheckCircle,
-    accent: '#92b0ce',
+    accent: ACCENT.sodalite,
     value: (d) => num(d.kpis.pendingApprovals),
     href: (role) => (role === 'ADMIN' ? '/admin/approvals' : null),
   },
