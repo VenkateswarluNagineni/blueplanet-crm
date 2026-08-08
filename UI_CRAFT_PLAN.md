@@ -113,8 +113,8 @@
 ### Wave 5 — Future signatures (P2 · after waves 1–4)
 | # | Idea | Notes |
 |---|------|-------|
-| 5.1 | Block family “mates” strip in passport | Needs query |
-| 5.2 | Reservation ceremony micro-interaction | Sales flow |
+| 5.1 | ~~Block family “mates” strip in passport~~ ✅ | `getBlockMates`, `PassportMatesStrip` (item 26) |
+| 5.2 | ~~Reservation ceremony micro-interaction~~ ✅ | Sales+Admin hold/release, gold row/status, reserve toast (item 21) |
 | 5.3 | QR deep-link passport print | External share |
 | 5.4 | Remnant as first-class status | Domain work |
 
