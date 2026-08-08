@@ -1140,7 +1140,7 @@ export function InventoryTableClient({
             </>
           )}
           {canWarehouseOps && (
-            <button type="button" onClick={() => openBulk('WRITE_OFF')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[var(--color-basalt-700)] px-2.5 py-1.5 rounded-md transition-colors"><Trash2 size={14} className="text-red-400" /> Write-off</button>
+            <button type="button" onClick={() => openBulk('WRITE_OFF')} className="flex items-center gap-1.5 text-[13px] text-white hover:bg-[var(--color-basalt-700)] px-2.5 py-1.5 rounded-md transition-colors"><Trash2 size={14} className="text-[var(--color-ruby)]" /> Write-off</button>
           )}
           <div className="w-px h-5 bg-[var(--color-basalt-500)] mx-1" />
           <button type="button" onClick={clearSelection} aria-label="Clear selection" className="text-[var(--color-text-secondary)] hover:text-white p-1 rounded hover:bg-[var(--color-basalt-700)]"><X size={16} /></button>
@@ -1451,7 +1451,7 @@ export function InventoryTableClient({
                         const tone = m.type === 'TRANSFER' ? 'text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)] bg-[rgba(146,176,206,0.10)]'
                           : m.type === 'HOLD' ? 'text-[var(--color-vein)] border-[rgba(227,193,108,0.30)] bg-[var(--color-vein)]/10'
                           : m.type === 'RELEASE' ? 'text-[var(--color-emerald)] border-[rgba(16,185,129,0.30)] bg-[var(--color-emerald)]/10'
-                          : 'text-red-400 border-red-500/30 bg-red-500/10';
+                          : 'text-[var(--color-ruby)] border-[rgba(239,68,68,0.30)] bg-[rgba(239,68,68,0.10)]';
                         const desc = m.type === 'TRANSFER' ? `Moved ${m.fromLocation ?? '—'} → ${m.toLocation ?? '—'}`
                           : m.type === 'HOLD' ? 'Placed on hold'
                           : m.type === 'RELEASE' ? 'Released to available'

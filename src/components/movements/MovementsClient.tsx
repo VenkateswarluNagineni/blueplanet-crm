@@ -11,7 +11,7 @@ const TYPE_TONE: Record<string, string> = {
   TRANSFER: 'text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)] bg-[rgba(146,176,206,0.10)]',
   HOLD: 'text-[var(--color-vein)] border-[rgba(227,193,108,0.30)] bg-[var(--color-vein)]/10',
   RELEASE: 'text-[var(--color-emerald)] border-[rgba(16,185,129,0.30)] bg-[var(--color-emerald)]/10',
-  WRITE_OFF: 'text-red-400 border-red-500/30 bg-red-500/10',
+  WRITE_OFF: 'text-[var(--color-ruby)] border-[rgba(239,68,68,0.30)] bg-[rgba(239,68,68,0.10)]',
 };
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });

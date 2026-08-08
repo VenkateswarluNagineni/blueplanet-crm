@@ -43,7 +43,7 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
         />
       }
     >
-      {error && <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{error}</div>}
+      {error && <div className="mb-4 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded">{error}</div>}
 
       <div className="space-y-6">
         <div>
@@ -99,7 +99,7 @@ export function ApprovalsClient({ approvals }: { approvals: ApprovalItem[] }) {
                   {a.status === 'COMPLETED' ? (
                     <span className="text-[11px] text-[var(--color-emerald)] flex items-center gap-1"><CheckCircle2 size={13} /> Approved</span>
                   ) : (
-                    <span className="text-[11px] text-red-400 flex items-center gap-1"><XCircle size={13} /> Rejected</span>
+                    <span className="text-[11px] text-[var(--color-ruby)] flex items-center gap-1"><XCircle size={13} /> Rejected</span>
                   )}
                 </div>
               ))}

@@ -238,7 +238,7 @@ export default function OrdersDashboardClient({
     >
 
       {actionError && (
-        <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">
+        <div className="mx-6 mt-4 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded">
           {actionError}
         </div>
       )}
@@ -346,7 +346,7 @@ export default function OrdersDashboardClient({
                             <button
                               onClick={() => handleCancelOrder(order.id)}
                               disabled={isPending}
-                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                              className="text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-ruby)] hover:bg-[rgba(239,68,68,0.1)] px-2 py-1 rounded transition-colors disabled:opacity-50"
                             >
                               Cancel Order
                             </button>

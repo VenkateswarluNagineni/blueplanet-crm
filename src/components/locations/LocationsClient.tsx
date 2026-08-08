@@ -138,7 +138,7 @@ export function LocationsClient({ locations }: { locations: AdminLocation[] }) {
                   <BrandMark size={30} />
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setDrawer({ mode: 'EDIT', loc: l }); setActionError(''); }} className="text-[var(--color-sodalite)] hover:text-white p-1.5 rounded hover:bg-[var(--color-basalt-700)]" title="Edit"><Edit2 size={14} /></button>
-                    <button onClick={() => handleDelete(l)} className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-[var(--color-basalt-700)]" title="Delete"><Trash2 size={14} /></button>
+                    <button onClick={() => handleDelete(l)} className="text-[var(--color-ruby)] hover:opacity-80 p-1.5 rounded hover:bg-[var(--color-basalt-700)]" title="Delete"><Trash2 size={14} /></button>
                   </div>
                 </div>
                 <h3 className="text-[15px] font-medium text-white">{l.name} <span className="text-[var(--color-text-secondary)] font-normal">({l.code})</span></h3>
@@ -277,7 +277,7 @@ function Sec({ title, children }: { title: string; children: React.ReactNode }) 
 function Fld({ label, children, req }: { label: string; children: React.ReactNode; req?: boolean }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[var(--color-text-secondary)] block text-[12px]">{label}{req && <span className="text-red-400"> *</span>}</label>
+      <label className="text-[var(--color-text-secondary)] block text-[12px]">{label}{req && <span className="text-[var(--color-ruby)]"> *</span>}</label>
       {children}
     </div>
   );

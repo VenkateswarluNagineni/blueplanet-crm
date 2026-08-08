@@ -39,7 +39,7 @@ function EtaBadge({ status, days }: { status: EtaStatus; days: number | null }) 
   const map: Record<string, { cls: string; label: string }> = {
     ON_TRACK: { cls: 'text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 border-[rgba(16,185,129,0.20)]', label: `On track · ${days}d` },
     DUE_SOON: { cls: 'text-[var(--color-vein)] bg-[var(--color-vein)]/10 border-[rgba(227,193,108,0.20)]', label: days === 0 ? 'Due today' : `Due in ${days}d` },
-    OVERDUE: { cls: 'text-red-400 bg-red-500/10 border-red-500/20', label: `Overdue ${Math.abs(days ?? 0)}d` },
+    OVERDUE: { cls: 'text-[var(--color-ruby)] bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.2)]', label: `Overdue ${Math.abs(days ?? 0)}d` },
   };
   const m = map[status];
   if (!m) return null;
@@ -670,7 +670,7 @@ export default function PurchasesDashboardClient({
               </div>
 
               {formError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{formError}</div>
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded">{formError}</div>
               )}
 
               <div className="pt-4 mt-2 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">
@@ -723,7 +723,7 @@ export default function PurchasesDashboardClient({
               })()}
 
               {formError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{formError}</div>
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded">{formError}</div>
               )}
 
               <div className="pt-4 mt-2 border-t border-[var(--color-basalt-500)] flex justify-end gap-3">

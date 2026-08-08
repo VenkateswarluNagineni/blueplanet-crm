@@ -649,7 +649,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
         </div>
       )}
 
-      {actionError && <div className="mx-6 mt-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] px-3 py-2 rounded">{actionError}</div>}
+      {actionError && <div className="mx-6 mt-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded">{actionError}</div>}
 
       {/* Customer Catalog — faceted count cards (click a value to filter the table) */}
       {activeTab === 'CUSTOMERS' && customerView === 'CATALOG' && (
@@ -869,7 +869,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                   <div className="space-y-5">
                     {(c.salesAlertNote || c.salesLockNote) && (
                       <div className="space-y-2">
-                        {c.salesLockNote && <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-300 text-[12px] px-3 py-2 rounded"><Lock size={14} className="mt-0.5 shrink-0" /><span><strong className="text-red-200">Sales Lock:</strong> {c.salesLockNote}</span></div>}
+                        {c.salesLockNote && <div className="flex items-start gap-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.30)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded"><Lock size={14} className="mt-0.5 shrink-0" /><span><strong className="text-[var(--color-ruby)]">Sales Lock:</strong> {c.salesLockNote}</span></div>}
                         {c.salesAlertNote && <div className="flex items-start gap-2 bg-[var(--color-vein)]/10 border border-[rgba(227,193,108,0.30)] text-[var(--color-vein)] text-[12px] px-3 py-2 rounded"><AlertTriangle size={14} className="mt-0.5 shrink-0" /><span><strong>Sales Alert:</strong> {c.salesAlertNote}</span></div>}
                       </div>
                     )}
@@ -1004,7 +1004,7 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
                 return <div className="space-y-4">{list.map((inv) => (
                   <div key={inv.invoiceNum} className="bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md overflow-hidden">
                     <div className="flex items-center justify-between p-4 border-b border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]/30">
-                      <div className="flex items-center gap-3"><FileText size={14} className="text-[var(--color-sodalite)]" /><span className="font-mono text-white font-medium">{inv.invoiceNum}</span><span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${inv.status === 'Overdue' ? 'bg-red-500/10 text-red-400 border-red-500/30' : inv.status === 'In Dispute' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-[var(--color-vein)]/10 text-[var(--color-vein)] border-[rgba(227,193,108,0.30)]'}`}>{inv.status}</span></div>
+                      <div className="flex items-center gap-3"><FileText size={14} className="text-[var(--color-sodalite)]" /><span className="font-mono text-white font-medium">{inv.invoiceNum}</span><span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${inv.status === 'Overdue' ? 'bg-[rgba(239,68,68,0.1)] text-[var(--color-ruby)] border-[rgba(239,68,68,0.30)]' : inv.status === 'In Dispute' ? 'bg-[rgba(232,149,107,0.1)] text-[var(--color-coral)] border-[rgba(232,149,107,0.30)]' : 'bg-[var(--color-vein)]/10 text-[var(--color-vein)] border-[rgba(227,193,108,0.30)]'}`}>{inv.status}</span></div>
                       <span className="text-[14px] font-medium text-[var(--color-vein)]">${inv.amount.toLocaleString()}</span>
                     </div>
                     <div className="p-4 text-[13px]"><p className="text-[var(--color-text-secondary)] mb-1">Service Provided</p><p className="text-white mb-4">{inv.serviceDetails}</p><p className="text-[var(--color-text-secondary)] mb-1">Due Date</p><p className="text-white font-medium">{inv.dueDate}</p></div>

@@ -145,7 +145,7 @@ export function SalesCrmClient({ data, canEditTarget }: { data: SalesCrmData; ca
                   </p>
                 </>
               )}
-              {error && <p className="text-red-400 text-[12px] mt-2">{error}</p>}
+              {error && <p className="text-[var(--color-ruby)] text-[12px] mt-2">{error}</p>}
             </div>
           </div>
         )}

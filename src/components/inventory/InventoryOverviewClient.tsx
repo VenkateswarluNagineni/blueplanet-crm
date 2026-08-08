@@ -84,7 +84,7 @@ export function InventoryOverviewClient({ overview, canViewCost }: { overview: I
                 { label: 'On hold', status: 'ON_HOLD', count: k.onHold, tone: 'text-[var(--color-vein)] border-[rgba(227,193,108,0.30)] bg-[var(--color-vein)]/10' },
                 { label: 'Committed', status: 'COMMITTED', count: k.committed, tone: 'text-[var(--color-sodalite)] border-[rgba(146,176,206,0.30)] bg-[rgba(146,176,206,0.10)]' },
                 { label: 'Sold', status: 'SOLD', count: k.sold, tone: 'text-[var(--color-text-secondary)] border-[var(--color-basalt-500)] bg-[var(--color-basalt-700)]' },
-                { label: 'Written off', status: 'WRITTEN_OFF', count: k.writtenOff, tone: 'text-red-400 border-red-500/30 bg-red-500/10' },
+                { label: 'Written off', status: 'WRITTEN_OFF', count: k.writtenOff, tone: 'text-[var(--color-ruby)] border-[rgba(239,68,68,0.30)] bg-[rgba(239,68,68,0.10)]' },
               ] as const
             ).map((row) => (
               <Link
