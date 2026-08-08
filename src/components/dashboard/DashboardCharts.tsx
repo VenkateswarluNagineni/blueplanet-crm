@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import type { DashboardData } from '@/server/dashboard/queries';
 
-const PALETTE = ['#e3c16c', '#92b0ce', '#10b981', '#e8956b', '#b58cd6', '#5db5b5'];
+const PALETTE = ['#e3c16c', '#92b0ce', '#10b981', '#e8956b', '#b58cd6'];
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (

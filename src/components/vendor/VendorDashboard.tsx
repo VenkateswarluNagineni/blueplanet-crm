@@ -35,7 +35,7 @@ const CATALOG: WidgetDef[] = [
   { key: 'vkpi:balanceDue', label: 'Outstanding Balance', icon: DollarSign, accent: '#e3c16c', value: (k) => usd(k.balanceDue) },
   { key: 'vkpi:activeShipments', label: 'Active Shipments', icon: Ship, accent: '#92b0ce', value: (k) => num(k.activeShipments) },
   { key: 'vkpi:totalPos', label: 'Assigned Orders', icon: Layers, accent: '#b58cd6', value: (k) => num(k.totalPos) },
-  { key: 'vkpi:openInvoices', label: 'Open Invoices', icon: FileText, accent: '#5db5b5', value: (k) => num(k.openInvoices) },
+  { key: 'vkpi:openInvoices', label: 'Open Invoices', icon: FileText, accent: '#92b0ce', value: (k) => num(k.openInvoices) },
   { key: 'vkpi:overdueAmount', label: 'Overdue', icon: AlertTriangle, accent: '#e8956b', value: (k) => usd(k.overdueAmount) },
 ];
 
