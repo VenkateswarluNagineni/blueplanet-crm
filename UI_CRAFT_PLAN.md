@@ -193,6 +193,9 @@ NO bounce, NO spring menus, honor prefers-reduced-motion
 23. ~~H2.2 Attention holds~~ ✅ (dashboard onHoldSlabs tile → /inventory?status=ON_HOLD)  
 24. ~~CSO hold hardening~~ ✅ (max 100 bulk, reason length 200, soft RBAC errors, revalidate /)  
 25. E2E: ensureAuthed + login retry; passport testid; flaky Docker caused mid-suite fail (97/150 last run)  
+26. ~~H3.1 Block mates passport strip~~ ✅ (`getBlockMates`, `PassportMatesStrip`, seed bundleId, `e2e/passport-mates.spec.ts`, `docker-compose.yml`)  
+27. ~~Consistency + primitives pass~~ ✅ (ruby/coral token sweep, Toast/Modal shadow match, dead teal killed, shared `ACCENT`/`statusColors.ts`, last 2 raw tables → `bp-table-shell`, Orders row actions → `.bp-row-action`, `ui/Switch.tsx`, `Button` adoption sweep app-wide, `ui/Input.tsx`/`ui/Select.tsx` primitives, KPI-card focus-visible regression fixed in `InventoryOverviewClient.tsx`)
+28. Backlog (not forced, migrate opportunistically when these files are next touched): ~30 hand-rolled `focus:outline-none`/`focus:border-*` input/select instances in Catalog, CRM (×2), Movements, Purchasing, Pipeline, Inventory table, Command Palette not yet on `ui/Input.tsx`/`ui/Select.tsx` — each already has *some* focus indicator (border-color shift), so this is a consistency debt, not an a11y bug like the KPI-card Link was.
 
 
 ---

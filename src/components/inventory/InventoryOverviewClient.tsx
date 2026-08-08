@@ -67,7 +67,7 @@ export function InventoryOverviewClient({ overview, canViewCost }: { overview: I
               return <KpiCard key={c.label} label={c.label} value={c.value} icon={c.icon} color={c.color} />;
             }
             return (
-              <Link key={c.label} href={c.href} className="block rounded-xl transition-opacity hover:opacity-95 focus-visible:outline-none">
+              <Link key={c.label} href={c.href} className="block rounded-xl transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-vein)] focus-visible:outline-offset-2">
                 <KpiCard label={c.label} value={c.value} icon={c.icon} color={c.color} />
               </Link>
             );
