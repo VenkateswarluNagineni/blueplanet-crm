@@ -6,7 +6,7 @@ import {
   ListFilter,
   Search,
   ArrowUpDown,
-  Plus,
+  Columns3,
   Pencil,
   CheckCircle,
   Building2,
@@ -754,6 +754,33 @@ export function InventoryTableClient({
                     </>
                   )}
                 </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColumnMenu(!showColumnMenu)}
+                    className={`flex items-center gap-2 px-2 py-1 rounded transition-colors ${showColumnMenu ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}
+                  >
+                    <Columns3 size={14} /> Columns
+                  </button>
+                  {showColumnMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowColumnMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1.5 w-52 bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-md shadow-xl z-50 py-2">
+                        <p className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-[var(--color-fog-500)]">Visible columns</p>
+                        {DEFAULT_COLUMN_ORDER.map((colKey) => (
+                          <label key={colKey} className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-white hover:bg-[var(--color-basalt-700)] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={visibleColumns[colKey as keyof typeof visibleColumns]}
+                              onChange={() => toggleColumn(colKey as keyof typeof visibleColumns)}
+                              className="accent-[var(--color-vein)]"
+                            />
+                            <span className="capitalize">{colKey.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             }
           />
@@ -941,38 +968,6 @@ export function InventoryTableClient({
                 
                 {/* Dynamically Rendered Draggable Columns */}
                 {columnOrder.map(colKey => renderHeaderCell(colKey))}
-                
-                {/* Column Toggle Dropdown Container */}
-                <th className="text-right align-middle">
-                  <div className="relative inline-block text-left">
-                    <button 
-                      onClick={() => setShowColumnMenu(!showColumnMenu)}
-                      className="text-[var(--color-sodalite)] hover:text-white flex items-center gap-1.5 bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] px-3 py-1.5 rounded-lg transition-all shadow-sm hover:shadow"
-                    >
-                      <Plus size={14} /> Add column
-                    </button>
-
-                    {showColumnMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowColumnMenu(false)}></div>
-                        <div className="absolute right-0 top-full mt-1.5 w-52 bg-[var(--color-basalt-900)] border border-[var(--color-basalt-500)] rounded-xl shadow-[0_12px_36px_rgb(0,0,0,0.6)] z-50 p-2.5 text-left">
-                          <div className="text-[11px] text-[var(--color-text-secondary)] font-medium uppercase tracking-wider px-2 pb-1 mb-1 border-b border-[var(--color-basalt-500)]">Toggle Columns</div>
-                          {DEFAULT_COLUMN_ORDER.map((colKey) => (
-                            <label key={colKey} className="flex items-center gap-3 px-2 py-1.5 hover:bg-[var(--color-basalt-700)] rounded cursor-pointer transition-colors">
-                              <input 
-                                type="checkbox" 
-                                checked={visibleColumns[colKey as keyof typeof visibleColumns]}
-                                onChange={() => toggleColumn(colKey as keyof typeof visibleColumns)}
-                                className="w-4 h-4 rounded-sm bg-[var(--color-basalt-800)] border-[var(--color-basalt-500)] text-[var(--color-vein)] focus:ring-[var(--color-vein)] accent-[var(--color-vein)]"
-                              />
-                              <span className="text-[13px] text-white capitalize">{colKey.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </th>
               </tr>
             </thead>
             
