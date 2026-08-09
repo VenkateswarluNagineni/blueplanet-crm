@@ -315,9 +315,11 @@ export default function OrdersDashboardClient({
                       ${order.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-1">
-                        <span className="bg-[var(--color-basalt-500)] text-white px-1.5 py-0.5 rounded text-[11px] font-mono">{order.repId} (60%)</span>
-                        <span className="bg-[var(--color-basalt-700)] text-[var(--color-sodalite)] border border-[var(--color-basalt-500)] px-1 py-0.5 rounded text-[10px] font-mono" title="Branch Override Associate">SPLIT (40%)</span>
+                      <div className="text-[11px] text-white font-mono">
+                        {order.repId} (60%){' '}
+                        <span className="text-[var(--color-text-secondary)]" title="Branch Override Associate">
+                          · SPLIT (40%)
+                        </span>
                       </div>
                       <div className="text-[10px] text-[var(--color-emerald)] mt-1 font-mono">
                         Payout: ${(order.totalValue * 0.045).toFixed(2)}
