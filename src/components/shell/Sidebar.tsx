@@ -3,7 +3,7 @@
 import React, { useState, createContext, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronsLeft, Menu, Command } from 'lucide-react';
+import { ChevronsLeft, Menu } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useMobileNav } from '@/context/MobileNav';
 import { BrandMark } from '@/components/brand/Wordmark';
@@ -219,45 +219,23 @@ export function Sidebar({ badges = {} }: { badges?: NavBadges }) {
             className={`shrink-0 border-t border-[var(--color-basalt-500)] p-3 ${isCollapsed ? 'flex flex-col items-center gap-2' : 'space-y-2'}`}
           >
             {!isCollapsed ? (
-              <>
-                <div className="flex items-center justify-between gap-2 px-1">
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${chip.className}`}
-                  >
-                    {chip.label}
-                  </span>
-                  <span className="text-[10px] text-[var(--color-fog-500)] truncate" title={userEmail}>
-                    {userEmail.split('@')[0]}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-fog-500)] px-1">
-                  <Command size={11} className="shrink-0" />
-                  <span>
-                    Search with{' '}
-                    <kbd className="font-mono text-[10px] bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] rounded px-1 py-0.5 text-[var(--color-text-secondary)]">
-                      Ctrl
-                    </kbd>{' '}
-                    <kbd className="font-mono text-[10px] bg-[var(--color-basalt-700)] border border-[var(--color-basalt-500)] rounded px-1 py-0.5 text-[var(--color-text-secondary)]">
-                      K
-                    </kbd>
-                  </span>
-                </div>
-              </>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${chip.className}`}
+                >
+                  {chip.label}
+                </span>
+                <span className="text-[10px] text-[var(--color-fog-500)] truncate" title={userEmail}>
+                  {userEmail.split('@')[0]}
+                </span>
+              </div>
             ) : (
-              <>
-                <span
-                  className={`w-7 h-7 rounded flex items-center justify-center text-[9px] font-bold border ${chip.className}`}
-                  title={`${chip.label} · ${userEmail}`}
-                >
-                  {chip.label.slice(0, 1)}
-                </span>
-                <span
-                  className="text-[9px] text-[var(--color-fog-500)] font-mono"
-                  title="Command palette: Ctrl+K"
-                >
-                  ⌘K
-                </span>
-              </>
+              <span
+                className={`w-7 h-7 rounded flex items-center justify-center text-[9px] font-bold border ${chip.className}`}
+                title={`${chip.label} · ${userEmail}`}
+              >
+                {chip.label.slice(0, 1)}
+              </span>
             )}
           </div>
         </aside>
