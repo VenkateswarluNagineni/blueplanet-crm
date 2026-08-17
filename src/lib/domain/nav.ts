@@ -13,6 +13,7 @@ import {
   Warehouse,
   History,
   LayoutDashboard,
+  GitCompare,
 } from 'lucide-react';
 
 /** Subset of company settings needed for nav visibility (client-safe; no server imports). */
@@ -94,6 +95,16 @@ export const NAV_ITEMS: NavItemDef[] = [
     icon: Package,
     roles: ['ADMIN'],
     group: { ADMIN: 'Inventory' },
+  },
+  {
+    id: 'reconciliation',
+    label: 'Reconciliation',
+    href: '/purchases/reconciliation',
+    hint: 'Supplier email corrections awaiting review',
+    icon: GitCompare,
+    roles: ['ADMIN'],
+    group: { ADMIN: 'Inventory' },
+    badgeKey: 'reconciliation',
   },
   // —— Sales ——
   {

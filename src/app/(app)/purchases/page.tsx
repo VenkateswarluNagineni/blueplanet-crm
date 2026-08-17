@@ -3,6 +3,7 @@ import { getSessionContext } from '@/lib/domain/auth';
 import { assertPageAccess } from '@/lib/domain/page-access';
 import { getCompanySettings } from '@/lib/domain/rbac';
 import { getPurchaseOrders, getPurchasingRefData } from '@/server/purchasing/queries';
+import { getOpenReconciliationCaseByPoId } from '@/server/reconciliation/queries';
 
 export const metadata = {
   title: 'Purchasing & Logistics | BluePlanet',
@@ -11,10 +12,11 @@ export const metadata = {
 export default async function PurchasesPage() {
   const ctx = assertPageAccess(await getSessionContext(), 'admin');
 
-  const [purchaseOrders, ref, settings] = await Promise.all([
+  const [purchaseOrders, ref, settings, openReconciliationCaseByPoId] = await Promise.all([
     getPurchaseOrders(),
     getPurchasingRefData(),
     getCompanySettings(ctx.user.companyId),
+    getOpenReconciliationCaseByPoId(),
   ]);
 
   return (
@@ -26,6 +28,7 @@ export default async function PurchasesPage() {
         materials={ref.materials}
         nextPoNumber={ref.nextPoNumber}
         poApprovalThreshold={settings.poApprovalThreshold}
+        openReconciliationCaseByPoId={openReconciliationCaseByPoId}
       />
     </div>
   );

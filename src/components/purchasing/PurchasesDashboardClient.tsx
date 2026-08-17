@@ -14,6 +14,7 @@ import {
   Printer,
   Link as LinkIcon,
   Download,
+  GitCompare,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { Term } from '@/components/ui/Tooltip';
@@ -60,9 +61,12 @@ export default function PurchasesDashboardClient({
   materials,
   nextPoNumber,
   poApprovalThreshold,
+  openReconciliationCaseByPoId = {},
 }: {
   purchaseOrders: PoRow[];
   poApprovalThreshold: number | null;
+  /** PO id -> open ReconciliationCase id, for the discrepancy badge on each row. */
+  openReconciliationCaseByPoId?: Record<string, string>;
 } & PurchasingRefData) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -388,6 +392,15 @@ export default function PurchasesDashboardClient({
                           >
                             {po.poNumber}
                           </button>
+                          {openReconciliationCaseByPoId[po.id] && (
+                            <Link
+                              href={`/purchases/reconciliation/${openReconciliationCaseByPoId[po.id]}`}
+                              title="Supplier email discrepancy awaiting review"
+                              className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-[var(--color-vein)] bg-[rgba(227,193,108,0.12)] border border-[rgba(227,193,108,0.3)] px-1.5 py-0.5 rounded hover:bg-[rgba(227,193,108,0.2)] transition-colors"
+                            >
+                              <GitCompare size={11} /> Discrepancy
+                            </Link>
+                          )}
                         </div>
                         {po.documentRefs.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">

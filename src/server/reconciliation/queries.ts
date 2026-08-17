@@ -31,11 +31,24 @@ export type ReconciliationCaseDetail = ReconciliationCaseRow & {
   deltas: ReconciliationDeltaRow[];
   /** Slabs on the matched PO eligible for the AffectedSlabPicker (not already sold). */
   eligibleSlabs: { id: string; uniqueSlabId: string; status: string }[];
+  /** Slabs on the matched PO already sold — informational only, never selectable. */
+  soldSlabIds: string[];
 };
+
+const OPEN_STATUSES = ['NEEDS_MATCH', 'IN_REVIEW', 'BLOCKED'] as const;
 
 /** Count of unresolved (non-terminal) cases, for the nav badge — same shape as the existing `approvals` badge. */
 export async function getOpenReconciliationCount(): Promise<number> {
-  return db.reconciliationCase.count({ where: { status: { in: ['NEEDS_MATCH', 'IN_REVIEW', 'BLOCKED'] } } });
+  return db.reconciliationCase.count({ where: { status: { in: [...OPEN_STATUSES] } } });
+}
+
+/** PO id -> open case id, for the discrepancy badge on each Purchasing row. */
+export async function getOpenReconciliationCaseByPoId(): Promise<Record<string, string>> {
+  const cases = await db.reconciliationCase.findMany({
+    where: { status: { in: [...OPEN_STATUSES] }, purchaseOrderId: { not: null } },
+    select: { id: true, purchaseOrderId: true },
+  });
+  return Object.fromEntries(cases.map((c) => [c.purchaseOrderId as string, c.id]));
 }
 
 export async function getReconciliationCases(): Promise<ReconciliationCaseRow[]> {
@@ -85,6 +98,13 @@ export async function getReconciliationCaseDetail(caseId: string): Promise<Recon
         orderBy: { uniqueSlabId: 'asc' },
       })
     : [];
+  const soldSlabs = c.purchaseOrder
+    ? await db.inventoryItem.findMany({
+        where: { deletedAt: null, poLineItem: { purchaseOrderId: c.purchaseOrder.id }, soLineItem: { isNot: null } },
+        select: { uniqueSlabId: true },
+        orderBy: { uniqueSlabId: 'asc' },
+      })
+    : [];
 
   return {
     id: c.id,
@@ -117,5 +137,6 @@ export async function getReconciliationCaseDetail(caseId: string): Promise<Recon
       blockedReason: d.blockedReason,
     })),
     eligibleSlabs,
+    soldSlabIds: soldSlabs.map((s) => s.uniqueSlabId),
   };
 }
