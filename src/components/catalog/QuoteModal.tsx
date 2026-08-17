@@ -63,12 +63,12 @@ export function QuoteModal({
                 <div>
                   <p className="text-[14px] text-white font-medium">{selectedMaterial.name}</p>
                   <p className="text-[12px] text-[var(--color-sodalite)] bp-mono">
-                    {quotingSlab.uniqueSlabId} ({quotingSlab.totalSf} sqft)
+                    {quotingSlab.uniqueSlabId} (<span className="bp-mono">{quotingSlab.totalSf}</span> sqft)
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] text-[var(--color-text-secondary)]">Retail</p>
-                  <p className="text-[13px] text-white">${selectedMaterial.retailPricePerSf ?? '—'}/sqft</p>
+                  <p className="text-[13px] text-white bp-mono">${selectedMaterial.retailPricePerSf ?? '—'}/sqft</p>
                 </div>
               </div>
             </div>

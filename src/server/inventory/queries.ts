@@ -62,6 +62,8 @@ export type InventoryRow = {
   bin: string | null;
   createdAt: Date;
   presentLocationId: string;
+  /** Slab ID of the parent this piece was cut from — set only on remnants. */
+  parentSlabId: string | null;
   product: {
     name: string; materialType: string; originCountry: string | null;
     category: string | null; baseColor: string; finish: string; productGroup: string | null;
@@ -129,6 +131,14 @@ export async function getInventoryItems(
   const resolveVendor = (id: string | null | undefined): string | null =>
     !id ? null : id === VENDOR_COVERED ? 'Supplier-covered' : vendorName.get(id) ?? 'Archived vendor';
 
+  // Resolve remnant parent ids → parent uniqueSlabId in one round-trip, so the
+  // table can render a lightweight "cut from X" connector without a per-row query.
+  const parentIds = [...new Set(items.map((i) => i.parentItemId).filter((id): id is string => !!id))];
+  const parents = parentIds.length
+    ? await db.inventoryItem.findMany({ where: { id: { in: parentIds } }, select: { id: true, uniqueSlabId: true } })
+    : [];
+  const parentSlabId = new Map(parents.map((p) => [p.id, p.uniqueSlabId]));
+
   return items.map((i) => {
     const po = i.poLineItem?.purchaseOrder ?? null;
     const so = i.soLineItem?.salesOrder ?? null;
@@ -170,6 +180,7 @@ export async function getInventoryItems(
       bin: i.bin,
       createdAt: i.createdAt,
       presentLocationId: i.presentLocationId,
+      parentSlabId: i.parentItemId ? parentSlabId.get(i.parentItemId) ?? null : null,
       product: i.product,
       location: i.location,
       movements: i.movements.map((m) => ({

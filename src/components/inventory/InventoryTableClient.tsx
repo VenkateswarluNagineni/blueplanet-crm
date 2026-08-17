@@ -19,6 +19,7 @@ import {
   GripHorizontal,
   Warehouse,
   Package,
+  Rows3,
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
@@ -193,6 +194,7 @@ export function InventoryTableClient({
   });
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
+  const [denseMode, setDenseMode] = useState(false);
 
   // Drag and Drop State for Columns
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
@@ -545,7 +547,7 @@ export function InventoryTableClient({
         onDragStart={(e) => handleDragStart(e, colKey)}
         onDragOver={(e) => handleDragOver(e, colKey)}
         onDrop={(e) => handleDrop(e, colKey)}
-        className={`${align} cursor-grab active:cursor-grabbing hover:bg-[var(--color-basalt-600)] transition-colors`}
+        className={`${align} cursor-grab active:cursor-grabbing hover:bg-[var(--color-basalt-600)] transition-colors ${colKey === 'slabId' ? 'bp-col-pin' : ''}`}
         title={title}
       >
         <div className={`flex items-center gap-1.5 ${align === 'text-right' ? 'justify-end' : ''}`}>
@@ -564,16 +566,26 @@ export function InventoryTableClient({
     
     switch (colKey) {
       case 'slabId': return (
-        <td key={colKey} className="bp-id">
-          <button
-            type="button"
-            onClick={() => openPassport(item)}
-            className="text-left hover:underline cursor-pointer text-inherit hover:text-[var(--color-vein)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-vein)] focus-visible:outline-offset-2 rounded-sm"
-            data-testid="slab-id-link"
-            title="Open material passport"
-          >
-            {item.uniqueSlabId}
-          </button>
+        <td key={colKey} className="bp-id bp-col-pin">
+          <div className={item.parentSlabId ? 'flex items-center gap-1.5 pl-3' : ''}>
+            {item.parentSlabId && (
+              <span
+                className="text-[var(--color-fog-500)] shrink-0 select-none"
+                title={`Remnant — cut from ${item.parentSlabId}`}
+              >
+                ↳
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => openPassport(item)}
+              className="text-left hover:underline cursor-pointer text-inherit hover:text-[var(--color-vein)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-vein)] focus-visible:outline-offset-2 rounded-sm"
+              data-testid="slab-id-link"
+              title={item.parentSlabId ? `Remnant — cut from ${item.parentSlabId}. Open material passport` : 'Open material passport'}
+            >
+              {item.uniqueSlabId}
+            </button>
+          </div>
         </td>
       );
       case 'product': return <td key={colKey}>{item.product.name}</td>;
@@ -627,12 +639,12 @@ export function InventoryTableClient({
         </td>
       );
       case 'sfCost': return (
-        <td key={colKey} className="text-right tabular-nums">
+        <td key={colKey} className="bp-num">
           {canViewCost ? `$${sfCost}` : <span className="text-[var(--color-text-secondary)] text-[10px] bg-[var(--color-basalt-700)] px-1.5 py-0.5 rounded uppercase tracking-wider">Restricted</span>}
         </td>
       );
       case 'landedCost': return (
-        <td key={colKey} className="text-right font-medium tabular-nums text-[var(--color-vein)]">
+        <td key={colKey} className="bp-num text-[var(--color-vein)]">
           {canViewCost 
             ? `$${item.costLanded?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
             : <span className="text-[var(--color-text-secondary)] text-[10px] bg-[var(--color-basalt-700)] px-1.5 py-0.5 rounded uppercase tracking-wider">Restricted</span>}
@@ -781,6 +793,14 @@ export function InventoryTableClient({
                     </>
                   )}
                 </div>
+                <button
+                  onClick={() => setDenseMode(!denseMode)}
+                  className={`flex items-center gap-2 px-2 py-1 rounded transition-colors ${denseMode ? 'bg-[var(--color-basalt-700)] text-white' : 'hover:bg-[var(--color-basalt-700)] text-[var(--color-text-secondary)]'}`}
+                  title="Toggle dense row height for scanning long lists"
+                  aria-pressed={denseMode}
+                >
+                  <Rows3 size={14} /> Dense
+                </button>
               </div>
             }
           />
@@ -946,7 +966,7 @@ export function InventoryTableClient({
             </div>
           )}
           <div className="bp-table-shell mx-0 overflow-x-auto">
-          <table className="bp-table min-w-max whitespace-nowrap">
+          <table className={`bp-table min-w-max whitespace-nowrap ${denseMode ? 'bp-table--dense' : ''}`}>
             <thead>
               <tr>
                 <th className="w-10 !px-4">
