@@ -3,7 +3,13 @@
 
 > **North star:** The UI should feel like a private showroom for natural stone — dark basalt, a gold vein of light, and sodalite blue accents — while remaining denser and faster than any consumer SaaS template.
 
-**Version:** 1.5 · **Status:** Canonical (premium OS craft floor) · **Brand:** BluePlanet (do not rebrand)
+**Version:** 1.6 · **Status:** Canonical (premium OS craft floor) · **Brand:** BluePlanet (do not rebrand)
+
+### v1.6 craft notes (density & reconciliation)
+- **Numeric data is mono.** Every $, sf, and count cell renders in `ui-monospace` with `tabular-nums`, right-aligned — never proportional Inter for a number a user needs to scan down a column (see §2.3).
+- **Dense table mode is opt-in, not default.** `.bp-table--dense` (30px rows) exists for high-volume triage screens (reconciliation deltas, large inventory scans); `.bp-table` at 36px stays the default everywhere else.
+- **Sticky-ID tables.** `.bp-col-pin` (already shipped, used by Orders/Sales) pins the identity column so it survives horizontal scroll — extend its adoption to any table that can grow past ~8 columns (Inventory).
+- **Discrepancy is the one new status.** Vein-gold is reused (not a new hex) for "Price/Qty Discrepancy" because on the reconciliation screen, resolving it *is* the primary action — consistent with "gold is scarce," not an exception to it.
 
 ### v1.5 craft notes (premium altitude)
 - **Anti-tutorial copy:** no “Open module →”, no marketing subtitles under attention strips.
@@ -90,6 +96,7 @@
 | Links / focus | `sodalite` |
 | Positive status | `emerald` |
 | Destructive | `ruby` |
+| Discrepancy / needs review | `vein-gold` (reused — the one status besides primary CTAs that earns gold, since resolving it is the screen's primary action) |
 
 #### Rules
 
@@ -106,6 +113,8 @@
 | **Body** | Inter | 400 | 13px | 0 | Tables, forms, paragraphs |
 | **Label** | Inter | 500 | 11px | 0.06em uppercase | Eyebrows, column headers |
 | **Mono** | ui-monospace / system | 500 | 12–13px | 0 | SO/PO/slab IDs |
+| **Numeric (money/qty)** | ui-monospace | 500 | 13px | 0 | Every $, sf, and count table cell — right-aligned, `tabular-nums` mandatory |
+| **Delta (old → new)** | ui-monospace | 500 | 13px | 0 | Reconciliation diff rows — old value struck-through `fog-500`, new value in the field's normal color |
 
 **Type rules**
 
@@ -113,6 +122,7 @@
 - Never set body copy in Fraunces.
 - Line length for descriptive text ≤ ~68ch.
 - Table headers: 11px uppercase fog-400, not bold black on dark.
+- **Numeric table cells are mono + `tabular-nums`, right-aligned — no exceptions.** A column of dollar amounts or slab counts in proportional Inter is a legibility bug, not a style choice (formalized v1.6; see `.bp-num` in `globals.css`).
 
 ### 2.4 Spacing scale (4px base)
 
@@ -233,7 +243,9 @@ Respect `prefers-reduced-motion`. No bounce. No springy menu thrash.
 
 | Element | Spec |
 |---------|------|
-| **Table** | Sticky header basalt-700, 13px body, mono for IDs, hover basalt-600/40 |
+| **Table** | Sticky header basalt-700, 13px body, mono for IDs, hover basalt-600/40; numeric columns mono + `tabular-nums` right-aligned (`.bp-num`) |
+| **Table — dense** | `.bp-table--dense`: 30px rows, 6/12px cell padding; opt-in per screen via toolbar toggle, never a global setting |
+| **Table — sticky ID** | `.bp-col-pin`: pins the identity column via `position: sticky; left:0` with a scroll-seam shadow (already shipped on Orders/Sales); use past ~8 columns |
 | **KPI** | Icon tile in muted accent, Fraunces value 22px, label 11px uppercase |
 | **StatusPill** | Soft fill + border matching semantic color |
 | **EmptyState** | Centered, fog-500 icon, short title, one action |
@@ -339,6 +351,12 @@ Respect `prefers-reduced-motion`. No bounce. No springy menu thrash.
 ### Phase E — Signature moments · **done**
 1. CSS material swatches: catalog gallery heroes + passport (via `swatchBaseForMaterial`).
 2. Packing slip: warm paper document, Fraunces titles, print CSS (`.bp-print-slip`).
+
+### Phase F — Density & reconciliation (v1.6) · **in progress**
+1. Numeric-cell typography rule (`.bp-num`, mono + `tabular-nums`) formalized and rolled out to money/qty columns.
+2. `.bp-table--dense` primitive added; `.bp-col-pin` (existing) adoption extended to Inventory.
+3. New "Discrepancy" status (vein-gold, reused) backing the email-to-PO reconciliation workspace.
+4. Fabrication quote/estimator numeric columns audited against the mono/tabular-nums rule.
 
 ---
 

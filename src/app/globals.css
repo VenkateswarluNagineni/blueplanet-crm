@@ -519,6 +519,27 @@ textarea {
   text-align: right;
 }
 
+/* Generic numeric cell (qty, sf, counts) — mono + tabular-nums, no color opinion.
+   Use .bp-money instead when the value is specifically a currency amount that
+   should read as emerald; use .bp-num for everything else numeric. */
+.bp-table .bp-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Dense mode — opt-in per screen via a toolbar toggle, never a global default */
+.bp-table--dense tbody tr {
+  height: 30px;
+}
+.bp-table--dense tbody td {
+  padding: 6px 12px;
+}
+.bp-table--dense thead th {
+  padding: 8px 12px;
+}
+
 .bp-table-row-hit {
   background: rgba(227, 193, 108, 0.1) !important;
   box-shadow: inset 0 0 0 1px rgba(227, 193, 108, 0.35);
