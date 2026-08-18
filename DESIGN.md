@@ -3,7 +3,14 @@
 
 > **North star:** The UI should feel like a private showroom for natural stone — dark basalt, a gold vein of light, and sodalite blue accents — while remaining denser and faster than any consumer SaaS template.
 
-**Version:** 1.6 · **Status:** Canonical (premium OS craft floor) · **Brand:** BluePlanet (do not rebrand)
+**Version:** 2.0 · **Status:** Canonical (premium OS craft floor) · **Brand:** BluePlanet (do not rebrand)
+
+### v2.0 craft notes (Legibility & Robustness Constitution)
+Evidence-based, not aesthetic: every rule below exists because a real, verbatim user complaint about a competitor (Stone Profit Systems, 15 verified Capterra reviews read in full) named this exact failure. None of those 15 reviews complained about color, theme, or branding — every substantive complaint was functional. **Decision: the basalt/vein-gold/sodalite palette is retained, not replaced** — see §0 below for the full rationale. What changes is a set of mandatory rules that make legibility, overflow-safety, export consistency, and data-integrity guarantees explicit instead of implicit.
+- **Legibility floor.** Body text never below 12px effective size in dense contexts. Secondary/supporting text that is the *only* label for a value (not a decorative caption) must be `fog-400` or brighter, never `fog-500` — `fog-500` is reserved for true hints/placeholders. *Answers: "Fonts not very comfortable to read."*
+- **Overflow-safe layout contract.** Any container that can receive unbounded content (tables, drawers, long IDs/names, long email subjects) must declare its overflow behavior explicitly — `overflow-x-auto` + `.bp-col-pin`, `truncate` with a `title` tooltip, or wrap — and must never be allowed to silently clip or escape its region. `.bp-col-pin` (Orders, Sales, Inventory) is the canonical sticky-column pattern; reuse it, don't reinvent per screen. *Answers: "Display Screen - going outside the screen zones."*
+- **One export pattern.** All file downloads/prints go through `src/lib/export.ts`'s shared `downloadFile()` helper — no per-screen ad-hoc Blob/data-URI variants. *Answers: "PDF/Excel format not uniform."*
+- **Destructive Action Guardrail.** Any server action that creates a record *from* another record must never clear, zero, or silently mutate fields on the source record without an explicit, reviewable reason documented in a code comment. `advancePOAction` (PO → InventoryItem) and the reconciliation engine's approve/reject actions (PurchaseOrder → ReconciliationDelta) are the canonical correct examples — new features must match this bar, not drift from it as the app grows. *Answers: "the purchase order deletes the quantities of crates and slabs."*
 
 ### v1.6 craft notes (density & reconciliation)
 - **Numeric data is mono.** Every $, sf, and count cell renders in `ui-monospace` with `tabular-nums`, right-aligned — never proportional Inter for a number a user needs to scan down a column (see §2.3).
@@ -19,6 +26,20 @@
 - **Passport timeline:** `.bp-timeline-node--done|active|pending` (emerald / vein gold / basalt dashed).
 - **CTAs:** always `btn-primary` / `Button` — never ad-hoc gold hex fills on primary actions.
 - **Chanel rule:** each UI PR removes at least as much chrome as it adds.
+
+---
+
+## 0. Palette-retention decision (v2.0)
+
+**Decision: the basalt / vein-gold / sodalite palette stays. It is not being replaced.**
+
+This is recorded explicitly because permission to reskin was given and deliberately not used — so a future pass doesn't reopen the question without new evidence.
+
+**Evidence reviewed:** the full text of 15 verified Capterra reviews of Stone Profit Systems (the dominant incumbent stone-shop ERP), SlabWise's independent SPS review, and SlabWise's 38-question stone-software buyer's checklist. Across all of it — every complaint, every checklist line, every "what to compare" criterion — **zero** mention color, theme, or visual style as a decision factor. Every substantive real-world complaint was functional: data integrity ("the purchase order deletes the quantities"), discoverability ("everything is vague and hard to find"), legibility ("fonts not very comfortable to read"), format consistency ("PDF/Excel not very uniform"), or friction ("additional steps to accomplish a simple task").
+
+**Conclusion:** a reskin would optimize for a problem the evidence says doesn't exist, at the cost of the one thing competitors can't easily copy — SPS's own marketing site (screenshotted live) is a flat, un-grouped, 2012-era text-link sidebar with no visual hierarchy. BluePlanet's dark-luxury system is a validated differentiator, not a liability.
+
+**What changed instead:** the v2.0 rules above (legibility floor, overflow-safety, export consistency, destructive-action guardrail) — mandatory engineering/UX discipline mapped 1:1 to real complaints, applied *within* the existing palette.
 
 ---
 
@@ -303,6 +324,8 @@ Respect `prefers-reduced-motion`. No bounce. No springy menu thrash.
 | Hit targets | ≥ 32px interactive height |
 | Reduced motion | Honor media query (already global) |
 | Color alone | Status always has text/label, not color-only |
+| Legibility floor (v2.0) | Body text never below 12px effective size in dense contexts; supporting-only labels ≥ `fog-400`, never `fog-500` |
+| Overflow safety (v2.0) | Unbounded content (tables, long IDs/names) must use `.bp-col-pin` + `overflow-x-auto`, `truncate` + tooltip, or wrap — never silently clip/escape its container |
 
 ---
 
@@ -352,11 +375,18 @@ Respect `prefers-reduced-motion`. No bounce. No springy menu thrash.
 1. CSS material swatches: catalog gallery heroes + passport (via `swatchBaseForMaterial`).
 2. Packing slip: warm paper document, Fraunces titles, print CSS (`.bp-print-slip`).
 
-### Phase F — Density & reconciliation (v1.6) · **in progress**
+### Phase F — Density & reconciliation (v1.6) · **done**
 1. Numeric-cell typography rule (`.bp-num`, mono + `tabular-nums`) formalized and rolled out to money/qty columns.
 2. `.bp-table--dense` primitive added; `.bp-col-pin` (existing) adoption extended to Inventory.
-3. New "Discrepancy" status (vein-gold, reused) backing the email-to-PO reconciliation workspace.
+3. New "Discrepancy" status (vein-gold, reused) backing the email-to-PO reconciliation workspace, shipped end-to-end (schema, ingestion, review UI).
 4. Fabrication quote/estimator numeric columns audited against the mono/tabular-nums rule.
+
+### Phase G — Legibility & Robustness Constitution (v2.0) · **in progress**
+1. Palette-retention decision recorded (§0), backed by evidence from 15 competitor reviews — no reskin.
+2. Legibility floor + overflow-safe layout contract formalized (§6).
+3. `src/lib/export.ts` shared export helper — replaces 3 ad-hoc download idioms (Analytics, Purchasing ×2).
+4. Destructive Action Guardrail documented; stale bulk-selection fixed in Inventory.
+5. User Admin UI and Sales Order deposits/AR — real feature gaps found via buyer-checklist audit, not previously covered by any UI.
 
 ---
 
