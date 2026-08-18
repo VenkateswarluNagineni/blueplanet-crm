@@ -465,10 +465,30 @@ model SalesOrder {
   placedAt     DateTime @default(now())
 
   soLineItems SOLineItem[]
+  soPayments  SOPayment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+}
+
+// Append-only deposit/payment ledger. DESIGN.md v2.0 Destructive Action
+// Guardrail: balanceDue is always derived (order total - sum(SOPayment.amount)),
+// never a stored/manually-editable field — the SPS review corpus's "deposits
+// show a negative A/R" bug is structurally impossible when there is nothing
+// to desync.
+model SOPayment {
+  id               String     @id @default(uuid())
+  salesOrderId     String
+  salesOrder       SalesOrder @relation(fields: [salesOrderId], references: [id])
+  amount           Float
+  method           String? // Cash, Check, Card, Wire, Other
+  note             String?
+  recordedByUserId String?
+  recordedByRole   String?
+  createdAt        DateTime   @default(now())
+
+  @@index([salesOrderId])
 }
 
 model SOLineItem {

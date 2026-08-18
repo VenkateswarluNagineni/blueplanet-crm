@@ -205,3 +205,57 @@ export async function cancelOrderAction(orderId: string): Promise<ActionResult> 
   revalidatePath('/catalog');
   return { ok: true };
 }
+
+const DepositSchema = z.object({
+  amount: z.number().positive('Amount must be greater than zero.'),
+  method: z.enum(['Cash', 'Check', 'Card', 'Wire', 'Other']).optional(),
+  note: z.string().trim().max(300).optional().or(z.literal('')),
+});
+
+/**
+ * Record a customer deposit/payment against a Sales Order. Append-only by
+ * design (DESIGN.md v2.0 Destructive Action Guardrail) — balanceDue is never
+ * stored, only ever derived from this ledger, so there's nothing to desync.
+ * Blocks overpayment past the current balance rather than allowing a typo to
+ * silently create a negative-AR situation.
+ */
+export async function recordDepositAction(
+  orderId: string,
+  input: { amount: number; method?: string; note?: string },
+): Promise<ActionResult> {
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  requireRole(ctx.role, ['ADMIN', 'SALES']);
+
+  const parsed = DepositSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid payment.' };
+  const d = parsed.data;
+
+  const order = await db.salesOrder.findFirst({
+    where: { id: orderId, deletedAt: null },
+    include: { soLineItems: { include: { inventoryItem: true } }, soPayments: true },
+  });
+  if (!order) return { ok: false, error: 'Order not found.' };
+  if (order.status === 'CANCELLED') return { ok: false, error: 'Cannot record a payment against a cancelled order.' };
+
+  const totalValue = order.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0);
+  const alreadyPaid = order.soPayments.reduce((s, p) => s + p.amount, 0);
+  const remaining = Math.round((totalValue - alreadyPaid) * 100) / 100;
+  if (d.amount > remaining + 0.01) {
+    return { ok: false, error: `Payment of $${d.amount.toFixed(2)} exceeds the remaining balance of $${remaining.toFixed(2)}.` };
+  }
+
+  await db.sOPayment.create({
+    data: {
+      salesOrderId: orderId,
+      amount: d.amount,
+      method: d.method ?? null,
+      note: d.note || null,
+      recordedByUserId: ctx.user.id,
+      recordedByRole: ctx.role,
+    },
+  });
+
+  revalidatePath('/orders');
+  return { ok: true };
+}

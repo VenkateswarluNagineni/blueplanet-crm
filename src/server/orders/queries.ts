@@ -1,6 +1,14 @@
 import 'server-only';
 import { db } from '@/lib/db';
 
+export type PaymentRow = {
+  id: string;
+  amount: number;
+  method: string | null;
+  note: string | null;
+  createdAt: string;
+};
+
 export type OrderRow = {
   id: string;
   soNumber: string;
@@ -13,6 +21,11 @@ export type OrderRow = {
   status: string; // PLACED | COMPLETED | CANCELLED
   repId: string;
   placedAt: string;
+  /** Always derived (sum of SOPayment.amount) — never a stored/editable field. */
+  depositsPaid: number;
+  /** Always derived (totalValue - depositsPaid) — never a stored/editable field. */
+  balanceDue: number;
+  payments: PaymentRow[];
 };
 
 /**
@@ -29,6 +42,7 @@ export async function getSalesOrders(scopeAssociateSystemId: string | null): Pro
       associate: { select: { systemId: true, name: true } },
       customer: { select: { name: true } },
       soLineItems: { include: { inventoryItem: { include: { product: true } } } },
+      soPayments: { orderBy: { createdAt: 'desc' } },
     },
     orderBy: { placedAt: 'desc' },
   });
@@ -40,6 +54,7 @@ export async function getSalesOrders(scopeAssociateSystemId: string | null): Pro
       (s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0),
       0,
     );
+    const depositsPaid = o.soPayments.reduce((s, p) => s + p.amount, 0);
     return {
       id: o.id,
       soNumber: o.soNumber,
@@ -52,6 +67,11 @@ export async function getSalesOrders(scopeAssociateSystemId: string | null): Pro
       status: o.status,
       repId: o.associate?.systemId ?? '—',
       placedAt: o.placedAt.toISOString().split('T')[0],
+      depositsPaid: Math.round(depositsPaid * 100) / 100,
+      balanceDue: Math.round((totalValue - depositsPaid) * 100) / 100,
+      payments: o.soPayments.map((p) => ({
+        id: p.id, amount: p.amount, method: p.method, note: p.note, createdAt: p.createdAt.toISOString(),
+      })),
     };
   });
 }

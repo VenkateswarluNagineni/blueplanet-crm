@@ -7,9 +7,10 @@ import {
   ArrowUpDown,
   RotateCcw,
   FileText,
+  Wallet,
 } from 'lucide-react';
 import type { OrderRow } from '@/server/orders/queries';
-import { completeOrderAction, cancelOrderAction, reopenOrderAction } from '@/server/orders/actions';
+import { completeOrderAction, cancelOrderAction, reopenOrderAction, recordDepositAction } from '@/server/orders/actions';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -68,6 +69,12 @@ export default function OrdersDashboardClient({
   const [receiptModalOrder, setReceiptModalOrder] = useState<string | null>(null);
   const [receiptRefInput, setReceiptRefInput] = useState('');
 
+  const [depositModalOrder, setDepositModalOrder] = useState<OrderRow | null>(null);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositMethod, setDepositMethod] = useState('Cash');
+  const [depositNote, setDepositNote] = useState('');
+  const [depositError, setDepositError] = useState('');
+
   // Deep-link: /orders?order=<soNumber|id> seeds search + highlights the row.
   // Also honors /orders?status=COMPLETED|PLACED|CANCELLED from the command center.
   useEffect(() => {
@@ -103,6 +110,28 @@ export default function OrdersDashboardClient({
       }
       setReceiptModalOrder(null);
       setReceiptRefInput('');
+      router.refresh();
+    });
+  };
+
+  const handleRecordDeposit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!depositModalOrder) return;
+    const amount = Number(depositAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setDepositError('Enter a valid amount greater than zero.');
+      return;
+    }
+    setDepositError('');
+    startTransition(async () => {
+      const res = await recordDepositAction(depositModalOrder.id, { amount, method: depositMethod, note: depositNote });
+      if (!res.ok) {
+        setDepositError(res.error);
+        return;
+      }
+      setDepositModalOrder(null);
+      setDepositAmount('');
+      setDepositNote('');
       router.refresh();
     });
   };
@@ -254,6 +283,7 @@ export default function OrdersDashboardClient({
                 <th><SortHeader field="customer" label="Customer / Project" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
                 <th><SortHeader field="material" label="Material (Slab)" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
                 <th className="text-right"><SortHeader field="value" label="Total Value" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th className="text-right">Balance Due</th>
                 <th>Rep ID</th>
                 <th>Status</th>
                 <th className="text-center">Actions</th>
@@ -262,7 +292,7 @@ export default function OrdersDashboardClient({
             <tbody>
               {displayedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="!p-4">
+                  <td colSpan={9} className="!p-4">
                     <EmptyState
                       icon={FileText}
                       title={orders.length === 0 ? 'No sales orders yet' : 'No orders match your filters'}
@@ -314,6 +344,20 @@ export default function OrdersDashboardClient({
                     <td className="bp-money">
                       ${order.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
+                    <td className="bp-num">
+                      {order.balanceDue <= 0.005 ? (
+                        <span className="text-[var(--color-emerald)]">Paid</span>
+                      ) : (
+                        <>
+                          ${order.balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {order.depositsPaid > 0 && (
+                            <div className="text-[10px] text-[var(--color-text-secondary)] font-normal">
+                              ${order.depositsPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} paid
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </td>
                     <td className="p-3">
                       <div className="text-[11px] text-white font-mono">
                         {order.repId} (60%){' '}
@@ -343,6 +387,15 @@ export default function OrdersDashboardClient({
                     </td>
                     <td className="p-3 text-center relative">
                       <div className="bp-row-actions">
+                        {order.status !== 'CANCELLED' && order.balanceDue > 0.005 && (
+                          <button
+                            onClick={() => { setDepositModalOrder(order); setDepositAmount(''); setDepositMethod('Cash'); setDepositNote(''); setDepositError(''); }}
+                            disabled={isPending}
+                            className="bp-row-action disabled:opacity-50"
+                          >
+                            <Wallet size={10} /> Deposit
+                          </button>
+                        )}
                         {order.status === 'PLACED' && (
                           <>
                             <button
@@ -426,6 +479,66 @@ export default function OrdersDashboardClient({
             </div>
           )}
         </form>
+      </Modal>
+
+      <Modal
+        open={!!depositModalOrder}
+        onClose={() => setDepositModalOrder(null)}
+        title={`Record deposit — ${depositModalOrder?.soNumber ?? ''}`}
+        subtitle={depositModalOrder ? `Balance due: $${depositModalOrder.balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined}
+        width={420}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" type="button" onClick={() => setDepositModalOrder(null)}>Cancel</Button>
+            <Button variant="primary" size="sm" type="submit" form="deposit-form" disabled={isPending}>
+              <Wallet size={14} /> {isPending ? 'Recording…' : 'Record Deposit'}
+            </Button>
+          </>
+        }
+      >
+        {depositModalOrder && (
+          <form id="deposit-form" onSubmit={handleRecordDeposit} className="space-y-4">
+            <div>
+              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Amount ($)</label>
+              <input
+                type="number" step="0.01" min="0.01" required
+                value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
+                className="bp-input bp-mono" placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Method</label>
+              <select value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="bp-select">
+                {['Cash', 'Check', 'Card', 'Wire', 'Other'].map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Note (optional)</label>
+              <input type="text" value={depositNote} onChange={(e) => setDepositNote(e.target.value)} className="bp-input" placeholder="e.g. Deposit at signing" />
+            </div>
+            {depositError && (
+              <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[12px] px-3 py-2 rounded-[var(--radius-sm)]">
+                {depositError}
+              </div>
+            )}
+            {depositModalOrder.payments.length > 0 && (
+              <div className="pt-2 border-t border-[var(--color-basalt-500)]">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--color-fog-500)] mb-1.5">Payment history</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {depositModalOrder.payments.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-[12px]">
+                      <span className="text-[var(--color-text-secondary)]">
+                        {new Date(p.createdAt).toLocaleDateString()} · {p.method ?? 'Other'}
+                        {p.note && <span className="text-[var(--color-fog-400)]"> — {p.note}</span>}
+                      </span>
+                      <span className="bp-mono text-white">${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </form>
+        )}
       </Modal>
     </PageShell>
   );
