@@ -69,3 +69,6 @@ export const PRODUCT_GROUPS = ['Exotics', 'Premium', 'Semi-precious', 'Standard'
 
 /** Physical kind of a company location/warehouse. */
 export const LOCATION_TYPES = ['Warehouse', 'Showroom', 'Consignment', 'Office'] as const;
+
+/** Login roles — single source of truth, mirrors the check already enforced in src/lib/domain/auth.ts. */
+export const USER_ROLES = ['ADMIN', 'SALES', 'VENDOR'] as const;

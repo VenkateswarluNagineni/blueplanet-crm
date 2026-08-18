@@ -14,6 +14,7 @@ import {
   History,
   LayoutDashboard,
   GitCompare,
+  UserCog,
 } from 'lucide-react';
 
 /** Subset of company settings needed for nav visibility (client-safe; no server imports). */
@@ -180,6 +181,15 @@ export const NAV_ITEMS: NavItemDef[] = [
     href: '/analytics',
     hint: 'Margin & SKU profitability',
     icon: BarChart3,
+    roles: ['ADMIN'],
+    group: { ADMIN: 'Ops' },
+  },
+  {
+    id: 'users',
+    label: 'Users',
+    href: '/admin/users',
+    hint: 'Logins, roles & location access',
+    icon: UserCog,
     roles: ['ADMIN'],
     group: { ADMIN: 'Ops' },
   },
