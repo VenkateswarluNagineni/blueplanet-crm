@@ -72,3 +72,6 @@ export const LOCATION_TYPES = ['Warehouse', 'Showroom', 'Consignment', 'Office']
 
 /** Login roles — single source of truth, mirrors the check already enforced in src/lib/domain/auth.ts. */
 export const USER_ROLES = ['ADMIN', 'SALES', 'VENDOR'] as const;
+
+/** Fabrication edge profiles offered at quote time — buyer-checklist item: "edge profiles configurable per shop, with associated upcharges." */
+export const EDGE_PROFILES = ['Eased', 'Bullnose', 'Ogee', 'Bevel', 'Mitered', 'Waterfall'] as const;

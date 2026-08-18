@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "SOLineItem" ADD COLUMN     "cutoutCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "cutoutUpchargeEach" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "edgeProfile" TEXT,
+ADD COLUMN     "edgeUpchargePerSf" DOUBLE PRECISION NOT NULL DEFAULT 0;
+

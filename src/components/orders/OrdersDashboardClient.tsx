@@ -340,6 +340,14 @@ export default function OrdersDashboardClient({
                       ) : (
                         <span className="text-[11px] text-[var(--color-sodalite)] bp-mono">{order.slabId} ({order.sqft} sqft)</span>
                       )}
+                      {order.edgeProfile && (
+                        <div className="text-[10px] text-[var(--color-fog-400)] mt-0.5">
+                          {order.edgeProfile} edge
+                          {order.fabricationCharges > 0 && (
+                            <span className="bp-mono"> · +${order.fabricationCharges.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} fab.</span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="bp-money">
                       ${order.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

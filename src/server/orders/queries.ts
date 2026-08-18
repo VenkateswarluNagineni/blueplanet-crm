@@ -21,6 +21,9 @@ export type OrderRow = {
   status: string; // PLACED | COMPLETED | CANCELLED
   repId: string;
   placedAt: string;
+  /** Fabrication line-item depth on the first line — edge profile/cutout upcharges, if any. */
+  edgeProfile: string | null;
+  fabricationCharges: number;
   /** Always derived (sum of SOPayment.amount) — never a stored/editable field. */
   depositsPaid: number;
   /** Always derived (totalValue - depositsPaid) — never a stored/editable field. */
@@ -50,10 +53,17 @@ export async function getSalesOrders(scopeAssociateSystemId: string | null): Pro
   return orders.map((o) => {
     const first = o.soLineItems[0];
     const sqft = o.soLineItems.reduce((s, li) => s + (li.inventoryItem?.totalSf ?? 0), 0);
-    const totalValue = o.soLineItems.reduce(
-      (s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0),
-      0,
-    );
+    // Line total = (base $/sf + edge upcharge $/sf) * sf + (cutout count * $ each) — every
+    // fabrication upcharge is derived here, never pre-baked into soldPricePerSf, so margin
+    // reporting elsewhere in the app keeps reading the true material price.
+    const totalValue = o.soLineItems.reduce((s, li) => {
+      const sf = li.inventoryItem?.totalSf ?? 0;
+      return s + (li.soldPricePerSf + li.edgeUpchargePerSf) * sf + li.cutoutCount * li.cutoutUpchargeEach;
+    }, 0);
+    const fabricationCharges = o.soLineItems.reduce((s, li) => {
+      const sf = li.inventoryItem?.totalSf ?? 0;
+      return s + li.edgeUpchargePerSf * sf + li.cutoutCount * li.cutoutUpchargeEach;
+    }, 0);
     const depositsPaid = o.soPayments.reduce((s, p) => s + p.amount, 0);
     return {
       id: o.id,
@@ -67,6 +77,8 @@ export async function getSalesOrders(scopeAssociateSystemId: string | null): Pro
       status: o.status,
       repId: o.associate?.systemId ?? '—',
       placedAt: o.placedAt.toISOString().split('T')[0],
+      edgeProfile: first?.edgeProfile ?? null,
+      fabricationCharges: Math.round(fabricationCharges * 100) / 100,
       depositsPaid: Math.round(depositsPaid * 100) / 100,
       balanceDue: Math.round((totalValue - depositsPaid) * 100) / 100,
       payments: o.soPayments.map((p) => ({

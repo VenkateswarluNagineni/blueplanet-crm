@@ -104,6 +104,10 @@ export default function CatalogDashboardClient({
   const [quotingSlab, setQuotingSlab] = useState<CatalogSlab | null>(null);
   const [quotePrice, setQuotePrice] = useState<string>('');
   const [quoteCustomer, setQuoteCustomer] = useState('');
+  const [edgeProfile, setEdgeProfile] = useState('');
+  const [edgeUpcharge, setEdgeUpcharge] = useState('');
+  const [cutoutCount, setCutoutCount] = useState('');
+  const [cutoutUpcharge, setCutoutUpcharge] = useState('');
   const [quoteError, setQuoteError] = useState('');
 
   // Filter / view state
@@ -241,6 +245,10 @@ export default function CatalogDashboardClient({
         slabId: quotingSlab.id,
         pricePerSf: priceNum,
         customerName: quoteCustomer,
+        edgeProfile: edgeProfile || undefined,
+        edgeUpchargePerSf: parseFloat(edgeUpcharge) || 0,
+        cutoutCount: parseInt(cutoutCount, 10) || 0,
+        cutoutUpchargeEach: parseFloat(cutoutUpcharge) || 0,
       });
       if (!res.ok) {
         setQuoteError(res.error);
@@ -249,6 +257,10 @@ export default function CatalogDashboardClient({
       setQuotingSlab(null);
       setQuotePrice('');
       setQuoteCustomer('');
+      setEdgeProfile('');
+      setEdgeUpcharge('');
+      setCutoutCount('');
+      setCutoutUpcharge('');
       setSelectedMaterial(null);
       router.refresh();
     });
@@ -655,11 +667,19 @@ export default function CatalogDashboardClient({
       <QuoteModal
         quotingSlab={quotingSlab}
         selectedMaterial={selectedMaterial}
-        onClose={() => setQuotingSlab(null)}
+        onClose={() => { setQuotingSlab(null); setEdgeProfile(''); setEdgeUpcharge(''); setCutoutCount(''); setCutoutUpcharge(''); }}
         quotePrice={quotePrice}
         setQuotePrice={setQuotePrice}
         quoteCustomer={quoteCustomer}
         setQuoteCustomer={setQuoteCustomer}
+        edgeProfile={edgeProfile}
+        setEdgeProfile={setEdgeProfile}
+        edgeUpcharge={edgeUpcharge}
+        setEdgeUpcharge={setEdgeUpcharge}
+        cutoutCount={cutoutCount}
+        setCutoutCount={setCutoutCount}
+        cutoutUpcharge={cutoutUpcharge}
+        setCutoutUpcharge={setCutoutUpcharge}
         quoteError={quoteError}
         isPending={isPending}
         onSubmit={handleQuoteSubmit}

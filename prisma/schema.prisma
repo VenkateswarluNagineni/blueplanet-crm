@@ -502,6 +502,13 @@ model SOLineItem {
   soldPricePerSf   Float
   landedCostAtSale Float // Snapshotted for immutable margin
 
+  // Fabrication line-item depth — buyer-checklist gap: "edge profiles configurable
+  // per shop, with associated upcharges" / "cutout pricing rules editable in 60 seconds".
+  edgeProfile        String?
+  edgeUpchargePerSf  Float   @default(0)
+  cutoutCount        Int     @default(0)
+  cutoutUpchargeEach Float   @default(0)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

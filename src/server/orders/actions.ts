@@ -34,19 +34,27 @@ const QuoteSchema = z.object({
   slabId: z.string().min(1),
   pricePerSf: z.number().positive(),
   customerName: z.string().min(1).max(200),
+  edgeProfile: z.string().trim().max(60).optional().or(z.literal('')),
+  edgeUpchargePerSf: z.number().min(0).default(0),
+  cutoutCount: z.number().int().min(0).default(0),
+  cutoutUpchargeEach: z.number().min(0).default(0),
 });
 
 export async function createQuoteAction(input: {
   slabId: string;
   pricePerSf: number;
   customerName: string;
+  edgeProfile?: string;
+  edgeUpchargePerSf?: number;
+  cutoutCount?: number;
+  cutoutUpchargeEach?: number;
 }): Promise<ActionResult> {
   const role = await getEffectiveRole();
   requireRole(role, ['ADMIN', 'SALES']);
 
   const parsed = QuoteSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'Invalid quote details.' };
-  const { slabId, pricePerSf, customerName } = parsed.data;
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid quote details.' };
+  const { slabId, pricePerSf, customerName, edgeProfile, edgeUpchargePerSf, cutoutCount, cutoutUpchargeEach } = parsed.data;
 
   const slab = await db.inventoryItem.findFirst({
     where: { id: slabId, deletedAt: null },
@@ -77,6 +85,10 @@ export async function createQuoteAction(input: {
               inventoryItemId: slab.id,
               soldPricePerSf: pricePerSf,
               landedCostAtSale: slab.costLanded ?? 0,
+              edgeProfile: edgeProfile || null,
+              edgeUpchargePerSf,
+              cutoutCount,
+              cutoutUpchargeEach,
             },
           ],
         },
