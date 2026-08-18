@@ -27,6 +27,7 @@ import { ListToolbar, FilterChip } from '@/components/ui/ListToolbar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LogisticsStageBar } from '@/components/logistics/LogisticsStageBar';
 import { LOGISTICS_STATUS_LABEL } from '@/lib/domain/logistics-stages';
+import { downloadJson } from '@/lib/export';
 import type { PoRow, PoLogisticsStatus, PurchasingRefData, EtaStatus } from '@/server/purchasing/queries';
 import { createPOAction, advancePOAction, approvePOAction } from '@/server/purchasing/actions';
 
@@ -931,15 +932,7 @@ export default function PurchasesDashboardClient({
                 <button
                   type="button"
                   onClick={() => {
-                    const dataStr =
-                      'data:text/json;charset=utf-8,' +
-                      encodeURIComponent(JSON.stringify(viewerPo, null, 2));
-                    const downloadAnchor = document.createElement('a');
-                    downloadAnchor.setAttribute('href', dataStr);
-                    downloadAnchor.setAttribute('download', `${viewerPo.poNumber}_ledger_snapshot.json`);
-                    document.body.appendChild(downloadAnchor);
-                    downloadAnchor.click();
-                    downloadAnchor.remove();
+                    downloadJson(viewerPo, `${viewerPo.poNumber}_ledger_snapshot.json`);
                     toast(`Cryptographic ledger JSON for ${viewerPo.poNumber} exported`);
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#8a7a50] bg-[#2a2520] border border-[#5a4a30] rounded hover:bg-[#3a3028] transition-colors cursor-pointer"

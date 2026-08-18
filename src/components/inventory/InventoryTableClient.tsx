@@ -403,6 +403,29 @@ export function InventoryTableClient({
   }, [initialData, searchTerm, selectedLocations, selectedStatuses, selectedMaterials, selectedCategories,
       selectedColors, selectedOrigins, refLot, refBundle, refBin, refBarcode, minLength, minWidth, role, settings]);
 
+  // DESIGN.md v2.0 Destructive Action Guardrail / overflow-safety spirit: a bulk
+  // action must never silently include rows the user can no longer see. When the
+  // filter set narrows, drop any selected id that fell out of it rather than
+  // letting it ride along invisibly into the next hold/transfer/write-off.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filteredData.map((i) => i.id));
+      let dropped = 0;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+        else dropped++;
+      }
+      if (dropped > 0) {
+        toast(`${dropped} slab${dropped === 1 ? '' : 's'} deselected — no longer visible under the current filter.`);
+        return next;
+      }
+      return prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredData]);
+
   const PAGE_SIZE = 20;
   const SORT_OPTIONS: { key: typeof sortKey; label: string }[] = [
     { key: 'none', label: 'Default order' },

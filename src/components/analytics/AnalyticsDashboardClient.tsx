@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { PoRow } from '@/server/purchasing/queries';
 import type { OrderRow } from '@/server/orders/queries';
+import { downloadJson } from '@/lib/export';
 import type { CatalogProduct } from '@/server/catalog/queries';
 import type { LandedCostSummary, InventoryAgingReport, MaterialMarginRow } from '@/server/analytics/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -85,35 +86,23 @@ export default function AnalyticsDashboardClient({
               variant="secondary"
               size="sm"
               onClick={() => {
-                const blob = new Blob(
-                  [
-                    JSON.stringify(
-                      {
-                        exportedAt: new Date().toISOString(),
-                        totalBookedRevenue,
-                        totalLandedCost,
-                        physicalInventoryValue,
-                        lines: filteredCatalog.map((s) => ({
-                          name: s.name,
-                          sku: s.sku,
-                          materialType: s.materialType,
-                          yard: s.slabsInYard,
-                          cost: s.avgCostPerSf,
-                          retail: s.retailPricePerSf,
-                        })),
-                      },
-                      null,
-                      2,
-                    ),
-                  ],
-                  { type: 'application/json' },
+                downloadJson(
+                  {
+                    exportedAt: new Date().toISOString(),
+                    totalBookedRevenue,
+                    totalLandedCost,
+                    physicalInventoryValue,
+                    lines: filteredCatalog.map((s) => ({
+                      name: s.name,
+                      sku: s.sku,
+                      materialType: s.materialType,
+                      yard: s.slabsInYard,
+                      cost: s.avgCostPerSf,
+                      retail: s.retailPricePerSf,
+                    })),
+                  },
+                  `blueplanet-ledger-${new Date().toISOString().slice(0, 10)}.json`,
                 );
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `blueplanet-ledger-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
               }}
             >
               <Download size={14} /> Export JSON
