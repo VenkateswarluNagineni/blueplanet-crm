@@ -731,7 +731,25 @@ export function CrmDashboardClient({ data, canManage }: { data: CrmData; canMana
               </tr>
             )))}
             {activeTab === 'CUSTOMERS' && (sortedCustomers.length === 0 ? (
-              <tr><td colSpan={visibleCustCols.length + 2} className="!p-4"><EmptyState icon={UserSquare2} title="No customers match" hint={searchTerm || activeFiltersCount > 0 ? 'Try clearing your search or filters.' : 'Add your first customer to get started.'} className="py-10" /></td></tr>
+              <tr><td colSpan={visibleCustCols.length + 2} className="!p-4">
+                <EmptyState
+                  icon={UserSquare2}
+                  title="No customers match"
+                  hint={searchTerm || activeFiltersCount > 0 ? 'Try clearing your search or filters.' : 'Add your first customer to get started.'}
+                  action={
+                    searchTerm || activeFiltersCount > 0 ? (
+                      <Button type="button" variant="ghost" onClick={() => { setSearchTerm(''); clearAllFilters(); }}>
+                        Clear search &amp; filters
+                      </Button>
+                    ) : canManage ? (
+                      <Button type="button" onClick={() => { setAddOpen(true); setActionError(''); setProvisionLogin(false); }}>
+                        <Plus size={14} /> Add Customer
+                      </Button>
+                    ) : undefined
+                  }
+                  className="py-10"
+                />
+              </td></tr>
             ) : sortedCustomers.map((item) => (
               <tr key={item.id} className="group">
                 <td />

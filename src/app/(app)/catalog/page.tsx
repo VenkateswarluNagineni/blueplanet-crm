@@ -3,6 +3,7 @@ import { getSessionContext } from '@/lib/domain/auth';
 import { getCompanySettings, canViewLandedCost } from '@/lib/domain/rbac';
 import { assertPageAccess } from '@/lib/domain/page-access';
 import { getCatalog } from '@/server/catalog/queries';
+import { getQuoteCustomers } from '@/server/orders/queries';
 
 export const metadata = {
   title: 'Material Catalog | BluePlanet',
@@ -16,7 +17,10 @@ export default async function CatalogPage() {
   const canViewCost = settings ? canViewLandedCost(session.role, settings) : false;
 
   const locationScope = session.isAdmin ? null : session.locationIds;
-  const products = await getCatalog(canViewCost, locationScope);
+  const [products, customers] = await Promise.all([
+    getCatalog(canViewCost, locationScope),
+    getQuoteCustomers(),
+  ]);
 
-  return <CatalogDashboardClient products={products} canViewCost={canViewCost} />;
+  return <CatalogDashboardClient products={products} canViewCost={canViewCost} customers={customers} />;
 }

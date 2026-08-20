@@ -8,9 +8,30 @@ import {
   RotateCcw,
   FileText,
   Wallet,
+  ChevronRight,
+  AlertTriangle,
+  Download,
 } from 'lucide-react';
 import type { OrderRow } from '@/server/orders/queries';
-import { completeOrderAction, cancelOrderAction, reopenOrderAction, recordDepositAction } from '@/server/orders/actions';
+import { completeOrderAction, cancelOrderAction, reopenOrderAction, recordDepositAction, approveOrderAction } from '@/server/orders/actions';
+import { advanceProductionStageAction } from '@/server/production/actions';
+import { downloadFile } from '@/lib/export';
+import { SignatureCaptureModal } from '@/components/orders/SignatureCaptureModal';
+import { PRODUCTION_STAGES } from '@/lib/domain/reference';
+
+const STAGE_LABEL: Record<string, string> = {
+  QUOTED: 'Quoted',
+  TEMPLATED: 'Templated',
+  FABRICATED: 'Fabricated',
+  INSTALLED: 'Installed',
+};
+
+const STAGE_TONE: Record<string, string> = {
+  QUOTED: 'text-[var(--color-fog-400)]',
+  TEMPLATED: 'text-[var(--color-sodalite)]',
+  FABRICATED: 'text-[var(--color-vein)]',
+  INSTALLED: 'text-[var(--color-emerald)]',
+};
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -60,6 +81,7 @@ export default function OrdersDashboardClient({
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [stageFilter, setStageFilter] = useState('ALL');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [actionError, setActionError] = useState('');
@@ -155,6 +177,68 @@ export default function OrdersDashboardClient({
     });
   };
 
+  const [signatureModalOrder, setSignatureModalOrder] = useState<OrderRow | null>(null);
+
+  const handleAdvanceStage = (orderId: string, installSignatureDataUri?: string) => {
+    setActionError('');
+    startTransition(async () => {
+      const res = await advanceProductionStageAction(orderId, installSignatureDataUri);
+      if (!res.ok) {
+        setActionError(res.error);
+        return;
+      }
+      setSignatureModalOrder(null);
+      router.refresh();
+    });
+  };
+
+  const handleAdvanceClick = (order: OrderRow) => {
+    if (order.productionStage === 'FABRICATED') {
+      setSignatureModalOrder(order);
+      return;
+    }
+    handleAdvanceStage(order.id);
+  };
+
+  const handleApproveOrder = (orderId: string) => {
+    setActionError('');
+    startTransition(async () => {
+      const res = await approveOrderAction(orderId);
+      if (!res.ok) {
+        setActionError(res.error);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  /**
+   * One-way CSV invoice export (DESIGN.md v2.0 "one export pattern" — via
+   * src/lib/export.ts's shared downloadFile helper). Exports whatever is
+   * currently filtered/displayed, not the full order book, so the file always
+   * matches what's on screen. No QuickBooks/accounting-system OAuth involved —
+   * this is a plain import-ready CSV a bookkeeper can hand to any tool.
+   */
+  const csvCell = (v: string | number) => {
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const handleExportInvoices = () => {
+    const header = ['Order ID', 'Date', 'Customer / Project', 'Material', 'Total Value', 'Deposits Paid', 'Balance Due', 'Status'];
+    const rows = displayedOrders.map((o) => [
+      o.soNumber,
+      o.placedAt,
+      o.customerName,
+      o.materialName,
+      o.totalValue.toFixed(2),
+      o.depositsPaid.toFixed(2),
+      o.balanceDue.toFixed(2),
+      o.status,
+    ]);
+    const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
+    downloadFile(csv, `blueplanet-invoices-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
+  };
+
   const handleReopenOrder = async (orderId: string) => {
     const ok = await confirm({
       title: 'Reopen Order?',
@@ -190,7 +274,10 @@ export default function OrdersDashboardClient({
         order.soNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.materialName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'ALL' || order.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchStage =
+        stageFilter === 'ALL' ||
+        (stageFilter === 'BLOCKED' ? !!order.blockerNote : order.productionStage === stageFilter);
+      return matchSearch && matchStatus && matchStage;
     })
     .sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
@@ -210,10 +297,15 @@ export default function OrdersDashboardClient({
   const pendingCount = orders.filter((o) => o.status === 'PLACED').length;
   const completedCount = orders.filter((o) => o.status === 'COMPLETED').length;
   const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
+  const blockedCount = orders.filter((o) => !!o.blockerNote).length;
+  const stageCounts = Object.fromEntries(
+    PRODUCTION_STAGES.map((s) => [s, orders.filter((o) => o.productionStage === s).length]),
+  ) as Record<(typeof PRODUCTION_STAGES)[number], number>;
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('ALL');
+    setStageFilter('ALL');
     setHighlightOrder(null);
   };
 
@@ -236,6 +328,11 @@ export default function OrdersDashboardClient({
               ? [{ label: `${pendingCount} pending payment`, tone: 'gold' as const }]
               : []),
           ]}
+          actions={
+            <Button type="button" variant="ghost" size="sm" onClick={handleExportInvoices}>
+              <Download size={14} /> Export Invoices
+            </Button>
+          }
         >
           <ListToolbar
             search={searchTerm}
@@ -243,22 +340,40 @@ export default function OrdersDashboardClient({
             searchPlaceholder="Search orders, customers, or materials…"
             resultCount={displayedOrders.length}
             totalCount={orders.length}
-            onClear={searchTerm || statusFilter !== 'ALL' ? clearFilters : undefined}
+            onClear={searchTerm || statusFilter !== 'ALL' || stageFilter !== 'ALL' ? clearFilters : undefined}
             clearLabel="Reset filters"
             filters={
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <FilterChip active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} count={orders.length}>
-                  All
-                </FilterChip>
-                <FilterChip active={statusFilter === 'PLACED'} onClick={() => setStatusFilter('PLACED')} count={pendingCount}>
-                  Pending
-                </FilterChip>
-                <FilterChip active={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} count={completedCount}>
-                  Completed
-                </FilterChip>
-                <FilterChip active={statusFilter === 'CANCELLED'} onClick={() => setStatusFilter('CANCELLED')} count={cancelledCount}>
-                  Cancelled
-                </FilterChip>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <FilterChip active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} count={orders.length}>
+                    All
+                  </FilterChip>
+                  <FilterChip active={statusFilter === 'PLACED'} onClick={() => setStatusFilter('PLACED')} count={pendingCount}>
+                    Pending
+                  </FilterChip>
+                  <FilterChip active={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} count={completedCount}>
+                    Completed
+                  </FilterChip>
+                  <FilterChip active={statusFilter === 'CANCELLED'} onClick={() => setStatusFilter('CANCELLED')} count={cancelledCount}>
+                    Cancelled
+                  </FilterChip>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--color-fog-500)] mr-1">Production</span>
+                  <FilterChip active={stageFilter === 'ALL'} onClick={() => setStageFilter('ALL')} count={orders.length}>
+                    All stages
+                  </FilterChip>
+                  {PRODUCTION_STAGES.map((s) => (
+                    <FilterChip key={s} active={stageFilter === s} onClick={() => setStageFilter(s)} count={stageCounts[s]}>
+                      {STAGE_LABEL[s]}
+                    </FilterChip>
+                  ))}
+                  {blockedCount > 0 && (
+                    <FilterChip active={stageFilter === 'BLOCKED'} onClick={() => setStageFilter('BLOCKED')} count={blockedCount}>
+                      Current job issues
+                    </FilterChip>
+                  )}
+                </div>
               </div>
             }
           />
@@ -286,13 +401,14 @@ export default function OrdersDashboardClient({
                 <th className="text-right">Balance Due</th>
                 <th>Rep ID</th>
                 <th>Status</th>
+                <th>Production</th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               {displayedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="!p-4">
+                  <td colSpan={10} className="!p-4">
                     <EmptyState
                       icon={FileText}
                       title={orders.length === 0 ? 'No sales orders yet' : 'No orders match your filters'}
@@ -391,6 +507,45 @@ export default function OrdersDashboardClient({
                       />
                       {order.status === 'PLACED' && (
                         <span className="block text-[10px] text-[var(--color-fog-500)] mt-1">Pending payment</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <span className={`text-[12px] font-medium ${STAGE_TONE[order.productionStage] ?? 'text-white'}`}>
+                        {STAGE_LABEL[order.productionStage] ?? order.productionStage}
+                      </span>
+                      {order.installerName && (
+                        <div className="text-[10px] text-[var(--color-text-secondary)] mt-0.5">{order.installerName}</div>
+                      )}
+                      {order.blockerNote && (
+                        <div className="flex items-center gap-1 text-[10px] text-[var(--color-coral)] mt-0.5" title={order.blockerNote}>
+                          <AlertTriangle size={10} /> {order.blockerNote}
+                        </div>
+                      )}
+                      {order.approvedAt ? (
+                        <div className="text-[10px] text-[var(--color-emerald)] mt-0.5">
+                          Approved{order.approvedByName ? ` · ${order.approvedByName}` : ''}
+                        </div>
+                      ) : (
+                        order.status !== 'CANCELLED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveOrder(order.id)}
+                            disabled={isPending}
+                            className="text-[10px] text-[var(--color-vein)] hover:text-white mt-0.5 disabled:opacity-50"
+                          >
+                            Approve order
+                          </button>
+                        )
+                      )}
+                      {order.status !== 'CANCELLED' && order.productionStage !== 'INSTALLED' && (order.approvedAt || order.productionStage !== 'QUOTED') && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdvanceClick(order)}
+                          disabled={isPending}
+                          className="flex items-center gap-0.5 text-[10px] text-[var(--color-sodalite)] hover:text-white mt-1 disabled:opacity-50"
+                        >
+                          {order.productionStage === 'FABRICATED' ? 'Confirm install' : 'Advance'} <ChevronRight size={10} />
+                        </button>
                       )}
                     </td>
                     <td className="p-3 text-center relative">
@@ -548,6 +703,16 @@ export default function OrdersDashboardClient({
           </form>
         )}
       </Modal>
+
+      <SignatureCaptureModal
+        open={!!signatureModalOrder}
+        soNumber={signatureModalOrder?.soNumber ?? ''}
+        onClose={() => setSignatureModalOrder(null)}
+        onConfirm={(signatureDataUri) => {
+          if (signatureModalOrder) handleAdvanceStage(signatureModalOrder.id, signatureDataUri);
+        }}
+        isPending={isPending}
+      />
     </PageShell>
   );
 }

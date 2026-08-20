@@ -20,6 +20,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const pendingApprovals =
     role === 'ADMIN' ? await db.eventOutbox.count({ where: { status: 'PENDING' } }) : 0;
   const openReconciliationCases = role === 'ADMIN' ? await getOpenReconciliationCount() : 0;
+  const productionIssues =
+    role === 'ADMIN' || role === 'SALES'
+      ? await db.salesOrder.count({ where: { blockerNote: { not: null }, deletedAt: null } })
+      : 0;
 
   return (
     <SessionProvider
@@ -31,7 +35,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ToastProvider>
         <MobileNavProvider>
           <div className="flex h-screen w-full">
-            <Sidebar badges={{ approvals: pendingApprovals, reconciliation: openReconciliationCases }} />
+            <Sidebar
+              badges={{
+                approvals: pendingApprovals,
+                reconciliation: openReconciliationCases,
+                productionIssues,
+              }}
+            />
             <main className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
               <Header />
               <div className="flex-1 overflow-y-auto relative bg-[var(--color-basalt-850)]">

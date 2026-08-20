@@ -15,7 +15,7 @@ import type { PoRow } from '@/server/purchasing/queries';
 import type { OrderRow } from '@/server/orders/queries';
 import { downloadJson } from '@/lib/export';
 import type { CatalogProduct } from '@/server/catalog/queries';
-import type { LandedCostSummary, InventoryAgingReport, MaterialMarginRow } from '@/server/analytics/queries';
+import type { LandedCostSummary, InventoryAgingReport, MaterialMarginRow, JobMarginRow, YieldMetric } from '@/server/analytics/queries';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PageShell } from '@/components/ui/PageShell';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -30,6 +30,8 @@ export default function AnalyticsDashboardClient({
   landedCostSummary,
   inventoryAging,
   marginByMaterial,
+  jobMargins,
+  yieldMetric,
 }: {
   purchaseOrders: PoRow[];
   salesOrders: OrderRow[];
@@ -37,6 +39,8 @@ export default function AnalyticsDashboardClient({
   landedCostSummary: LandedCostSummary;
   inventoryAging: InventoryAgingReport;
   marginByMaterial: MaterialMarginRow[];
+  jobMargins: JobMarginRow[];
+  yieldMetric: YieldMetric;
 }) {
   const [filterType, setFilterType] = useState('ALL');
 
@@ -112,7 +116,7 @@ export default function AnalyticsDashboardClient({
       }
     >
       <div className="space-y-6">
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
           <div className="bp-card p-5">
             <div className="flex justify-between items-start mb-3">
               <span className="bp-eyebrow">Booked revenue</span>
@@ -150,7 +154,22 @@ export default function AnalyticsDashboardClient({
               {netMarginPercent != null ? `${netMarginPercent.toFixed(1)}%` : '—'}
             </div>
             <div className="text-[11px] text-[var(--color-text-secondary)]">
-              Yield {usd(Math.max(0, netMarginValue))}
+              Net margin {usd(Math.max(0, netMarginValue))}
+            </div>
+          </div>
+
+          <div className="bp-card p-5">
+            <div className="flex justify-between items-start mb-3">
+              <span className="bp-eyebrow">Material yield</span>
+              <div className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center bg-[rgba(146,176,206,0.12)] text-[var(--color-sodalite)] border border-white/[0.04]">
+                <Layers size={16} />
+              </div>
+            </div>
+            <div className="bp-kpi-value mb-1">
+              {yieldMetric.yieldPercent != null ? `${yieldMetric.yieldPercent.toFixed(1)}%` : '—'}
+            </div>
+            <div className="text-[11px] text-[var(--color-text-secondary)]">
+              {yieldMetric.netSfUsed.toLocaleString()} of {yieldMetric.purchasedSf.toLocaleString()} sf used
             </div>
           </div>
 
@@ -324,6 +343,62 @@ export default function AnalyticsDashboardClient({
         <div className="bp-table-shell flex flex-col">
           <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-white font-medium text-[14px] truncate">Margin by job</h3>
+              <span className="text-[11px] bg-[var(--color-basalt-900)] text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--color-basalt-500)] bp-mono shrink-0">
+                {jobMargins.length}
+              </span>
+            </div>
+          </div>
+
+          {jobMargins.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                icon={Layers}
+                title="No completed sales yet"
+                hint="Realized margin per job appears here once orders are marked complete."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="bp-table min-w-max">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th className="text-right">Revenue</th>
+                    <th className="text-right">Real COGS</th>
+                    <th className="text-right">Margin $</th>
+                    <th className="text-right">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobMargins.map((row) => (
+                    <tr key={row.salesOrderId}>
+                      <td className="font-medium text-white bp-mono">{row.soNumber}</td>
+                      <td className="text-[var(--color-text-secondary)] truncate max-w-[220px]">{row.customerLabel}</td>
+                      <td className="text-right bp-mono tabular-nums text-[var(--color-text-secondary)]">
+                        {usd(row.revenue)}
+                      </td>
+                      <td className="text-right bp-mono tabular-nums text-[var(--color-coral)]">
+                        {usd(row.realCogs)}
+                      </td>
+                      <td className="text-right bp-mono tabular-nums text-white font-medium">
+                        {usd(row.marginValue)}
+                      </td>
+                      <td className="text-right">
+                        <MarginPill percent={row.marginPercent} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="bp-table-shell flex flex-col">
+          <div className="px-5 py-3 border-b border-[var(--color-basalt-500)] flex flex-wrap justify-between items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-white font-medium text-[14px] truncate">Material ledger</h3>
               <span className="text-[11px] bg-[var(--color-basalt-900)] text-[var(--color-text-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--color-basalt-500)] bp-mono shrink-0">
                 {filteredCatalog.length}
@@ -353,6 +428,13 @@ export default function AnalyticsDashboardClient({
                 icon={BarChart3}
                 title="No lines match"
                 hint="Change the filter or add materials to the catalog."
+                action={
+                  filterType !== 'ALL' ? (
+                    <Button type="button" variant="ghost" onClick={() => setFilterType('ALL')}>
+                      Reset filter
+                    </Button>
+                  ) : undefined
+                }
               />
             </div>
           ) : (

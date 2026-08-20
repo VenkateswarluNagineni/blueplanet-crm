@@ -18,6 +18,7 @@ import {
   Box,
 } from 'lucide-react';
 import type { CatalogProduct, CatalogSlab } from '@/server/catalog/queries';
+import type { QuoteCustomerRow } from '@/server/orders/queries';
 import { createQuoteAction } from '@/server/orders/actions';
 import { FacetCard, FacetRow } from '@/components/ui/FacetCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -72,9 +73,11 @@ const PROD_COLS_LS_KEY = 'bp.catalog.prodCols.v1';
 export default function CatalogDashboardClient({
   products,
   canViewCost,
+  customers,
 }: {
   products: CatalogProduct[];
   canViewCost: boolean;
+  customers: QuoteCustomerRow[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,6 +107,7 @@ export default function CatalogDashboardClient({
   const [quotingSlab, setQuotingSlab] = useState<CatalogSlab | null>(null);
   const [quotePrice, setQuotePrice] = useState<string>('');
   const [quoteCustomer, setQuoteCustomer] = useState('');
+  const [quoteCustomerId, setQuoteCustomerId] = useState<string | null>(null);
   const [edgeProfile, setEdgeProfile] = useState('');
   const [edgeUpcharge, setEdgeUpcharge] = useState('');
   const [cutoutCount, setCutoutCount] = useState('');
@@ -146,6 +150,7 @@ export default function CatalogDashboardClient({
       return { ...prev, [facet]: next };
     });
   const clearProdFilters = () => setProdFilters({});
+  const clearSearchAndFilters = () => { setSearchTerm(''); setProdFilters({}); };
   const prodFilterCount = Object.values(prodFilters).reduce((n, arr) => n + arr.length, 0);
 
   const matchSearch = (m: CatalogProduct) =>
@@ -240,11 +245,18 @@ export default function CatalogDashboardClient({
       return;
     }
 
+    if (!quoteCustomer.trim() && !quoteCustomerId) {
+      setQuoteError('Select a customer or enter a project name.');
+      return;
+    }
+
     startTransition(async () => {
+      const linkedCustomer = customers.find((c) => c.id === quoteCustomerId);
       const res = await createQuoteAction({
         slabId: quotingSlab.id,
         pricePerSf: priceNum,
-        customerName: quoteCustomer,
+        customerName: quoteCustomer.trim() || linkedCustomer?.name || 'Unknown Customer',
+        customerId: quoteCustomerId ?? undefined,
         edgeProfile: edgeProfile || undefined,
         edgeUpchargePerSf: parseFloat(edgeUpcharge) || 0,
         cutoutCount: parseInt(cutoutCount, 10) || 0,
@@ -257,6 +269,7 @@ export default function CatalogDashboardClient({
       setQuotingSlab(null);
       setQuotePrice('');
       setQuoteCustomer('');
+      setQuoteCustomerId(null);
       setEdgeProfile('');
       setEdgeUpcharge('');
       setCutoutCount('');
@@ -438,6 +451,13 @@ export default function CatalogDashboardClient({
             icon={Box}
             title="No materials match"
             hint={searchTerm || prodFilterCount > 0 ? 'Clear search or filters to browse the full catalog.' : 'No products in the catalog yet.'}
+            action={
+              searchTerm || prodFilterCount > 0 ? (
+                <Button type="button" onClick={clearSearchAndFilters} variant="ghost">
+                  Clear search &amp; filters
+                </Button>
+              ) : undefined
+            }
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -569,6 +589,13 @@ export default function CatalogDashboardClient({
                 icon={Box}
                 title="No products match"
                 hint={searchTerm || prodFilterCount > 0 ? 'Clear search or filters to browse the full catalog.' : 'No products in the catalog yet.'}
+                action={
+                  searchTerm || prodFilterCount > 0 ? (
+                    <Button type="button" onClick={clearSearchAndFilters} variant="ghost">
+                      Clear search &amp; filters
+                    </Button>
+                  ) : undefined
+                }
               />
             ) : (
               <div className="bp-table-shell overflow-x-auto">
@@ -667,11 +694,14 @@ export default function CatalogDashboardClient({
       <QuoteModal
         quotingSlab={quotingSlab}
         selectedMaterial={selectedMaterial}
-        onClose={() => { setQuotingSlab(null); setEdgeProfile(''); setEdgeUpcharge(''); setCutoutCount(''); setCutoutUpcharge(''); }}
+        onClose={() => { setQuotingSlab(null); setQuoteCustomer(''); setQuoteCustomerId(null); setEdgeProfile(''); setEdgeUpcharge(''); setCutoutCount(''); setCutoutUpcharge(''); }}
         quotePrice={quotePrice}
         setQuotePrice={setQuotePrice}
         quoteCustomer={quoteCustomer}
         setQuoteCustomer={setQuoteCustomer}
+        customers={customers}
+        quoteCustomerId={quoteCustomerId}
+        setQuoteCustomerId={setQuoteCustomerId}
         edgeProfile={edgeProfile}
         setEdgeProfile={setEdgeProfile}
         edgeUpcharge={edgeUpcharge}

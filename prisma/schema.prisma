@@ -176,6 +176,8 @@ model Party {
   purchaseOrders       PurchaseOrder[] // As Supplier
   salesOrders          SalesOrder[]    @relation("CustomerSalesOrders")
   associateSalesOrders SalesOrder[]    @relation("AssociateSalesOrders")
+  installerSalesOrders SalesOrder[]    @relation("InstallerSalesOrders")
+  approvedSalesOrders  SalesOrder[]    @relation("SalesOrderApprovedBy")
   vendorInvoices       VendorInvoice[]
 
   customerOpportunities  Opportunity[] @relation("CustomerOpportunities")
@@ -463,6 +465,32 @@ model SalesOrder {
   status       String   @default("PLACED") // PLACED, COMPLETED, CANCELLED
   receiptRef   String?
   placedAt     DateTime @default(now())
+
+  // Production/job tracking — buyer-checklist gap: BluePlanet had no visibility
+  // past "sold" (no template/fabricate/install milestone tracking), the single
+  // biggest gap found in the evidence-based hardening pass, cross-validated by
+  // 2 independent research methods. Deliberately a stage on the existing order
+  // (not a new Job entity) — `status` tracks the commercial lifecycle, this
+  // tracks physical progress; the two are independent.
+  productionStage String    @default("QUOTED") // QUOTED, TEMPLATED, FABRICATED, INSTALLED
+  templatedAt     DateTime?
+  fabricatedAt    DateTime?
+  installedAt     DateTime?
+  installerId     String?
+  installer       Party?    @relation("InstallerSalesOrders", fields: [installerId], references: [id])
+  // Free-text blocker flag, independent of stage (e.g. "Waiting on cabinets") —
+  // real pattern observed in Moraware's filtered job-issue views.
+  blockerNote     String?
+  // Install-confirmation signature capture (data URI), set when advancing to INSTALLED.
+  installSignatureDataUri String?
+
+  // Lightweight internal approval gate (Salesforce CPQ / Zuora "Deal Desk" pattern —
+  // internal sign-off, not a customer-facing e-signature). Independent of `status`
+  // for the same reason productionStage is: never repurpose the 3-value commercial
+  // enum for a 4th state. Production cannot advance past QUOTED until this is set.
+  approvedAt        DateTime?
+  approvedByPartyId String?
+  approvedBy        Party?    @relation("SalesOrderApprovedBy", fields: [approvedByPartyId], references: [id])
 
   soLineItems SOLineItem[]
   soPayments  SOPayment[]

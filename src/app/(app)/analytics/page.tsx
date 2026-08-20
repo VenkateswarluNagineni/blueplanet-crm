@@ -4,7 +4,7 @@ import { assertPageAccess } from '@/lib/domain/page-access';
 import { getPurchaseOrders } from '@/server/purchasing/queries';
 import { getSalesOrders } from '@/server/orders/queries';
 import { getCatalog } from '@/server/catalog/queries';
-import { getLandedCostSummary, getInventoryAging, getMarginByMaterialCategory } from '@/server/analytics/queries';
+import { getLandedCostSummary, getInventoryAging, getMarginByMaterialCategory, getJobMargins, getYieldMetric } from '@/server/analytics/queries';
 
 export const metadata = {
   title: 'Analytics | BluePlanet CRM',
@@ -14,7 +14,7 @@ export const metadata = {
 export default async function AnalyticsPage() {
   assertPageAccess(await getSessionContext(), 'admin');
 
-  const [purchaseOrders, salesOrders, catalog, landedCostSummary, inventoryAging, marginByMaterial] =
+  const [purchaseOrders, salesOrders, catalog, landedCostSummary, inventoryAging, marginByMaterial, jobMargins, yieldMetric] =
     await Promise.all([
       getPurchaseOrders(),
       getSalesOrders(null),
@@ -22,6 +22,8 @@ export default async function AnalyticsPage() {
       getLandedCostSummary(),
       getInventoryAging(),
       getMarginByMaterialCategory(),
+      getJobMargins(),
+      getYieldMetric(),
     ]);
 
   return (
@@ -33,6 +35,8 @@ export default async function AnalyticsPage() {
         landedCostSummary={landedCostSummary}
         inventoryAging={inventoryAging}
         marginByMaterial={marginByMaterial}
+        jobMargins={jobMargins}
+        yieldMetric={yieldMetric}
       />
     </div>
   );

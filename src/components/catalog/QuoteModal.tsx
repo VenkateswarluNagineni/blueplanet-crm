@@ -1,5 +1,6 @@
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { CatalogProduct, CatalogSlab } from '@/server/catalog/queries';
+import type { QuoteCustomerRow } from '@/server/orders/queries';
 import { EDGE_PROFILES } from '@/lib/domain/reference';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +13,9 @@ export function QuoteModal({
   setQuotePrice,
   quoteCustomer,
   setQuoteCustomer,
+  customers,
+  quoteCustomerId,
+  setQuoteCustomerId,
   edgeProfile,
   setEdgeProfile,
   edgeUpcharge,
@@ -31,6 +35,9 @@ export function QuoteModal({
   setQuotePrice: (v: string) => void;
   quoteCustomer: string;
   setQuoteCustomer: (v: string) => void;
+  customers: QuoteCustomerRow[];
+  quoteCustomerId: string | null;
+  setQuoteCustomerId: (v: string | null) => void;
   edgeProfile: string;
   setEdgeProfile: (v: string) => void;
   edgeUpcharge: string;
@@ -49,6 +56,19 @@ export function QuoteModal({
   const cutoutN = parseInt(cutoutCount, 10) || 0;
   const cutoutEach = parseFloat(cutoutUpcharge) || 0;
   const total = (base + edgeAdd) * sf + cutoutN * cutoutEach;
+
+  const [customerSearch, setCustomerSearch] = useState('');
+  const selectedCustomer = customers.find((c) => c.id === quoteCustomerId) ?? null;
+  const matches =
+    !selectedCustomer && customerSearch.trim().length > 0
+      ? customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase())).slice(0, 6)
+      : [];
+  const projectedExposure = selectedCustomer ? selectedCustomer.openExposure + total : 0;
+  const overLimit =
+    !!selectedCustomer &&
+    !selectedCustomer.creditLockExempt &&
+    selectedCustomer.creditLimit > 0 &&
+    projectedExposure > selectedCustomer.creditLimit;
 
   return (
     <Modal
@@ -98,14 +118,86 @@ export function QuoteModal({
             </div>
 
             <div>
-              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Customer Name / Project</label>
+              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">Customer</label>
+              {selectedCustomer ? (
+                <div className="bp-card p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-white font-medium">{selectedCustomer.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setQuoteCustomerId(null); setCustomerSearch(''); }}
+                      className="text-[11px] text-[var(--color-sodalite)] hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[var(--color-text-secondary)]">
+                      {selectedCustomer.priorOrderCount > 0
+                        ? `${selectedCustomer.priorOrderCount} prior order${selectedCustomer.priorOrderCount === 1 ? '' : 's'} · $${selectedCustomer.priorOrderTotal.toLocaleString()} lifetime`
+                        : 'No completed orders yet'}
+                    </span>
+                    {selectedCustomer.creditLimit > 0 && !selectedCustomer.creditLockExempt && (
+                      <span className={overLimit ? 'text-[var(--color-ruby)]' : 'text-[var(--color-text-secondary)]'}>
+                        ${Math.round(selectedCustomer.openExposure).toLocaleString()} open / ${selectedCustomer.creditLimit.toLocaleString()} limit
+                      </span>
+                    )}
+                  </div>
+                  {selectedCustomer.salesLockNote && (
+                    <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[11px] px-2.5 py-1.5 rounded-[var(--radius-sm)]">
+                      {selectedCustomer.salesLockNote}
+                    </div>
+                  )}
+                  {!selectedCustomer.salesLockNote && overLimit && (
+                    <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.25)] text-[var(--color-ruby)] text-[11px] px-2.5 py-1.5 rounded-[var(--radius-sm)]">
+                      This quote would put {selectedCustomer.name} over their credit limit.
+                    </div>
+                  )}
+                  {!selectedCustomer.salesLockNote && !overLimit && selectedCustomer.salesAlertNote && (
+                    <div className="bg-[rgba(234,179,8,0.1)] border border-[rgba(234,179,8,0.25)] text-[var(--color-coral)] text-[11px] px-2.5 py-1.5 rounded-[var(--radius-sm)]">
+                      {selectedCustomer.salesAlertNote}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="bp-input"
+                    placeholder="Search customers…"
+                    autoComplete="off"
+                  />
+                  {matches.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bp-card p-1 max-h-48 overflow-y-auto">
+                      {matches.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => { setQuoteCustomerId(c.id); setCustomerSearch(''); }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[13px] text-white hover:bg-[var(--color-basalt-700)]"
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[12px] text-[var(--color-text-secondary)] mb-1.5">
+                Project / Notes {selectedCustomer ? '(optional)' : ''}
+              </label>
               <input
                 type="text"
-                required
+                required={!selectedCustomer}
                 value={quoteCustomer}
                 onChange={(e) => setQuoteCustomer(e.target.value)}
                 className="bp-input"
-                placeholder="e.g. John Smith - Kitchen Remodel"
+                placeholder="e.g. Kitchen Remodel"
               />
             </div>
 

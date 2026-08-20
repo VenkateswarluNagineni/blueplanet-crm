@@ -131,10 +131,11 @@ export const NAV_ITEMS: NavItemDef[] = [
     id: 'orders',
     label: 'Orders',
     href: '/orders',
-    hint: 'Quotes & sales orders',
+    hint: 'Quotes, sales orders & production tracking',
     icon: FileText,
     roles: ['ADMIN', 'SALES'],
     group: { ADMIN: 'Sales', SALES: 'Sell' },
+    badgeKey: 'productionIssues',
   },
   // —— Supply (admin) ——
   {

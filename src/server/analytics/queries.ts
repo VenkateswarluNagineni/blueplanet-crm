@@ -151,3 +151,100 @@ export async function getMarginByMaterialCategory(): Promise<MaterialMarginRow[]
     }))
     .sort((a, b) => b.marginValue - a.marginValue);
 }
+
+export type YieldMetric = {
+  purchasedSf: number;
+  remnantSf: number;
+  netSfUsed: number;
+  yieldPercent: number | null;
+};
+
+/**
+ * Real material yield — net sf used ÷ purchased sf, derived from existing
+ * remnant/line-item data (no new capture burden, no CAD/nesting geometry).
+ * `purchasedSf` is the sum of every root purchased slab's totalSf (parentItemId
+ * null); `remnantSf` is the sf split off into remnant child records via the
+ * existing self-relation; the difference is the sf that went straight to a
+ * finished, sold piece rather than ending up as leftover material.
+ */
+export async function getYieldMetric(): Promise<YieldMetric> {
+  const [purchased, remnants] = await Promise.all([
+    db.inventoryItem.aggregate({
+      where: { deletedAt: null, parentItemId: null },
+      _sum: { totalSf: true },
+    }),
+    db.inventoryItem.aggregate({
+      where: { deletedAt: null, parentItemId: { not: null } },
+      _sum: { totalSf: true },
+    }),
+  ]);
+
+  const purchasedSf = purchased._sum.totalSf ?? 0;
+  const remnantSf = remnants._sum.totalSf ?? 0;
+  const netSfUsed = Math.max(0, purchasedSf - remnantSf);
+
+  return {
+    purchasedSf: Math.round(purchasedSf * 10) / 10,
+    remnantSf: Math.round(remnantSf * 10) / 10,
+    netSfUsed: Math.round(netSfUsed * 10) / 10,
+    yieldPercent: purchasedSf > 0 ? (netSfUsed / purchasedSf) * 100 : null,
+  };
+}
+
+export type JobMarginRow = {
+  salesOrderId: string;
+  soNumber: string;
+  customerLabel: string;
+  revenue: number;
+  realCogs: number;
+  marginValue: number;
+  marginPercent: number | null;
+  placedAt: string;
+};
+
+/**
+ * Realized margin (completed sales only) per individual job/order — same
+ * revenue/realCogs calculation getMarginByMaterialCategory uses, just grouped by
+ * SalesOrder instead of material category. Note: soldPricePerSf and
+ * landedCostAtSale are both snapshotted together at quote time (see
+ * createQuoteAction) and landedCostAtSale is immutable once sold (see the
+ * reconciliation engine's sold-slab exclusion) — there is no "actual cost that
+ * can diverge from the estimate" in the data today, so this is a true realized
+ * margin figure, not an estimate-vs-actual comparison.
+ */
+export async function getJobMargins(): Promise<JobMarginRow[]> {
+  const orders = await db.salesOrder.findMany({
+    where: { deletedAt: null, status: 'COMPLETED' },
+    select: {
+      id: true,
+      soNumber: true,
+      customerName: true,
+      customer: { select: { name: true } },
+      placedAt: true,
+      soLineItems: {
+        where: { deletedAt: null },
+        select: {
+          soldPricePerSf: true,
+          landedCostAtSale: true,
+          inventoryItem: { select: { totalSf: true } },
+        },
+      },
+    },
+    orderBy: { placedAt: 'desc' },
+  });
+
+  return orders.map((o) => {
+    const revenue = o.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0);
+    const realCogs = o.soLineItems.reduce((s, li) => s + li.landedCostAtSale, 0);
+    return {
+      salesOrderId: o.id,
+      soNumber: o.soNumber,
+      customerLabel: o.customerName ?? o.customer?.name ?? 'Unknown Customer',
+      revenue,
+      realCogs,
+      marginValue: revenue - realCogs,
+      marginPercent: revenue > 0 ? ((revenue - realCogs) / revenue) * 100 : null,
+      placedAt: o.placedAt.toISOString().split('T')[0],
+    };
+  });
+}

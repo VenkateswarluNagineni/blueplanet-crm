@@ -15,6 +15,7 @@ import {
   Link as LinkIcon,
   Download,
   GitCompare,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { Term } from '@/components/ui/Tooltip';
@@ -52,8 +53,38 @@ function EtaBadge({ status, days }: { status: EtaStatus; days: number | null }) 
     </span>
   );
 }
+type SortField = 'poNumber' | 'supplier' | 'material' | 'value' | 'eta';
+type SortDir = 'asc' | 'desc';
 
-
+const SortHeader = ({
+  field,
+  label,
+  sortLabel,
+  align = 'left',
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  field: SortField;
+  label: React.ReactNode;
+  /** Plain-text label for the "Sort by …" hover title, when `label` isn't a plain string. */
+  sortLabel?: string;
+  align?: 'left' | 'right';
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+}) => (
+  <button
+    type="button"
+    onClick={() => onSort(field)}
+    className={`flex items-center gap-1 hover:text-white transition-colors ${align === 'right' ? 'ml-auto' : ''} ${sortField === field ? 'text-white' : ''}`}
+    title={`Sort by ${(sortLabel ?? (typeof label === 'string' ? label : field)).toLowerCase()}`}
+  >
+    {label}
+    <ArrowUpDown size={11} className={sortField === field ? 'opacity-100' : 'opacity-40'} />
+    {sortField === field && <span className="text-[9px]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+  </button>
+);
 
 export default function PurchasesDashboardClient({
   purchaseOrders,
@@ -78,6 +109,16 @@ export default function PurchasesDashboardClient({
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<PoLogisticsStatus | 'ALL' | 'ACTIVE'>('ALL');
+  const [sortField, setSortField] = useState<SortField>('poNumber');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir(field === 'poNumber' || field === 'value' || field === 'eta' ? 'desc' : 'asc');
+    }
+  };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [verifyModalOpen, setVerifyModalOpen] = useState<{ isOpen: boolean; poId: string | null }>({ isOpen: false, poId: null });
   const [verifyDocRef, setVerifyDocRef] = useState('');
@@ -178,6 +219,21 @@ export default function PurchasesDashboardClient({
           ? po.status !== 'RECEIVED'
           : po.status === statusFilter;
     return matchSearch && matchStatus;
+  }).sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortField) {
+      case 'supplier':
+        return a.supplierName.localeCompare(b.supplierName) * dir;
+      case 'material':
+        return a.materialName.localeCompare(b.materialName) * dir;
+      case 'value':
+        return (a.orderedSlabs * a.unitCost - b.orderedSlabs * b.unitCost) * dir;
+      case 'eta':
+        return ((a.estimatedDelivery ?? '').localeCompare(b.estimatedDelivery ?? '')) * dir;
+      case 'poNumber':
+      default:
+        return a.poNumber.localeCompare(b.poNumber) * dir;
+    }
   });
 
   const countBy = (pred: (p: PoRow) => boolean) => purchaseOrders.filter(pred).length;
@@ -368,12 +424,22 @@ export default function PurchasesDashboardClient({
           <table className="bp-table">
             <thead>
               <tr>
-                <th>PO Number</th>
-                <th>Supplier</th>
-                <th>Material</th>
+                <th><SortHeader field="poNumber" label="PO Number" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th><SortHeader field="supplier" label="Supplier" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th><SortHeader field="material" label="Material" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
                 <th className="text-right">Quantity</th>
-                <th className="text-right">Unit Cost</th>
-                <th><Term k="eta">Est. Delivery</Term> / <Term k="container">Container</Term></th>
+                <th className="text-right"><SortHeader field="value" label="Unit Cost" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort} /></th>
+                <th>
+                  <SortHeader
+                    field="eta"
+                    label={<Term k="eta">Est. Delivery</Term>}
+                    sortLabel="Est. Delivery"
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                  {' '}/ <Term k="container">Container</Term>
+                </th>
                 <th>Status</th>
                 <th className="text-center">Logistics Action</th>
               </tr>

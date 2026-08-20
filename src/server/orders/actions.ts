@@ -34,6 +34,7 @@ const QuoteSchema = z.object({
   slabId: z.string().min(1),
   pricePerSf: z.number().positive(),
   customerName: z.string().min(1).max(200),
+  customerId: z.string().optional(),
   edgeProfile: z.string().trim().max(60).optional().or(z.literal('')),
   edgeUpchargePerSf: z.number().min(0).default(0),
   cutoutCount: z.number().int().min(0).default(0),
@@ -44,6 +45,7 @@ export async function createQuoteAction(input: {
   slabId: string;
   pricePerSf: number;
   customerName: string;
+  customerId?: string;
   edgeProfile?: string;
   edgeUpchargePerSf?: number;
   cutoutCount?: number;
@@ -54,7 +56,7 @@ export async function createQuoteAction(input: {
 
   const parsed = QuoteSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid quote details.' };
-  const { slabId, pricePerSf, customerName, edgeProfile, edgeUpchargePerSf, cutoutCount, cutoutUpchargeEach } = parsed.data;
+  const { slabId, pricePerSf, customerName, customerId, edgeProfile, edgeUpchargePerSf, cutoutCount, cutoutUpchargeEach } = parsed.data;
 
   const slab = await db.inventoryItem.findFirst({
     where: { id: slabId, deletedAt: null },
@@ -69,6 +71,44 @@ export async function createQuoteAction(input: {
     return { ok: false, error: `Price cannot be below the authorized minimum of $${floor}/sqft.` };
   }
 
+  // Same credit-limit enforcement convertOpportunityToOrderAction already applies on the
+  // pipeline path (src/server/pipeline/actions.ts) — the catalog-quote path previously
+  // bypassed it entirely since it never linked a customerId at all.
+  if (customerId) {
+    const customer = await db.party.findFirst({
+      where: { id: customerId, type: 'CUSTOMER', deletedAt: null },
+      select: { name: true, creditLimit: true, creditLockExempt: true, salesLockNote: true },
+    });
+    if (customer && !customer.creditLockExempt) {
+      if (customer.salesLockNote) {
+        return { ok: false, error: customer.salesLockNote };
+      }
+      if (customer.creditLimit > 0) {
+        const openOrders = await db.salesOrder.findMany({
+          where: { customerId, status: 'PLACED', deletedAt: null },
+          include: { soLineItems: { include: { inventoryItem: { select: { totalSf: true } } } } },
+        });
+        const openExposure = openOrders.reduce(
+          (sum, so) =>
+            sum + so.soLineItems.reduce((s, li) => s + li.soldPricePerSf * (li.inventoryItem?.totalSf ?? 0), 0),
+          0,
+        );
+        const newOrderValue = pricePerSf * slab.totalSf;
+        const projected = openExposure + newOrderValue;
+        if (projected > customer.creditLimit) {
+          return {
+            ok: false,
+            error: `This order would put ${customer.name} $${Math.round(
+              projected - customer.creditLimit,
+            ).toLocaleString()} over their $${customer.creditLimit.toLocaleString()} credit limit (currently $${Math.round(
+              openExposure,
+            ).toLocaleString()} in open orders).`,
+          };
+        }
+      }
+    }
+  }
+
   const soNumber = await nextSoNumber();
   const associateId = await currentAssociateId();
 
@@ -77,6 +117,7 @@ export async function createQuoteAction(input: {
       data: {
         soNumber,
         customerName,
+        customerId: customerId || null,
         associateId,
         status: 'PLACED',
         soLineItems: {
@@ -98,6 +139,31 @@ export async function createQuoteAction(input: {
   ]);
 
   revalidatePath('/catalog');
+  revalidatePath('/orders');
+  return { ok: true };
+}
+
+/**
+ * Lightweight internal approval gate (the "Deal Desk" pattern — Salesforce CPQ,
+ * Zuora, PandaDoc: cross-functional sign-off before commitment, distinct from a
+ * customer-facing e-signature). Production cannot advance past QUOTED until this
+ * is set (see advanceProductionStageAction in src/server/production/actions.ts).
+ */
+export async function approveOrderAction(orderId: string): Promise<ActionResult> {
+  const ctx = await getSessionContext();
+  if (!ctx) return { ok: false, error: 'Not authenticated.' };
+  requireRole(ctx.role, ['ADMIN', 'SALES']);
+
+  const order = await db.salesOrder.findFirst({ where: { id: orderId, deletedAt: null } });
+  if (!order) return { ok: false, error: 'Order not found.' };
+  if (order.approvedAt) return { ok: false, error: 'This order is already approved.' };
+  if (order.status === 'CANCELLED') return { ok: false, error: 'Cannot approve a cancelled order.' };
+
+  await db.salesOrder.update({
+    where: { id: orderId },
+    data: { approvedAt: new Date(), approvedByPartyId: ctx.party?.id ?? null },
+  });
+
   revalidatePath('/orders');
   return { ok: true };
 }

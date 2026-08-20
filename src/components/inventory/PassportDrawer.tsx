@@ -21,8 +21,7 @@ import type { InventoryRow } from '@/server/inventory/queries';
 import { Drawer } from '@/components/ui/Drawer';
 import { StatusPill } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Term } from '@/components/ui/Tooltip';
-import { useToast } from '@/components/ui/Toast';
+import { Term, Tooltip } from '@/components/ui/Tooltip';
 import { swatchBaseForMaterial } from '@/lib/domain/material-swatch';
 import { PassportMatesStrip } from '@/components/inventory/PassportMatesStrip';
 import { SlabPhotoGallery } from '@/components/inventory/SlabPhotoGallery';
@@ -54,7 +53,6 @@ export function PassportDrawer({
   onSelectSlab: (slab: InventoryRow) => void;
   passportMates: InventoryRow[];
 }) {
-  const toast = useToast();
 
   return (
     <Drawer
@@ -251,9 +249,11 @@ export function PassportDrawer({
                   {refs.length === 0 ? (
                     <p className="text-[11px] text-[var(--color-text-secondary)] italic">None on file</p>
                   ) : refs.map((d, i) => (
-                    <button key={i} type="button" onClick={() => toast('Documents are filed offline — the passport links the reference only.', 'info')} className="flex items-center gap-2 text-[12px] text-[var(--color-sodalite)] hover:text-[var(--color-vein)] hover:underline w-full text-left mb-1.5 last:mb-0 transition-colors break-all">
-                      <FileText size={12} className="shrink-0" /> {d}
-                    </button>
+                    <Tooltip key={i} content="Documents are filed offline — the passport links the reference only.">
+                      <div className="flex items-center gap-2 text-[12px] text-[var(--color-text-secondary)] w-full mb-1.5 last:mb-0 break-all cursor-help">
+                        <FileText size={12} className="shrink-0" /> {d}
+                      </div>
+                    </Tooltip>
                   ))}
                 </div>
               );

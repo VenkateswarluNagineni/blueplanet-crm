@@ -33,7 +33,10 @@ export const VENDOR_RATE_BASIS = ['Per Container', 'Per Mile', 'Per Shipment', '
 
 export const CUSTOMER_PRICE_TIERS = ['Standard', 'Preferred', 'Wholesale'] as const;
 
-export const ASSOCIATE_ROLES = ['Sales Rep', 'Senior Sales Rep', 'Branch Manager', 'Regional Director'] as const;
+export const ASSOCIATE_ROLES = ['Sales Rep', 'Senior Sales Rep', 'Branch Manager', 'Regional Director', 'Installer', 'Templator'] as const;
+
+/** Production stages an order moves through after being sold — buyer-checklist gap: no job tracking past "sold". */
+export const PRODUCTION_STAGES = ['QUOTED', 'TEMPLATED', 'FABRICATED', 'INSTALLED'] as const;
 
 export const ADDRESS_KINDS = ['PRIMARY', 'BILLING', 'SHIPPING', 'WAREHOUSE'] as const;
 
